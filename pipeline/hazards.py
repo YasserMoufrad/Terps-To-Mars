@@ -76,6 +76,57 @@ def hazard_masks(terrain, analysis, rules=None, edge_distance=None,
     return masks
 
 
+@traced("uncertainty_area_check")
+def uncertainty_area_check(terrain, analysis, masks, cell, radius_m=None, agent="crew", rules=None, point_id="point"):
+    """Check every cell within radius_m of a candidate position, not just the chosen DTM cell.
+
+    cell: (row, col) of the candidate centre. radius_m: horizontal position uncertainty in metres
+    (default rule position_uncertainty_m = 15). Distances use row spacing and the latitude-corrected
+    east-west column spacing. Status is never "safe":
+      excluded_terrain_within_uncertainty - a hard exclusion (slope, rockfall, edge) lies inside the disc;
+      inspection_required - unresolved cells (no-data, artifact, unresolved scarp) or the disc leaves the crop;
+      no_mapped_exclusion - nothing mapped inside the disc (sub-DTM hazards remain possible).
+    """
+    rules = rules or load_rules()
+    radius_m = threshold(rules, "position_uncertainty_m") if radius_m is None else float(radius_m)
+    if not np.isfinite(radius_m) or radius_m < 0:
+        raise ValueError("Uncertainty radius must be finite and nonnegative")
+    if agent not in {"crew", "rover"}:
+        raise ValueError("Unknown agent")
+    row, col = (int(v) for v in cell)
+    rows, cols = terrain.elevation.shape
+    if not (0 <= row < rows and 0 <= col < cols):
+        raise ValueError("Candidate cell outside terrain")
+    dy = terrain.resolution
+    dx = float(terrain.column_spacing[row])
+    reach_r, reach_c = int(np.ceil(radius_m / dy)), int(np.ceil(radius_m / dx))
+    outside_crop = row - reach_r < 0 or col - reach_c < 0 or row + reach_r >= rows or col + reach_c >= cols
+    r0, r1 = max(0, row - reach_r), min(rows, row + reach_r + 1)
+    c0, c1 = max(0, col - reach_c), min(cols, col + reach_c + 1)
+    rr, cc = np.mgrid[r0:r1, c0:c1]
+    disc = np.zeros(terrain.elevation.shape, bool)
+    disc[rr, cc] = ((rr - row) * dy) ** 2 + ((cc - col) * dx) ** 2 <= radius_m ** 2
+    hard = {"slope_exclude": masks[f"{agent}_exclude"], "rockfall": masks["rockfall"]}
+    if agent == "crew":
+        hard["edge"] = masks["edge"]
+    unresolved = {"no_data": masks["no_data"], "artifact": masks["artifact"],
+                  "unresolved_scarp": masks["inspection_required"], "invalid_analysis": ~analysis["valid"]}
+    counts = {name: int((mask & disc).sum()) for name, mask in {**hard, **unresolved}.items()}
+    counts["crew_caution"] = int((masks["crew_caution"] & disc).sum())
+    if any(counts[name] for name in hard):
+        status = "excluded_terrain_within_uncertainty"
+    elif outside_crop or any(counts[name] for name in unresolved):
+        status = "inspection_required"
+    else:
+        status = "no_mapped_exclusion"
+    result = {"point_id": point_id, "cell": [row, col], "radius_m": radius_m, "cells_checked": int(disc.sum()),
+              "disc_leaves_crop": bool(outside_crop), "counts": counts, "status": status,
+              "crew_clearance": "not_established"}
+    event("uncertainty_area_checked", logging.INFO if status == "no_mapped_exclusion" else logging.WARNING,
+          evidence=terrain.evidence, agent=agent, **result)
+    return result
+
+
 @traced("hazard_export")
 def export_hazards(terrain, masks):
     """Export classified masks with terrain provenance and stable category IDs."""

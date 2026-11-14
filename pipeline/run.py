@@ -14,6 +14,8 @@ from rasterio.warp import transform as project
 from pipeline.terrain import Terrain, MARS_GEOGRAPHIC, analyze, read_terrain
 from pipeline.hazards import hazard_masks, export_hazards
 from pipeline.scenario import discovery_scenario
+from pipeline.routing import InfeasibleMission
+from pipeline.feasibility import audit_site
 from pipeline.export import aligned_image, export_overlay, write_json
 from pipeline.validate_contract import validate_data
 from pipeline.logging_config import traced, event, fingerprint, configure_logging, operation
@@ -94,10 +96,24 @@ def run(output, config=None):
     masks = hazard_masks(terrain, analysis, **hazard_inputs)
     hazards = export_hazards(terrain, masks)
     event("execution_inputs", evidence=terrain.evidence, dataset_id=terrain.source, config_fingerprint=fingerprint(config))
-    routes, hazard, discovery, cov = discovery_scenario(
-        terrain, analysis, masks, start, end, discovery_cell,
-        sensor_radius_m=config["sensor_radius_m"], approved=config.get("approved", False),
-        eva_minutes=config["eva_minutes"], speed_m_min=config["speed_m_min"], observation_minutes=config["observation_minutes"])
+    try:
+        routes, hazard, discovery, cov = discovery_scenario(
+            terrain, analysis, masks, start, end, discovery_cell,
+            sensor_radius_m=config["sensor_radius_m"], approved=config.get("approved", False),
+            eva_minutes=config["eva_minutes"], speed_m_min=config["speed_m_min"], observation_minutes=config["observation_minutes"])
+    except InfeasibleMission as finding:
+        # A valid "no viable route" finding: write the audit, never a fabricated discovery or mission bundle.
+        points = {"habitat": start, "observation_primary": end}
+        if terrain.evidence != "simulated":
+            points["observation_backup"] = cell(config["endpoints"]["observation_backup"])
+        report = audit_site(terrain, analysis, masks, points, config["eva_minutes"], config["speed_m_min"],
+                            config["observation_minutes"])
+        report["finding"] = str(finding)
+        write_json(output / "feasibility_report.json", report)
+        write_json(output / "hazards.geojson", hazards)
+        event("mission_infeasible_reported", logging.WARNING, directory=str(output), verdict=report["verdict"],
+              evidence=terrain.evidence, mission_bundle="not_exported", crew_clearance="not_established")
+        return output
     hazards["features"].append(hazard)
     center = terrain.lonlat(terrain.elevation.shape[0] // 2, terrain.elevation.shape[1] // 2)
     def location(point):

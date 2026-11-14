@@ -29,6 +29,14 @@ Acquire official inputs with `python -m pipeline.acquire dtm` and `python -m pip
 
 The provisional rockfall buffer is `max(visible apron, 1.0 × measured cliff height)`, not a NASA-certified distance. `hazard_masks(..., scarp_risk=mask)` marks a reviewed risk region. Missing edge/foot geometry, height or apron measurements produce `inspection_required` in that region, exported as inferred edge exclusions. Synthetic terrain defaults to cliff-free; NASA-derived terrain with no risk-region input conservatively treats the crop as unresolved. Explicit all-false `scarp_risk` is a reviewed cliff-free declaration, not an automatic inference. Route planning must block unresolved regions (implemented in the dependent routing PR).
 
+## Site feasibility audit (unconfirmed candidates)
+
+`python -m pipeline.feasibility --config audit.json --output pipeline/output/audit` checks candidate habitat/primary/backup points without review flags or a rover scenario. Config: `dtm`, `window`, `points` ({lat, lon} each), `eva_minutes`, `speed_m_min`, `observation_minutes` (per stop); optional QC/scarp arrays as in the full run. For each point it checks the whole `position_uncertainty_m` (15 m) disc, not one cell. It budgets three itineraries: habitat->primary->habitat, habitat->backup->habitat and habitat->primary->backup->habitat (the primary->backup leg is counted). Each is tested first against the great-circle lower bound (proves infeasibility with no search), then against the shortest routed path over the same exclusions. Verdicts are `infeasible`, `no_route_found` or `candidate_requires_inspection`, never clearance. Without scarp measurements, NASA-derived terrain stays unresolved, so routing reports `no_route_found` while the lower-bound result still stands.
+
+In the full run, a missing preliminary route raises `InfeasibleMission`; `run()` then writes `feasibility_report.json` and `hazards.geojson` and no mission bundle or simulated discovery.
+
+`plan_routes` now rejects on the great-circle bound before searching, and when the least-cost path is over budget it tries the shortest-distance path over the same exclusions before reporting `no_viable_route`. Valid cells with unmeasured roughness cost the same as unscouted terrain (never zero) and make a route `inspection_required`.
+
 ## Native-resolution HiRISE imagery (visual layer only)
 
 `python -m pipeline.acquire image_hd` downloads `ESP_071006_2345_RED_A_01_ORTHO.JP2` (390,402,430 bytes; 30081 x 50631 px, 8-bit, equirectangular, 50 N standard parallel, 3,384.4 km local sphere, 0.249 m/pixel, null 0) into ignored `pipeline/raw/` with a checksum manifest; `image_hd_label` fetches its `.LBL`. The Docker image's GDAL 3.9.3 decodes it with JP2OpenJPEG.
