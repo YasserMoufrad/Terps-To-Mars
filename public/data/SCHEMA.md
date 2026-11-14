@@ -4,10 +4,10 @@ The full contract is section 4 of [docs/IMPLEMENTATION.md](../../docs/IMPLEMENTA
 
 | File | Status |
 | --- | --- |
-| `routes.geojson` | Placeholder (Yasser) until Nic's pipeline exports real routes. Hand-drawn lines around Geury's endpoints; lengths and times computed on the Mars sphere. Schema 1.1: crew routes use the optional `legs` (drive 5 km/h, walk 20 m/min) and `walkback_min` (IMPLEMENTATION section 4). The replanned main route and backup pass both budget checks but stay `inspection_required` until a crew-rover traversability model exists |
-| `hazards.geojson` | Placeholder; hand-drawn boxes along Geury's traced ice band (plus his southern scarp), not derived from the DTM |
+| `routes.geojson` | Placeholder (Yasser) until Nic's pipeline exports real routes. Least-cost paths on the HiRISE DTM between DTM-checked points (`data/site/`, `tools/site/`); lengths with the pipeline's `mars_distance`. Schema 1.1: crew routes use the optional `legs` (drive 5 km/h, walk 20 m/min) and `walkback_min` (IMPLEMENTATION section 4). The replanned main route and backup pass both budget checks but stay `inspection_required` until a crew-rover traversability model exists |
+| `hazards.geojson` | Placeholder file, but the scarp face is measured (DTM slope 64–75°, `nasa_derived`); edge setback and rockfall zone apply the hazard rules to the measured edge, foot and height (`inferred`); simulated soft ground; Geury's southern scarp (`inferred`) |
 | `coverage.geojson` | Placeholder |
-| `mission.json` | Placeholder; endpoints and drone perch are Geury's first-pass coordinates (2026-11-14, about 15 m accuracy, not DTM-checked) |
+| `mission.json` | Placeholder; endpoints and drone perch are the DTM-checked candidates in `data/site/site_points_dtm.geojson` (2026-11-14) |
 | `hirise.jpg` + `hirise.bounds.json` | Nic (pipeline) |
 | `slope.png` + `slope.bounds.json` | Nic (pipeline) |
 

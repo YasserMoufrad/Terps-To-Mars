@@ -1,0 +1,370 @@
+{
+ "dtm": "DTEEC_071085_2345_071006_2345_A01.IMG",
+ "resolution_m": 0.99662516563892,
+ "thresholds_deg": {
+  "caution": 15,
+  "exclude": 20
+ },
+ "uncertainty_radius_m": 15.0,
+ "scarp_height_m_median": 58.9,
+ "scarp_height_m_range": [
+  23.3,
+  72.6
+ ],
+ "apron_m_median": 55.3,
+ "rockfall_rule": "max(75th pct apron, 1.0 x 75th pct height)",
+ "note": "Per traced profile (data/site/scarp_lines.geojson): top_z = median elevation 15 m south of the edge, floor_z = 15 m north of the foot, height = top_z - floor_z, apron = distance north of the foot until slope stays < 15 deg for 10 m (rough pit floor inflates it in the west). Rockfall zone per profile = max(apron, 1 x height) from the foot.",
+ "profiles": [
+  {
+   "lon": -147.917532,
+   "edge_lat": 54.163452,
+   "foot_lat": 54.164941,
+   "top_z": -3968.9,
+   "floor_z": -4010.1,
+   "height_m": 41.2,
+   "apron_m": 252.1,
+   "face_max_slope_deg": 70.7
+  },
+  {
+   "lon": -147.916745,
+   "edge_lat": 54.163463,
+   "foot_lat": 54.164952,
+   "top_z": -3972.0,
+   "floor_z": -4019.2,
+   "height_m": 47.1,
+   "apron_m": 268.1,
+   "face_max_slope_deg": 68.0
+  },
+  {
+   "lon": -147.915957,
+   "edge_lat": 54.163473,
+   "foot_lat": 54.164962,
+   "top_z": -3974.1,
+   "floor_z": -4026.2,
+   "height_m": 52.1,
+   "apron_m": 95.7,
+   "face_max_slope_deg": 69.5
+  },
+  {
+   "lon": -147.91517,
+   "edge_lat": 54.163515,
+   "foot_lat": 54.164477,
+   "top_z": -3976.9,
+   "floor_z": -4036.2,
+   "height_m": 59.3,
+   "apron_m": 69.8,
+   "face_max_slope_deg": 66.9
+  },
+  {
+   "lon": -147.914382,
+   "edge_lat": 54.163541,
+   "foot_lat": 54.164401,
+   "top_z": -3978.5,
+   "floor_z": -4033.8,
+   "height_m": 55.3,
+   "apron_m": 158.5,
+   "face_max_slope_deg": 68.7
+  },
+  {
+   "lon": -147.913595,
+   "edge_lat": 54.163587,
+   "foot_lat": 54.164351,
+   "top_z": -3980.7,
+   "floor_z": -4030.7,
+   "height_m": 50.0,
+   "apron_m": 108.6,
+   "face_max_slope_deg": 67.5
+  },
+  {
+   "lon": -147.912807,
+   "edge_lat": 54.163667,
+   "foot_lat": 54.164351,
+   "top_z": -3983.2,
+   "floor_z": -4031.8,
+   "height_m": 48.5,
+   "apron_m": 2.0,
+   "face_max_slope_deg": 69.9
+  },
+  {
+   "lon": -147.91202,
+   "edge_lat": 54.163714,
+   "foot_lat": 54.164351,
+   "top_z": -3985.5,
+   "floor_z": -4037.2,
+   "height_m": 51.7,
+   "apron_m": 91.7,
+   "face_max_slope_deg": 66.3
+  },
+  {
+   "lon": -147.910445,
+   "edge_lat": 54.163739,
+   "foot_lat": 54.165072,
+   "top_z": -3990.4,
+   "floor_z": -4045.1,
+   "height_m": 54.7,
+   "apron_m": 349.8,
+   "face_max_slope_deg": 67.2
+  },
+  {
+   "lon": -147.909657,
+   "edge_lat": 54.163739,
+   "foot_lat": 54.165106,
+   "top_z": -3991.4,
+   "floor_z": -4050.1,
+   "height_m": 58.7,
+   "apron_m": 195.3,
+   "face_max_slope_deg": 67.6
+  },
+  {
+   "lon": -147.90887,
+   "edge_lat": 54.163739,
+   "foot_lat": 54.165106,
+   "top_z": -3993.5,
+   "floor_z": -4055.2,
+   "height_m": 61.8,
+   "apron_m": 181.4,
+   "face_max_slope_deg": 71.7
+  },
+  {
+   "lon": -147.908083,
+   "edge_lat": 54.163701,
+   "foot_lat": 54.165101,
+   "top_z": -3994.5,
+   "floor_z": -4060.9,
+   "height_m": 66.5,
+   "apron_m": 88.7,
+   "face_max_slope_deg": 70.5
+  },
+  {
+   "lon": -147.907295,
+   "edge_lat": 54.16365,
+   "foot_lat": 54.165072,
+   "top_z": -3995.8,
+   "floor_z": -4066.5,
+   "height_m": 70.7,
+   "apron_m": 187.4,
+   "face_max_slope_deg": 70.6
+  },
+  {
+   "lon": -147.906508,
+   "edge_lat": 54.163646,
+   "foot_lat": 54.164882,
+   "top_z": -3998.3,
+   "floor_z": -4070.4,
+   "height_m": 72.1,
+   "apron_m": 28.9,
+   "face_max_slope_deg": 69.4
+  },
+  {
+   "lon": -147.90572,
+   "edge_lat": 54.163642,
+   "foot_lat": 54.164874,
+   "top_z": -4000.8,
+   "floor_z": -4070.6,
+   "height_m": 69.7,
+   "apron_m": 25.9,
+   "face_max_slope_deg": 70.3
+  },
+  {
+   "lon": -147.904933,
+   "edge_lat": 54.163621,
+   "foot_lat": 54.164874,
+   "top_z": -4002.5,
+   "floor_z": -4074.3,
+   "height_m": 71.8,
+   "apron_m": 33.9,
+   "face_max_slope_deg": 71.7
+  },
+  {
+   "lon": -147.904145,
+   "edge_lat": 54.163595,
+   "foot_lat": 54.164844,
+   "top_z": -4004.4,
+   "floor_z": -4077.0,
+   "height_m": 72.6,
+   "apron_m": 4.0,
+   "face_max_slope_deg": 74.8
+  },
+  {
+   "lon": -147.903358,
+   "edge_lat": 54.163574,
+   "foot_lat": 54.164844,
+   "top_z": -4007.0,
+   "floor_z": -4077.4,
+   "height_m": 70.4,
+   "apron_m": 4.0,
+   "face_max_slope_deg": 68.5
+  },
+  {
+   "lon": -147.90257,
+   "edge_lat": 54.163545,
+   "foot_lat": 54.164696,
+   "top_z": -4008.8,
+   "floor_z": -4080.5,
+   "height_m": 71.7,
+   "apron_m": 18.9,
+   "face_max_slope_deg": 69.5
+  },
+  {
+   "lon": -147.901783,
+   "edge_lat": 54.163532,
+   "foot_lat": 54.164696,
+   "top_z": -4011.1,
+   "floor_z": -4081.6,
+   "height_m": 70.5,
+   "apron_m": 8.0,
+   "face_max_slope_deg": 66.9
+  },
+  {
+   "lon": -147.900995,
+   "edge_lat": 54.16352,
+   "foot_lat": 54.16462,
+   "top_z": -4013.1,
+   "floor_z": -4081.8,
+   "height_m": 68.7,
+   "apron_m": 0.0,
+   "face_max_slope_deg": 66.8
+  },
+  {
+   "lon": -147.900208,
+   "edge_lat": 54.16352,
+   "foot_lat": 54.164599,
+   "top_z": -4016.1,
+   "floor_z": -4081.7,
+   "height_m": 65.7,
+   "apron_m": 6.0,
+   "face_max_slope_deg": 69.7
+  },
+  {
+   "lon": -147.899421,
+   "edge_lat": 54.16352,
+   "foot_lat": 54.164582,
+   "top_z": -4018.7,
+   "floor_z": -4081.9,
+   "height_m": 63.1,
+   "apron_m": 6.0,
+   "face_max_slope_deg": 67.7
+  },
+  {
+   "lon": -147.898633,
+   "edge_lat": 54.163541,
+   "foot_lat": 54.164582,
+   "top_z": -4021.4,
+   "floor_z": -4080.5,
+   "height_m": 59.1,
+   "apron_m": 40.9,
+   "face_max_slope_deg": 68.5
+  },
+  {
+   "lon": -147.897846,
+   "edge_lat": 54.163549,
+   "foot_lat": 54.164561,
+   "top_z": -4024.6,
+   "floor_z": -4082.4,
+   "height_m": 57.9,
+   "apron_m": 14.9,
+   "face_max_slope_deg": 67.7
+  },
+  {
+   "lon": -147.897058,
+   "edge_lat": 54.163587,
+   "foot_lat": 54.164528,
+   "top_z": -4027.4,
+   "floor_z": -4084.3,
+   "height_m": 56.9,
+   "apron_m": 9.0,
+   "face_max_slope_deg": 67.9
+  },
+  {
+   "lon": -147.896271,
+   "edge_lat": 54.163604,
+   "foot_lat": 54.164448,
+   "top_z": -4029.0,
+   "floor_z": -4083.3,
+   "height_m": 54.3,
+   "apron_m": 14.0,
+   "face_max_slope_deg": 71.8
+  },
+  {
+   "lon": -147.895483,
+   "edge_lat": 54.163612,
+   "foot_lat": 54.164325,
+   "top_z": -4031.6,
+   "floor_z": -4078.3,
+   "height_m": 46.7,
+   "apron_m": 220.3,
+   "face_max_slope_deg": 71.5
+  },
+  {
+   "lon": -147.894696,
+   "edge_lat": 54.163612,
+   "foot_lat": 54.164247,
+   "top_z": -4035.9,
+   "floor_z": -4070.8,
+   "height_m": 34.9,
+   "apron_m": 132.6,
+   "face_max_slope_deg": 64.7
+  },
+  {
+   "lon": -147.893908,
+   "edge_lat": 54.163612,
+   "foot_lat": 54.164169,
+   "top_z": -4038.8,
+   "floor_z": -4062.2,
+   "height_m": 23.3,
+   "apron_m": 100.7,
+   "face_max_slope_deg": 68.3
+  }
+ ],
+ "geury_first_pass_points_disc_status_exclude_caution_invalid": {
+  "habitat": [
+   24,
+   98,
+   0
+  ],
+  "scarp_foot": [
+   0,
+   0,
+   0
+  ],
+  "observation_primary": [
+   0,
+   1,
+   0
+  ],
+  "observation_backup": [
+   514,
+   144,
+   0
+  ],
+  "drone_perch": [
+   10,
+   16,
+   0
+  ],
+  "plan_b_drill": [
+   0,
+   1,
+   0
+  ]
+ },
+ "routes_on_dtm": {
+  "drive_v1": {
+   "length_m": 2265.6,
+   "max_slope_deg": 14.8
+  },
+  "drive_v2": {
+   "length_m": 2325.1,
+   "max_slope_deg": 14.8
+  },
+  "walk_main": {
+   "length_m": 293.2,
+   "max_slope_deg": 14.9
+  },
+  "walk_backup": {
+   "length_m": 430.8,
+   "max_slope_deg": 15.5,
+   "fraction_within_25m_of_main": 0.13
+  }
+ }
+}

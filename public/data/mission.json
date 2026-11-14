@@ -3,8 +3,8 @@
   "placeholder": true,
   "site": {
     "name": "Scarps in Milankovic Crater",
-    "lat": 54.16,
-    "lon": -147.905,
+    "lat": 54.164,
+    "lon": -147.899,
     "dtm_id": "DTEEC_071085_2345_071006_2345_A01",
     "image_id": "ESP_071006_2345"
   },
@@ -16,16 +16,16 @@
   },
   "endpoints": {
     "habitat": {
-      "lat": 54.12819,
-      "lon": -147.90287
+      "lat": 54.12777,
+      "lon": -147.901301
     },
     "observation_primary": {
-      "lat": 54.16291,
-      "lon": -147.90546
+      "lat": 54.166626,
+      "lon": -147.894135
     },
     "observation_backup": {
-      "lat": 54.16524,
-      "lon": -147.89585
+      "lat": 54.166137,
+      "lon": -147.893531
     }
   },
   "stages": [
@@ -35,14 +35,14 @@
       "text": "A first route from NASA orbital data. Large slopes and the rockfall zone are visible; small hazards are not.",
       "stats": {
         "Detail": "1 m terrain, 25 cm imagery",
-        "Hazards on the ground": "none verified",
+        "Ice cliff": "59 m tall (median), 64-75 degree face",
         "Route": "Unverified"
       }
     },
     {
       "id": "rover",
       "title": "Rover reconnaissance",
-      "text": "The day before the walk, the rover drives the main route out and the backup route back. It finds soft ground the orbit could not see and the route is replanned.",
+      "text": "In the sols before the walk, the rover drives the crew-rover route out and checks the walking paths. It finds soft ground the orbit could not see and the drive is replanned.",
       "stats": {
         "Underground (U)": "1 found",
         "In shadow (S)": "1 flagged",
@@ -52,7 +52,7 @@
     {
       "id": "drone",
       "title": "Drone inspection",
-      "text": "The simulated drone launches from the rover and images the scarp face and the areas the rover cannot reach, checking whether the observation point sits outside the rockfall zone.",
+      "text": "The simulated drone perches on the pit floor facing the tallest part of the ice cliff (about 70 m), which the crew cannot reach on this EVA, and images the face and rockfall zone.",
       "stats": {
         "Overhead (O)": "Rockfall zone mapped (simulated)",
         "Observation point": "Outside mapped rockfall zone",
@@ -62,13 +62,14 @@
     {
       "id": "eva",
       "title": "Astronaut mission review",
-      "text": "Review the proposed trip: two astronauts drive the crew rover to a parking point, then walk around the end of the ice cliff to the observation point. The simulated drone watches the scarp. None of this is crew clearance.",
+      "text": "Review the proposed trip: two astronauts drive the crew rover 2.3 km to a parking point on the plain, then walk about 300 m down around the cliff's east end to a viewpoint facing the ice. None of this is crew clearance.",
       "stats": {
-        "Drive (crew rover)": "1.99 km each way, assumed 5 km/h",
-        "Walk": "681 m each way at 20 m/min",
-        "Travel time": "116 min round trip + 20 min at the site",
-        "Budget": "Within modeled budget (136 of 168 min)",
-        "Walkback": "99 min on foot if the crew rover fails; 211 of 240 min EVA",
+        "Drive (crew rover)": "2.26 km each way, assumed 5 km/h",
+        "Walk": "290 m each way at 20 m/min",
+        "Travel time": "83 min round trip + 20 min at the site",
+        "Budget": "Within modeled budget (103 of 168 min)",
+        "Walkback": "113 min on foot if the crew rover fails; 189 of 240 min EVA",
+        "View": "Ice cliff 23 m tall here, viewpoint 145 m from its foot (rockfall zone 101 m)",
         "Route status": "Needs inspection: budgets fit, but the crew-rover drive is not yet modeled"
       }
     }
@@ -90,8 +91,8 @@
   },
   "drone": {
     "perch": {
-      "lat": 54.16334,
-      "lon": -147.90287
+      "lat": 54.166913,
+      "lon": -147.901878
     },
     "view_cone_id": "cov-drone-perch"
   },
@@ -101,8 +102,8 @@
     "before_route_id": "rt-crew-main-v1",
     "after_route_id": "rt-crew-main-v2",
     "location": {
-      "lat": 54.15,
-      "lon": -147.8965
+      "lat": 54.143427,
+      "lon": -147.904975
     },
     "sensor_evidence": {
       "wheel_slip_pct": 38,
@@ -116,7 +117,7 @@
       {
         "id": "opt-reroute",
         "label": "Reroute around the area",
-        "consequence": "+127 m of driving, +2 min each way"
+        "consequence": "+47 m of driving, +0.6 min each way"
       },
       {
         "id": "opt-drone",

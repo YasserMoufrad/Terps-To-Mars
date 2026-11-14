@@ -1,21 +1,29 @@
-# data/site: Geury's site inputs
+# data/site: site inputs and measurements
 
-Inputs for Nic's pipeline and for placing the placeholder data. The app does not load these files (they are not part of the `public/data/` contract).
+Inputs for Nic's pipeline and for the placeholder map. The app does not load these files (they are not part of the `public/data/` contract). Nothing here is crew clearance.
 
-| File | What | Accuracy |
+| File | What | How it was made |
 | --- | --- | --- |
-| `ice_zone.geojson` | Exposed-ice zones (main band, upper band, southern scarp) from HiRISE enhanced color | about ±15 m; stored as bounding rectangles |
-| `site_points.geojson` | Habitat, scarp foot, primary and backup observation points, drone perch, Plan B drill point | about ±15 m; not yet snapped to the DTM |
+| `scarp_lines.geojson` | The real ice-scarp **top edge** and **foot** (about 54.1636°N and 54.1645°N, −147.9175 to −147.8939) | Traced in Nic's 0.25 m HiRISE crop (ESP_071006_2345 RED_A): the shadowed north-facing face is a dark strip (brightness < 95 vs 115–140 on the plain). `tools/site/trace_scarp.py` |
+| `scarp_measurements.json` | Per-profile scarp height, apron, steepest face slope; Geury's first-pass point checks; DTM route stats | HiRISE DTM `DTEEC_071085_2345_071006_2345_A01` with the pipeline's own `read_terrain`/`analyze`. Height median **59 m** (23–73 m), face 64–75°. `tools/site/measure_site.py` |
+| `site_points_dtm.geojson` | **DTM-checked candidate points**: habitat, crew-rover parking, viewpoint, backup viewpoint, drone perch | No cell ≥ 20° within each point's 15 m uncertainty disc. `tools/site/optimize_points.py`, `final_routes.py` |
+| `site_points.geojson` | Geury's first-pass points (kept for reference) | Rebuilt from his site-pack tables |
+| `ice_zone.geojson` | Geury's ice zones (kept for reference) | Rebuilt from his site-pack tables. **His "main band" (54.1608–54.1619) sits on featureless plain; the real face is about 200 m north, inside his "upper band"** |
+| `feasibility_audit.json` | Nic's `pipeline.feasibility` config: DTM-checked points, walking the whole way | Expected `infeasible` (about 4 km straight-line round trip) |
+| `feasibility_audit_from_parking.json` | Same audit for the walking part of drive-then-walk, starting at the crew-rover parking point | `eva_minutes` reduced so the audit's 70% equals what is left after the drive |
 
-| `feasibility_audit.json` | Config for Nic's `python -m pipeline.feasibility` (PR #13): Geury's points as-is, walking the whole way | Nic fills `window` (DTM pixels) |
-| `feasibility_audit_from_parking.json` | Same audit for the walking part of the proposed drive-then-walk plan, starting at the crew-rover parking point; budget reduced by the drive time | Nic fills `window`; parking point is a placeholder |
+## Key findings (2026-11-14)
 
-Run (once `window` is set):
+- The tall middle of the face (60–72 m) sits above an enclosed, rough pit floor. The crew rover (< 24°, roughness ≤ 0.5 m) cannot get near it; the nearest parking is about 1.9 km on foot from a safe viewpoint, so it does not fit the EVA budget. The **east end** (23–35 m tall) is reachable: drive 2.3 km to the plain beside it, then walk about 290 m around the end to a bench viewpoint 145 m from the foot (rockfall zone there 101 m).
+- The drone perch is on the pit floor facing the tallest face (131 m from the foot), the part the crew cannot reach.
+- Budget for the placeholder trip: 83 min travel + 20 min site work = 103 of 168 min; walkback (rover fails at parking) 189 of 240 min EVA.
+
+Re-run (needs the DTM in `pipeline/raw/`, see `pipeline/README.md`; set `PYTHONPATH` to the repo root):
 
 ```bash
-docker run --rm -v "$PWD/pipeline:/app/pipeline" -v "$PWD/data:/app/data" terps-pipeline:uv python -m pipeline.feasibility --config data/site/feasibility_audit_from_parking.json --output pipeline/output/audit-parking
+uv run python tools/site/measure_site.py pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG data/site/scarp_lines.geojson data/site/site_points.geojson site_report.json
 ```
 
-The ice and point files were rebuilt on 2026-11-14 from the tables in Geury's site and data pack, because his original files were not shared with the repo. If Geury's originals (traced shapes) differ, replace these files with them and note it in `docs/STATUS.md`.
+Then `optimize_points.py`, `final_routes.py`, `build_contract.py` and `site_files.py` in that order (each prints its arguments in its docstring).
 
-Coordinates are GeoJSON `[longitude, latitude]` with longitude in −180..180 (147.9°W = −147.9). Blue tones in HiRISE color are consistent with ice but are not proof of it; cite Dundas et al. (2018) and CRISM results (see `docs/IMPLEMENTATION.md`, section 2).
+Coordinates are GeoJSON `[longitude, latitude]` with longitude in −180..180. Blue tones in HiRISE color are consistent with ice but are not proof; cite Dundas et al. (2018) and CRISM results (`docs/IMPLEMENTATION.md`, section 2).

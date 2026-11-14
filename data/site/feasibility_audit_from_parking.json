@@ -1,23 +1,27 @@
 {
-  "_note": "Walking part of the proposed drive-then-walk plan, runnable with the current walking-only audit: `habitat` here is the crew-rover PARKING POINT (placeholder, Geury to confirm), not the real habitat. The drive leg (real habitat -> parking, ~2.0 km) is not audited by this file; see `_drive_leg`. Nic: set `window` [col, row, width, height] in DTM pixels so it covers `_window_latlon`. Budget: the full plan allows 168 min of travel + site work (240 min EVA, 30% reserve). The drive takes 48 min round trip, leaving 120 min for walking + work. The audit allows 70% of `eva_minutes`, so `eva_minutes` is set to 171 (0.7 x 171 = 119.7 <= 120). Walkback (rover fails at parking) is checked separately: drive out 24 + walk/work + walkback 99 must fit 240.",
-  "_window_latlon": { "south": 54.156, "west": -147.912, "north": 54.168, "east": -147.885 },
-  "_drive_leg": {
-    "from": { "lat": 54.12819, "lon": -147.90287 },
-    "to": { "lat": 54.1590, "lon": -147.8925 },
-    "length_m_one_way": 1986,
-    "drive_speed_m_min": 83.3,
-    "est_time_min_round_trip": 48,
-    "walkback_min": 99,
-    "note": "Placeholder geometry from routes.geojson rt-crew-main-v2 (legs). Drive speed 5 km/h is a cautious assumption."
+  "_note": "Walking part of drive-then-walk: 'habitat' here is the crew-rover PARKING point. Drive 2325 m each way (55.8 min round trip at 5 km/h) is not audited here; eva_minutes = (168 - 55.8) / 0.7 so the audit's 70% matches what is left after the drive.",
+  "window_latlon": {
+    "south": 54.158,
+    "west": -147.905,
+    "north": 54.172,
+    "east": -147.885
   },
-  "dtm": "pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG",
-  "window": null,
   "points": {
-    "habitat": { "lat": 54.1590, "lon": -147.8925 },
-    "observation_primary": { "lat": 54.16291, "lon": -147.90546 },
-    "observation_backup": { "lat": 54.16524, "lon": -147.89585 }
+    "habitat": {
+      "lat": 54.16256,
+      "lon": -147.89445
+    },
+    "observation_primary": {
+      "lat": 54.166626,
+      "lon": -147.894135
+    },
+    "observation_backup": {
+      "lat": 54.166137,
+      "lon": -147.893531
+    }
   },
-  "eva_minutes": 171,
+  "eva_minutes": 160,
+  "dtm": "pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG",
   "speed_m_min": 20,
   "observation_minutes": 20,
   "position_uncertainty_m": 15
