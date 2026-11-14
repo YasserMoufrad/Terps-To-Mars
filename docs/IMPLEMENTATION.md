@@ -246,6 +246,7 @@ The pipeline precomputes both versions; nothing is simulated live in the browser
 11. Shadow layer from the DTM using the image's Sun geometry (labeled illustrative lighting).
 12. Reproject outputs to Mars lat/lon, downsample, export, validate against the schema.
 13. Visual imagery: `export_hirise_hd` reads the 0.25 m RED_A orthoimage directly (windowed, no DTM-grid intermediate, no upscaling, area-average only when above 4096 px). The DTM remains the only source for slope, roughness, hazards and routes.
+14. Feasibility: `pipeline/feasibility.py` audits unconfirmed candidate points (15 m uncertainty discs, full multi-leg itineraries, great-circle lower bound, shortest-routed budget) and `run()` reports `InfeasibleMission` as a finding instead of failing.
 
 Route search: cost grid from step 6, `skimage.graph.route_through_array` on the metric grid; convert the path to lat/lon only at export.
 

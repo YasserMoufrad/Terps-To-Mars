@@ -14,7 +14,8 @@
     "belly_clearance_m": {"value": 0.2, "classification": "provisional_reference_not_team_limit", "source": "Reported Perseverance value; not a specification for Brianna's rover; sensor/CAD input only, never DTM-derived; team dimensions pending"},
     "round_trip_limit_m": {"value": 5000, "comparison": "<", "classification": "planning_reference", "source": "IMPLEMENTATION section 5; modeled excursion budget"},
     "hard_excursion_cap_m": {"value": 10000, "comparison": "<=", "classification": "assumption", "source": "NASA Walkback NTRS 20080013604; distance from habitat"},
-    "eva_reserve_fraction": {"value": 0.3, "comparison": ">=", "classification": "assumption", "source": "IMPLEMENTATION section 5; no physiology or oxygen model"}
+    "eva_reserve_fraction": {"value": 0.3, "comparison": ">=", "classification": "assumption", "source": "IMPLEMENTATION section 5; no physiology or oxygen model"},
+    "position_uncertainty_m": {"value": 15, "comparison": "<=", "classification": "assumption", "source": "Second-pass audit: candidate positions carry about 15 m horizontal uncertainty; the whole disc is checked against hazards"}
   },
   "invalid_data": "exclude; inspection_required",
   "artifact_data": "exclude; inspection_required"
