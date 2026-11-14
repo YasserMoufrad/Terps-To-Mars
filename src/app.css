@@ -87,11 +87,26 @@ button { font: inherit; }
   padding: 8px 10px; font-size: 12px; display: flex; flex-direction: column; gap: 5px;
 }
 .legend-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.zoom-imagery button {
-  background: rgba(16, 19, 24, 0.88); color: inherit; border: 1px solid var(--line); border-radius: 8px;
-  padding: 6px 10px; font-size: 12px; cursor: pointer;
+.imagery-controls {
+  max-width: min(280px, calc(100vw - 80px)); background: rgba(16, 19, 24, 0.88); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px; font-size: 12px;
 }
-.zoom-imagery button:hover { border-color: var(--warn); }
+.imagery-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.imagery-buttons button {
+  background: rgba(16, 19, 24, 0.95); color: inherit; border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; min-height: 32px; font-size: 12px; cursor: pointer;
+}
+.imagery-buttons button:hover:not(:disabled) { border-color: var(--warn); }
+.imagery-buttons button:disabled { opacity: 0.5; cursor: not-allowed; }
+.imagery-status { margin-top: 6px; line-height: 1.35; }
+.imagery-status p { margin: 4px 0 0; color: var(--muted, #aab); }
+.imagery-state { font-weight: 600; }
+.imagery-failed, .imagery-partial, .layer-note { color: var(--warn); }
+.imagery-notes summary { cursor: pointer; margin-top: 4px; color: var(--muted, #aab); }
+@media (max-width: 640px) {
+  .imagery-controls { font-size: 11px; max-width: 240px; padding: 4px; }
+  .imagery-buttons button { padding: 4px 8px; }
+}
 .line { display: inline-block; width: 22px; height: 0; border-top-width: 4px; margin-left: 6px; }
 .line:first-child { margin-left: 0; }
 .line-main { border-top: 5px solid var(--good); }
@@ -120,7 +135,13 @@ button { font: inherit; }
 .stats dt { color: var(--muted); }
 .stats dd { margin: 0; text-align: right; }
 
-.alerts { border-color: var(--good); color: #9fe1cb; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+/* Alerts: per-line severity; never green (green would read as crew clearance). */
+.alerts { font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.alert { border-left: 3px solid; padding-left: 8px; line-height: 1.45; }
+.alert-tag { font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.04em; }
+.alert-info { border-color: #4da3ff; color: #b9d8ff; }
+.alert-caution { border-color: var(--warn); color: #fac775; }
+.alert-stop { border-color: var(--bad); color: #ffb3b5; }
 .notices { border-color: var(--warn); color: #fac775; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
 
 .discovery { border-color: var(--bad); }

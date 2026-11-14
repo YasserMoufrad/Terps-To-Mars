@@ -13,6 +13,7 @@ import { LayerToggles } from './components/LayerToggles';
 import { StageNav } from './components/StageNav';
 import { MissionBrief } from './components/MissionBrief';
 import { appLogger } from './lib/appLogger';
+import { IMAGERY_STATUS_TEXT, type ImageryLoadState } from './map/imageryState';
 import { logRouteReview, reviewNotices, missingBackupAssessment } from './map/reviewPresentation';
 
 export function App() {
@@ -23,6 +24,7 @@ export function App() {
   const [layers, setLayers] = useState<LayerVisibility>(DEFAULT_LAYERS);
   const [selectedHazard, setSelectedHazard] = useState<HazardProperties | null>(null);
   const [showBrief, setShowBrief] = useState(true);
+  const [hiriseState, setHiriseState] = useState<ImageryLoadState>('ready'); // reported by MarsMap
 
   // Runs once when the page opens: fetch every data file.
   useEffect(() => {
@@ -58,13 +60,13 @@ export function App() {
 
   if (!data) return <div className="loading">Loading mission data…</div>;
 
-  const { mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, slopeBounds } = data;
+  const { mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, hiriseTiles, slopeBounds } = data;
   const ready = mission && hazards && routes && coverage;
 
   // A layer can only be switched on if its data exists.
   // The Mars color layer comes from Mars Trek tiles, so it is always available.
   const available = {
-    color: true, hirise: hiriseBounds !== null, slope: slopeBounds !== null, hazards: true, coverage: true,
+    color: true, hirise: hiriseBounds !== null || hiriseTiles.length > 0, slope: slopeBounds !== null, hazards: true, coverage: true,
   };
 
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
@@ -106,9 +108,11 @@ export function App() {
               coverage={coverage}
               hiriseBounds={hiriseBounds}
               hiriseMeta={hiriseMeta}
+              hiriseTiles={hiriseTiles}
               slopeBounds={slopeBounds}
               layers={layers}
               onSelectHazard={setSelectedHazard}
+              onImageryState={setHiriseState}
             />
             <StagePanel
               stage={stage}
@@ -117,7 +121,14 @@ export function App() {
               hazardsArePlaceholder={data.placeholderFiles.includes('hazards.geojson')}
               onCloseHazard={() => setSelectedHazard(null)}
               routeNotices={routeNotices}
-              toggles={<LayerToggles layers={layers} available={available} onChange={setLayers} />}
+              toggles={(
+                <LayerToggles
+                  layers={layers}
+                  available={available}
+                  onChange={setLayers}
+                  notes={['loading', 'partial', 'failed'].includes(hiriseState) ? { hirise: IMAGERY_STATUS_TEXT[hiriseState] } : {}}
+                />
+              )}
             />
           </main>
         </>

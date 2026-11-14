@@ -70,10 +70,7 @@ def test_publish_refuses_transparent_png_for_jpeg_map(hd_preview, tmp_path):
 
 def test_publish_copies_matching_registration_and_rejects_mismatch(hd_preview, tmp_path):
     meta = json.loads((hd_preview / "hirise.meta.json").read_text())
-    box = bounds_around(*CENTER, 200, 200)
-    report = {"hd_image": meta["source"], "reference_image": "ref.tif", "rms_m": 0.4, "max_m": 0.6,
-              "measured_patches": 9, "landmark_alignment": "measured_within_tolerance",
-              "bounds": [box["south"], box["west"], box["north"], box["east"]]}
+    report = registration_report(meta)
     path = tmp_path / "registration.json"
     path.write_text(json.dumps(report))
     published = publish_hd(hd_preview, tmp_path / "data", path)
@@ -83,3 +80,92 @@ def test_publish_copies_matching_registration_and_rejects_mismatch(hd_preview, t
     path.write_text(json.dumps({**report, "hd_image": "other.JP2"}))
     with pytest.raises(ValueError, match="different image"):
         publish_hd(hd_preview, tmp_path / "data2", path)
+
+
+def registration_report(meta, **extra):
+    """A registration report for the fixture image that passes every check unless `extra` overrides fields."""
+    box = bounds_around(*CENTER, 200, 200)
+    return {"hd_image": meta["source"], "reference_image": "ESP_000000_0000_RED_C_01_ORTHO.tif", "rms_m": 0.4,
+            "max_m": 0.6, "measured_patches": 9, "tolerance_m": 1.0, "landmark_alignment": "measured_within_tolerance",
+            "method": "upsampled phase cross-correlation on area-averaged HD (measurement only)",
+            "bounds": [box["south"], box["west"], box["north"], box["east"]], **extra}
+
+
+@pytest.mark.parametrize("extra, message", [
+    ({"measured_patches": 2}, "patches"),
+    ({"method": "eyeballed"}, "method"),
+    ({"tolerance_m": 50}, "tolerance"),
+    ({"rms_m": float("nan")}, "RMS"),
+    ({"max_m": 3.0}, "disagrees"),  # says within tolerance while max exceeds it
+    ({"reference_image": "ESP_000000_0000_RED_A_01_ORTHO.tif"}, "different image"),
+    ({"bounds": [0, 0, 1, 1]}, "different area"),
+])
+def test_publish_rejects_weak_or_inconsistent_registration(hd_preview, tmp_path, extra, message):
+    meta = json.loads((hd_preview / "hirise.meta.json").read_text())
+    path = tmp_path / "registration.json"
+    path.write_text(json.dumps(registration_report(meta, **extra)))
+    with pytest.raises(ValueError, match=message):
+        publish_hd(hd_preview, tmp_path / "data", path)
+    assert not (tmp_path / "data" / "hirise.jpg").exists()
+
+
+@pytest.mark.parametrize("change, message", [
+    ({"source": "ESP_RED_anything.png"}, "product name"),
+    ({"source": "PSP_000000_0000_COLOR.JP2"}, "product name"),
+    ({"source_crs": "EPSG:4326"}, "Mars equirectangular"),
+    ({"source_resolution_m": [1.0, 1.0]}, "resolution"),
+    ({"source_resolution_m": [float("nan"), 0.25]}, "resolution"),
+    ({"nodata_fraction": float("inf")}, "nodata_fraction"),
+    ({"output_pixels": [600.5, 600]}, "finite integers"),
+])
+def test_publish_rejects_bad_identity_crs_or_numbers(hd_preview, tmp_path, change, message):
+    meta_path = hd_preview / "hirise.meta.json"
+    meta_path.write_text(json.dumps({**json.loads(meta_path.read_text()), **change}))
+    with pytest.raises(ValueError, match=message):
+        publish_hd(hd_preview, tmp_path / "data")
+
+
+def test_decoded_size_must_match_metadata(hd_preview, tmp_path):
+    with Image.open(hd_preview / "hirise.png") as image:
+        image.crop((0, 0, image.width - 4, image.height)).save(hd_preview / "hirise.png")
+    with pytest.raises(ValueError, match="decoded image"):
+        publish_hd(hd_preview, tmp_path / "data")
+
+
+def _snapshot(folder):
+    """Bytes of every live HiRISE file in folder, for before/after comparison."""
+    return {name: (folder / name).read_bytes() for name in ("hirise.jpg", "hirise.meta.json", "hirise.bounds.json")}
+
+
+def test_failure_after_staging_keeps_previous_set(hd_preview, tmp_path, monkeypatch, caplog):
+    """Failure injection: the third file's activation fails -> the first two are rolled back to the old set."""
+    data = tmp_path / "data"
+    publish_hd(hd_preview, data)
+    before = _snapshot(data)
+    meta_path = hd_preview / "hirise.meta.json"
+    meta_path.write_text(json.dumps({**json.loads(meta_path.read_text()), "review_state": "second_publish"}))
+    real_replace = __import__("os").replace
+
+    def flaky_replace(source, target):
+        """Fail only when the bounds file (activated last) is moved into the live folder."""
+        if str(target).endswith("hirise.bounds.json") and ".publish-" not in str(target):
+            raise OSError("injected failure")
+        return real_replace(source, target)
+
+    monkeypatch.setattr("pipeline.publish_imagery.os.replace", flaky_replace)
+    with pytest.raises(OSError, match="injected"):
+        publish_hd(hd_preview, data)
+    assert _snapshot(data) == before
+    assert not [p for p in data.iterdir() if p.name.startswith(".")]  # no staging or backup left behind
+    assert any(getattr(r, "event", "") == "imagery_publish_rolled_back" for r in caplog.records)
+
+
+def test_oversized_staged_jpeg_never_replaces_live_files(hd_preview, tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    publish_hd(hd_preview, data)
+    before = _snapshot(data)
+    monkeypatch.setattr("pipeline.publish_imagery.MAX_BYTES", 10)
+    with pytest.raises(ValueError, match="staged JPEG"):
+        publish_hd(hd_preview, data)
+    assert _snapshot(data) == before
+    assert not [p for p in data.iterdir() if p.name.startswith(".")]
