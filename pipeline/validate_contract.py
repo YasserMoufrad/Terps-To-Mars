@@ -159,12 +159,18 @@ def validate_data(data_dir=DATA_DIR, require_overlays=False):
     route_ids = {feature["properties"]["id"] for feature in collections["routes.geojson"]["features"]}
     if discovery.get("hazard_id") not in hazard_ids or any(discovery.get(key) not in route_ids for key in ("before_route_id", "after_route_id")):
         raise ValueError("Discovery references missing hazard or route")
+    coverage_ids = {feature["properties"]["id"] for feature in collections["coverage.geojson"]["features"]}
+    if mission.get("drone", {}).get("view_cone_id") not in coverage_ids:
+        raise ValueError("Drone reference missing coverage/inspection record")
+    option_ids = {option["id"] for option in discovery.get("options", [])}
+    if discovery.get("chosen_option") != "" and discovery.get("chosen_option") not in option_ids:
+        raise ValueError("Discovery choice missing option")
     if require_overlays:
         from pipeline.routing import mars_distance
         for feature in collections["routes.geojson"]["features"]:
             properties = feature["properties"]
             coordinates = feature["geometry"]["coordinates"]
-            if properties["status"] != "ok":
+            if not coordinates:
                 continue
             computed = sum(mars_distance(a, b) for a, b in zip(coordinates, coordinates[1:]))
             stats = properties["stats"]

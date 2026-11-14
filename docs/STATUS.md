@@ -6,7 +6,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 | Person | Working on | Next |
 | --- | --- | --- |
-| Nic | Project scaffold: Vite + React + TypeScript + react-leaflet, GitHub Pages deploy | Download and validate the Milankovic DTM + RED_C image; crop to the scarp |
+| Nic | Terrain and routing corrections merged; discovery/export integration under final validation | Merge #6; create separate UI follow-up based on #8, leave UI PRs unmerged, then pause |
 | Yasser | Managing; placeholder data and tile URLs done (branch `ui/placeholder-data`) | Mars map centered on Milankovic once the scaffold lands |
 | Geury | Exact endpoints: scarp foot, habitat, primary and backup observation points (inside the color strip) | Ice evidence specific to this scarp; evidence panel text |
 | Samar / Yasser's agent | Hazard rules v1 done (in IMPLEMENTATION.md section 5) | Sensor ranges for coverage; decision states; discovery scenario |
@@ -14,11 +14,12 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
-- Nic: corrected PR #4 merged; routing PR #5 fixes validated locally and merge held at Nic's request; discovery PR #6 will be updated without merging dependent work
+- Nic: PR #5 merged after explicit approval and exact-head green checks; PR #6 conflicts resolved against reviewed main; PR #8 remains with Yasser; separate UI follow-up requested
 - 2026-11-14 · Nic: logging policy PR #7 merged with all checks passing; open pipeline PRs being corrected and instrumented before merge; frontend logging gaps handed to Yasser
 
 ## Done
 
+- 2026-11-14 · Nic: discovery/export suite passed 76 Docker Python tests; thermal context no longer claims measured inertia; simulated decisions/versions have one correlated trace; real run requires confirmed endpoints and reviewed scarp inputs; atomic exports and candidate statistics are tested
 - 2026-11-14 · Nic: PR #5 corrected suite passed 57 Docker Python tests and npm ci/typecheck/test (4)/build; both crew and rover block unresolved scarp cells; observation work and actual backup-return budgets are tested; PR converted to draft for explicit merge hold
 - 2026-11-14 · Nic: Yasser UI/scientific-wording handoff posted at https://github.com/YasserMoufrad/Terps-To-Mars/pull/8#issuecomment-6883539861; loader logging/pending-option support already exists there; no UI/placeholder files changed
 - 2026-11-14 · Nic: PR #4 merged after 30 Docker Python tests, full frontend validation and latest frontend/pipeline/full-suite checks; PR #5 reopened against main after parent deletion closed it; cleanup guard added for stacked PR bases

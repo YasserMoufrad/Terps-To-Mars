@@ -1,6 +1,8 @@
 """Deterministic web-sized raster and JSON exports on a Mars geographic grid."""
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +19,18 @@ from pipeline.logging_config import traced, event, operation
 @traced("json_export")
 def write_json(path, payload):
     """Write finite JSON payload deterministically to path; never serialize NaN."""
-    Path(path).write_text(json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    content = json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n"
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(content)
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     event("json_exported", filename=Path(path).name, schema_version=payload.get("schema_version"), feature_count=len(payload.get("features", [])))
 
 
@@ -52,8 +65,16 @@ def export_overlay(terrain, data, destination, source, max_pixels=1024):
         gray[~valid] = 0
         image = Image.fromarray(gray).convert("RGB")
     if terrain.evidence == "simulated":
+        if image.width < 128:
+            image = image.resize((128, max(1, round(image.height * 128 / image.width))), Image.Resampling.NEAREST)
         ImageDraw.Draw(image).text((2, 2), "SYNTHETIC", fill="red" if image.mode == "RGB" else (255, 0, 0, 255))
-    image.save(destination)
+    with tempfile.NamedTemporaryFile(dir=destination.parent, delete=False) as stream:
+        temporary = Path(stream.name)
+    try:
+        image.save(temporary, format="PNG" if destination.suffix.lower() == ".png" else "JPEG")
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
     west, south, east, north = array_bounds(out_height, out_width, transform)
     bounds = {"schema_version": "1.0", "south": south, "west": signed_longitude(west),
               "north": north, "east": signed_longitude(east), "source": source,

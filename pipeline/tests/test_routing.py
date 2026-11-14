@@ -81,6 +81,7 @@ def test_diagonal_corner_cannot_cross():
 
 
 def test_dijkstra_matches_reference_grid_search():
+    """Compare the deterministic path cost with scikit-image's four-neighbour reference search."""
     costs = np.array([[1, 5, 1, 1], [1, np.inf, 9, 1], [1, 1, 1, 1]], dtype=float)
     path = shortest_path(costs, (0, 0), (0, 3))
     _, expected_cost = route_through_array(costs, (0, 0), (0, 3), fully_connected=False, geometric=True)
