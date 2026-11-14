@@ -69,6 +69,16 @@ class Terrain:
     def valid(self):
         return np.isfinite(self.elevation) & ~self.artifact
 
+    @property
+    def column_spacing(self):
+        # Equirectangular x scale is true only at its standard parallel.
+        rows = np.arange(self.elevation.shape[0]) + 0.5
+        xs = np.full(rows.shape, self.transform.c + 0.5 * self.resolution)
+        ys = self.transform.f + rows * self.transform.e
+        _, latitudes = transform_coordinates(self.crs, MARS_GEOGRAPHIC, xs.tolist(), ys.tolist())
+        standard_parallel = float(self.crs.to_dict().get("lat_ts", 0))
+        return self.resolution * np.cos(np.radians(latitudes)) / math.cos(math.radians(standard_parallel))
+
     def lonlat(self, row, col, center=True):
         offset = 0.5 if center else 0
         x, y = self.transform * (col + offset, row + offset)
@@ -100,6 +110,7 @@ def analyze(terrain, rules=None):
     rules = rules or load_rules()
     z = np.where(terrain.valid, terrain.elevation, np.nan)
     dy, dx = np.gradient(z, terrain.resolution)
+    dx *= terrain.resolution / terrain.column_spacing[:, None]
     slope = np.degrees(np.arctan(np.hypot(dx, dy)))
     window = max(1, math.ceil(threshold(rules, "roughness_window_m") / terrain.resolution))
     if window % 2 == 0:
