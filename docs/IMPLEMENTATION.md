@@ -154,9 +154,9 @@ Stored in `pipeline/hazard_rules.json` (versioned). Values marked *assumption* a
 | --- | --- | --- | --- | --- |
 | Astronaut max slope (exclude) | 20° | crew | DTM | NASA exploration EVA planning value (2021); planning figure, not a measured limit |
 | Astronaut caution slope | 15–20° | crew | DTM | *Assumption*: Mars gravity 0.38 g, suited crew carrying gear |
-| Rover max tilt (exclude) | 24° | rover | DTM | Reported Perseverance driving limit (Oct 2026); verify against NASA |
-| Rover wheel drop | 35 cm | rover | rover sensors only | Perseverance AutoNav example; below DTM resolution |
-| Rover belly clearance | 20 cm | rover | rover sensors only | Reported Perseverance value (Oct 2026); verify |
+| Rover max tilt (exclude) | 24° provisionally | rover | DTM | Scenario planning assumption; reported Perseverance value is not a certified limit for Brianna's conceptual rover; replace using CAD/sensor specifications |
+| Rover wheel drop | 35 cm reference only | rover | rover sensors only | Not a specification for Brianna's rover; below DTM resolution; CAD dimensions pending |
+| Rover belly clearance | 20 cm reference only | rover | rover sensors only | Not a specification for Brianna's rover; never evaluated from orbital DTM; CAD dimensions pending |
 | Rockfall buffer | max(visible boulder apron, 1.0 × scarp height) from the scarp foot | both | DTM + image | *Provisional scenario assumption* from team second-pass guidance; not NASA-certified; missing geometry/measurements require inspection in configured scarp-risk areas |
 | Cliff-top setback | 20 m from the edge | crew | DTM | *Assumption*: edge collapse |
 | Roughness | elevation range > 0.5 m within the closest odd-pixel approximation to 3 × 3 m → caution | both | DTM | *Provisional assumption*: DTM vertical uncertainty not established; log effective dimensions; coarse sampling cannot establish roughness |
@@ -166,6 +166,8 @@ Stored in `pipeline/hazard_rules.json` (versioned). Values marked *assumption* a
 | Wheel slip → stop and request input | > 35% | rover | rover sensors (scenario) | Scenario value, `simulated` |
 
 Route cost: hard exclusions first, then a weighted cost over the remaining cells (slope, roughness, distance to rockfall buffer, unscouted penalty, length). A short route never compensates for a safety violation.
+
+Mission budget includes outbound travel + configured observation work + the actual return route's travel within EVA duration × (1 − reserve). Evaluate main-outbound/backup-return explicitly rather than doubling each route independently. `est_time_min` remains travel-only; work/combined budget decisions are separate internal calculations and logs. Geometrically feasible unscouted paths remain orbital candidates with `inspection_required`; `ok` is not scientific crew clearance. These corrections preserve schema 1.0.
 
 ## 6. Robots: sensors, coverage and decisions
 

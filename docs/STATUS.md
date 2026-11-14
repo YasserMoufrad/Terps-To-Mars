@@ -14,11 +14,14 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
-- Nic: terrain/hazard processing on `pipeline/terrain-hazards`; scaffold PR #3 merged with CI passing; merge protection requires repository admin
+- Nic: corrected PR #4 merged; routing PR #5 fixes validated locally and merge held at Nic's request; discovery PR #6 will be updated without merging dependent work
 - 2026-11-14 · Nic: logging policy PR #7 merged with all checks passing; open pipeline PRs being corrected and instrumented before merge; frontend logging gaps handed to Yasser
 
 ## Done
 
+- 2026-11-14 · Nic: PR #5 corrected suite passed 57 Docker Python tests and npm ci/typecheck/test (4)/build; both crew and rover block unresolved scarp cells; observation work and actual backup-return budgets are tested; PR converted to draft for explicit merge hold
+- 2026-11-14 · Nic: Yasser UI/scientific-wording handoff posted at https://github.com/YasserMoufrad/Terps-To-Mars/pull/8#issuecomment-6883539861; loader logging/pending-option support already exists there; no UI/placeholder files changed
+- 2026-11-14 · Nic: PR #4 merged after 30 Docker Python tests, full frontend validation and latest frontend/pipeline/full-suite checks; PR #5 reopened against main after parent deletion closed it; cleanup guard added for stacked PR bases
 - 2026-11-14 · Nic: PR #4 corrections passed 30 Python tests in Docker and npm ci/typecheck/test/build; added AGENTS.md and a PR template mirroring Section 16's mandatory logging/checklist/walkthrough requirements; Yasser loader/placeholder findings documented without modifying his code
 - 2026-11-14 · Nic: PR #4 review corrections add nearest-odd roughness windows, uncertainty warnings, one-height provisional rockfall buffer and explicit unresolved scarp-risk exclusions; uv project/lock replaces requirements files; all implemented terrain/acquisition/export/validation stages have correlated structured logs
 - 2026-11-14 · Nic: downloaded official DTM to ignored raw storage (380,863,440 bytes; SHA-256 `6543d410aabcdfed6d8c67117235c1dcaf0f67716dcf72c0ba13c6dd8d85c8f1`); verified Mars equirectangular CRS, declared no-data, 1 m pixels, and 128×128 center diagnostic crop; scarp/alignment validation still pending
@@ -63,6 +66,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Open questions
 
+- Yasser / PR #8: use proposed/candidate route wording, explicitly label placeholder boundaries, and distinguish inspection-required geometry from a failed route with no geometry; simulated reconnaissance is not astronaut clearance. Loader logging and pending-option support already exist in #8; review newer code rather than duplicating them.
+- Brianna / Samar: supply actual rover CAD clearances/traversability and sensor model; current 24°/35 cm/20 cm figures remain provisional references, not team hardware limits; no orbital wheel-slip/clearance measurement is generated.
 - Yasser: placeholder `rt-orbital-guess-v1` has 24° max slope with `status: ok`; hypothetical geometry/stats are not crew clearance. Loader correctly returns `placeholderFiles` for `placeholder: true`. Present it explicitly as unverified/simulated and review its status; Nic left placeholder data/UI unchanged.
 - Yasser: new Section 16 requires browser logging for loader failures/schema mismatches and meaningful mission-stage changes; current loader returns issues but has no shared operational logger. Ownership handoff only; no UI edits made.
 - Confirm mission objective: observation only, no sampling or drilling (proposed)
