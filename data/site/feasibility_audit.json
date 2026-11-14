@@ -1,0 +1,15 @@
+{
+  "_note": "Input for `python -m pipeline.feasibility` (Nic's PR #13). Geury's first-pass points as-is, walking the whole way. Expected: the habitat->primary->habitat itinerary fails the budget on the great-circle lower bound alone (about 4.1 km straight-line round trip). Nic: set `window` [col, row, width, height] in DTM pixels so it covers `_window_latlon`.",
+  "_window_latlon": { "south": 54.125, "west": -147.925, "north": 54.168, "east": -147.885 },
+  "dtm": "pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG",
+  "window": null,
+  "points": {
+    "habitat": { "lat": 54.12819, "lon": -147.90287 },
+    "observation_primary": { "lat": 54.16291, "lon": -147.90546 },
+    "observation_backup": { "lat": 54.16524, "lon": -147.89585 }
+  },
+  "eva_minutes": 240,
+  "speed_m_min": 20,
+  "observation_minutes": 20,
+  "position_uncertainty_m": 15
+}

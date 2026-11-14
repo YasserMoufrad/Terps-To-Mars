@@ -66,9 +66,9 @@
       "stats": {
         "Drive (crew rover)": "1.99 km each way, assumed 5 km/h",
         "Walk": "681 m each way at 20 m/min",
-        "Travel time": "116 min round trip",
-        "Budget": "Within modeled budget (168 min travel)",
-        "Walkback": "99 min on foot if the crew rover fails; 191 of 240 min EVA"
+        "Travel time": "116 min round trip + 20 min at the site",
+        "Budget": "Within modeled budget (136 of 168 min)",
+        "Walkback": "99 min on foot if the crew rover fails; 211 of 240 min EVA"
       }
     }
   ],
