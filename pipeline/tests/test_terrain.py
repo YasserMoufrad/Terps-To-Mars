@@ -3,7 +3,7 @@ import pytest
 import rasterio
 from rasterio.transform import from_origin
 
-from pipeline.terrain import Terrain, analyze, read_terrain, signed_longitude, load_rules
+from pipeline.terrain import Terrain, analyze, read_terrain, signed_longitude, load_rules, roughness_window
 from pipeline.hazards import hazard_masks, export_hazards
 from pipeline.validate_contract import validate_collection
 
@@ -11,17 +11,30 @@ CRS = "+proj=eqc +R=3389500 +units=m +no_defs"
 
 
 def terrain(z=None, **kwargs):
+    """Create a simulated 1 m grid; z supplies elevations and kwargs supplies QC."""
     return Terrain(np.zeros((11, 11)) if z is None else z,
                    from_origin(0, 11, 1, 1), CRS, "synthetic fixture", "simulated", **kwargs)
 
 
 def test_flat_and_analytic_slope():
+    """Compare flat and known 18° elevation ramps against computed slopes."""
     assert np.all(analyze(terrain())["slope"] == 0)
     z = np.tile(np.arange(11) * np.tan(np.radians(18)), (11, 1))
     np.testing.assert_allclose(analyze(terrain(z))["slope"], 18)
 
 
+def test_equirectangular_scale_corrected_at_high_latitude():
+    """Check the analytic east-west scale correction at 54° latitude."""
+    radius = 3_389_500
+    transform = from_origin(0, np.radians(54) * radius, 1, 1)
+    z = np.tile(np.arange(11, dtype=float), (11, 1))
+    t = Terrain(z, transform, CRS, "synthetic latitude test", "simulated")
+    expected = np.degrees(np.arctan(1 / np.cos(np.radians(54))))
+    assert analyze(t)["slope"][0, 0] == pytest.approx(expected, abs=1e-4)
+
+
 def test_no_data_and_artifact_never_filled():
+    """Ensure NaN elevation and artifact cells stay invalid through hazard export."""
     z = np.zeros((11, 11))
     z[4, 4] = np.nan
     artifact = np.zeros(z.shape, bool)
@@ -35,6 +48,7 @@ def test_no_data_and_artifact_never_filled():
 
 
 def test_exact_thresholds():
+    """Check immediately adjacent slope and roughness boundary values."""
     t = terrain()
     values = analyze(t)
     values["slope"][0, :6] = [14.999, 15, 19.999, 20, 23.999, 24]
@@ -47,6 +61,7 @@ def test_exact_thresholds():
 
 
 def test_setback_and_rockfall_boundaries():
+    """Verify equality at cliff setback and modeled rockfall buffer distances."""
     t = terrain()
     distances = np.full((11, 11), 20.0)
     masks = hazard_masks(t, analyze(t), edge_distance=distances,
@@ -56,12 +71,14 @@ def test_setback_and_rockfall_boundaries():
 
 
 def test_mars_crs_and_signed_longitude():
+    """Require a Mars CRS and conversion of 212.106°E to signed longitude."""
     assert signed_longitude(212.106) == pytest.approx(-147.894)
     with pytest.raises(ValueError, match="Mars"):
         Terrain(np.zeros((4, 4)), from_origin(0, 4, 1, 1), "EPSG:3857", "bad", "simulated")
 
 
 def test_read_and_crop_raster(tmp_path):
+    """Use tmp_path for a synthetic GeoTIFF and verify crop/no-data handling."""
     path = tmp_path / "synthetic.tif"
     data = np.arange(121, dtype="float32").reshape(11, 11)
     data[3, 3] = -9999
@@ -75,3 +92,39 @@ def test_read_and_crop_raster(tmp_path):
     assert result.transform.c == 2
     with pytest.raises(ValueError, match="coverage"):
         read_terrain(path, (8, 8, 5, 5))
+
+
+@pytest.mark.parametrize("resolution,pixels", [(0.99, 3), (1, 3), (0.5, 5), (1.5, 1), (10, 1)])
+def test_nearest_odd_physical_roughness_window(resolution, pixels):
+    """Check expected odd pixels for projected resolution in metres."""
+    assert roughness_window(3, resolution) == pixels
+    t = Terrain(np.zeros((11, 11)), from_origin(0, 11, resolution, resolution), CRS, "fixture", "simulated")
+    result = analyze(t)
+    assert result["roughness_window_m"] == pytest.approx(pixels * resolution)
+    if pixels < 3:
+        assert np.isnan(result["roughness"]).all() and result["roughness_uncertain"]
+
+
+@pytest.mark.parametrize("missing", ["edge_distance", "foot_distance", "scarp_height", "apron_m"])
+def test_missing_scarp_measurements_block_only_risk_area(missing):
+    """Remove the named missing input; only configured risk cells require inspection."""
+    t = terrain()
+    risk = np.zeros((11, 11), bool)
+    risk[:, 5] = True
+    inputs = {"edge_distance": np.full((11, 11), 100.), "foot_distance": np.full((11, 11), 100.),
+              "scarp_height": 20., "apron_m": 10.}
+    inputs[missing] = None
+    masks = hazard_masks(t, analyze(t), scarp_risk=risk, **inputs)
+    np.testing.assert_array_equal(masks["inspection_required"], risk)
+
+
+def test_one_height_rockfall_boundary_and_explicit_cliff_free():
+    """Check one-height equality and a reviewed all-false scarp-risk declaration."""
+    t = terrain()
+    distance = np.full((11, 11), 40.)
+    distance[0, 0] += 0.0001
+    masks = hazard_masks(t, analyze(t), edge_distance=np.full((11, 11), 100.),
+                         foot_distance=distance, scarp_height=40, apron_m=12)
+    assert masks["rockfall"][1, 1] and not masks["rockfall"][0, 0]
+    assert not masks["inspection_required"].any()
+    assert not hazard_masks(t, analyze(t), scarp_risk=np.zeros((11, 11), bool))["inspection_required"].any()

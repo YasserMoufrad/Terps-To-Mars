@@ -65,6 +65,10 @@ The data contract (section 4 of `IMPLEMENTATION.md`) belongs to both. Change it 
 
 Use the priority tiers and cut lines in `IMPLEMENTATION.md` (sections 10 and 11). Do not add ROS, Gazebo, trained vision models, live LLM features or 3D terrain unless every acceptance criterion is already met and `STATUS.md` records the team's go-ahead.
 
+## Function documentation for every PR
+
+Every new or modified function must begin with a brief docstring (Python) or a brief comment at the top of its body (TypeScript/JavaScript) explaining its purpose and only its most important parameters or state variables. Name the variables and explain their meaning, units or shape when relevant. Avoid listing every local variable or narrating obvious code. Keep this documentation adjacent to the implementation and update it when behavior changes. Apply this requirement to every code PR, alongside Section 16's logging and tests.
+
 ## Commands
 
 App (once scaffolded):
@@ -76,3 +80,36 @@ npm run build
 ```
 
 Pipeline: see `pipeline/README.md` once it exists (Nic keeps it current).
+
+## 16. Mandatory logging, observability, and execution traceability
+
+Every PR containing executable code must include logging and tests appropriate to its meaningful behavior. This applies to Python, TypeScript/React, processing scripts, routing, simulated reconnaissance, and CI/deployment automation. Documentation-only changes need no new logging. Small pure functions should be observed at their calling operation, not logged on every invocation.
+
+Use Python standard `logging` through `pipeline/logging_config.py` and prefer structured JSON. Operational events must carry UTC timestamp, level, one consistent execution `run_id`, stage and event, plus relevant entity/dataset IDs, duration, outcome, failure reason, evidence and thresholds where applicable. Log significant stages, external I/O, validation, state transitions, safety decisions, expected failures and unexpected exceptions. Unexpected exceptions must be observable with stack traces and propagate when necessary. Never log secrets, tokens, credentials or unnecessary user data.
+
+Instrument acquisition, raster and coordinate validation, terrain analysis, hazard evaluation, route search, EVA budgets, backup independence, simulated observations and decisions, human-input requests, exports and schema validation. Record unresolved measurements and unavailable routes. Logs must distinguish `nasa_derived`, `inferred` and `simulated`; geometric pathfinding success is not crew safety or clearance. A logging failure must never bypass validation, accept excluded terrain, or turn a failed operation into success.
+
+React/TypeScript should use a small shared browser logging interface for meaningful data-loading errors, schema mismatches, missing layers, mission-stage changes and safety-relevant decisions. Do not log every UI interaction or introduce a backend logging service. Respect Yasser's ownership: audit and document gaps in his code through a handoff rather than modifying his branch without coordination. CI/deployment failures must remain visible in job results and diagnostic output without exposing credentials.
+
+Use `time.perf_counter()` for significant Python operations and aggregate durations/counts instead of per-pixel, per-cell or search-iteration logs. DEBUG must be configurable and disabled by default in production. Optional local JSONL logs belong in ignored `pipeline/logs/`. Do not add LangSmith, OpenTelemetry infrastructure, paid monitoring or cloud logging services without separate approval.
+
+Every operational code PR must test applicable logging behavior: structured events and identifiers, observable exceptions and safety failures, explicit simulated evidence, deterministic processing, secret exclusion, and preservation of safety rules when logging fails. Use pytest `caplog` or the existing TypeScript test framework; avoid assertions on exact timestamps, random IDs or durations. Include logging tests in the ordinary suite.
+
+Every code PR description must contain `## Logging and observability` documenting each item below; mark N/A with a reason where inapplicable:
+
+- [ ] New or modified functionality has appropriate logging.
+- [ ] Errors and expected failure conditions are observable.
+- [ ] Significant safety decisions are traceable.
+- [ ] Execution correlation IDs are propagated where applicable.
+- [ ] Evidence classification is preserved where applicable.
+- [ ] Logging tests were added or updated where needed.
+- [ ] Logging does not expose secrets or sensitive information.
+- [ ] Logging does not change deterministic processing outcomes.
+- [ ] No unnecessary high-volume logging was introduced.
+- [ ] Full test suite and CI checks were executed.
+
+Implement related validation, I/O, state/decision tracing, error handling, timing and observability tests alongside the behavior in the same PR. Do not defer these adjacent requirements to a later cleanup or substitute a checklist for working instrumentation. Every PR description ends with a runnable walkthrough.
+
+An applicable incomplete item blocks readiness for review/merge. All code PRs must pass `frontend`, `pipeline`, and `full-suite` on their latest commit. The merge policy requires `full-suite`; do not claim GitHub enforcement unless branch protection/rulesets are actually configured. Never bypass test or logging failures.
+
+This standard applies to existing open and future code PRs. Audit #4/#5/#6 while open and report ownership-related gaps. A code PR is done only when functionality, operational/decision tracing, failure visibility, logging tests, existing/full-suite tests and latest GitHub Actions all pass, and its description records coverage. Logging is part of implementation.

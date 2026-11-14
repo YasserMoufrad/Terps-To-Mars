@@ -2,6 +2,7 @@
 
 import json
 import math
+from pipeline.logging_config import traced, event
 from pathlib import Path
 
 
@@ -12,11 +13,13 @@ EVIDENCE = {"nasa_derived", "inferred", "simulated"}
 
 
 def _enum(properties, field, values):
+    """Require properties[field] to belong to the contract's allowed values."""
     if properties.get(field) not in values:
         raise ValueError(f"Invalid or missing {field}")
 
 
 def _geometry(geometry):
+    """Check coordinate nesting and minimum point/ring counts for geometry."""
     coordinates = geometry["coordinates"]
     if geometry["type"] == "Point":
         _position(coordinates)
@@ -36,6 +39,7 @@ def _geometry(geometry):
 
 
 def _position(value):
+    """Validate value as finite signed [longitude, latitude] in degrees."""
     if not isinstance(value, list) or len(value) != 2:
         raise ValueError("GeoJSON position must be [longitude, latitude]")
     lon, lat = value
@@ -46,6 +50,7 @@ def _position(value):
 
 
 def _coordinates(value):
+    """Recursively validate the nested coordinate arrays in value."""
     if not isinstance(value, list) or not value:
         raise ValueError("GeoJSON coordinates must be nonempty")
     if isinstance(value[0], (int, float)):
@@ -55,7 +60,9 @@ def _coordinates(value):
             _coordinates(child)
 
 
+@traced("schema_validation")
 def validate_collection(payload, name):
+    """Validate schema 1.0 payload using name to choose hazard/route/coverage rules."""
     if payload.get("schema_version") != "1.0":
         raise ValueError(f"{name}: expected schema_version 1.0")
     if payload.get("type") != "FeatureCollection" or not isinstance(payload.get("features"), list):
@@ -117,6 +124,7 @@ def validate_collection(payload, name):
 
 
 def _validate_lat_lon_objects(value):
+    """Inspect nested JSON value for valid coordinate objects using lat/lon keys."""
     if isinstance(value, dict):
         if "lat" in value or "lon" in value:
             lat, lon = value.get("lat"), value.get("lon")
@@ -131,7 +139,9 @@ def _validate_lat_lon_objects(value):
             _validate_lat_lon_objects(child)
 
 
+@traced("bundle_validation")
 def validate_data(data_dir=DATA_DIR, require_overlays=False):
+    """Validate data_dir's handoff; require_overlays also checks images and sidecars."""
     data_dir = Path(data_dir)
     for name in COLLECTIONS:
         payload = json.loads((data_dir / name).read_text(encoding="utf-8"))
@@ -154,6 +164,7 @@ def validate_data(data_dir=DATA_DIR, require_overlays=False):
                 raise ValueError("Invalid overlay bounds")
             if not bounds.get("source") or not bounds.get("processing"):
                 raise ValueError("Overlay provenance required")
+    event("data_contract_validated", schema_version="1.0", directory=str(data_dir), require_overlays=require_overlays)
 
 
 if __name__ == "__main__":
