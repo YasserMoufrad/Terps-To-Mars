@@ -19,6 +19,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-14 · Nic: PR #6 refreshed against merged UI #8; integrated validation passed 76 Docker Python tests, 14 frontend/workflow tests, typecheck/build; actual eight-file synthetic bundle loaded by the TypeScript loader with zero errors and four expected inspection warnings
 - 2026-11-14 · Nic: discovery/export suite passed 76 Docker Python tests; thermal context no longer claims measured inertia; simulated decisions/versions have one correlated trace; real run requires confirmed endpoints and reviewed scarp inputs; atomic exports and candidate statistics are tested
 - 2026-11-14 · Yasser's agent: Nic's PR #8 review addressed: intro/captions/labels/placeholder text say proposed, simulated and needs-inspection (no safe/confirmed/clearance claims); evidence card marks placeholder shapes as hypothetical even when they name a NASA dataset; placeholder soft-ground hazard no longer cites the THEMIS day-IR mosaic as thermal-inertia evidence; non-ok routes with geometry drawn amber dashed, empty routes reported in words
 - 2026-11-14 · Yasser's agent: frontend logging per CLAUDE.md section 16: `src/lib/logger.ts` (structured events, shared run_id, UTC timestamps, DEBUG off in production, secret-field redaction, sink failures never break the app) and `src/lib/appLogger.ts`; data loading, validation errors/warnings, stage changes, unavailable routes and the simulated discovery request are logged; 10 logging tests in `tests/logging.test.mjs`
