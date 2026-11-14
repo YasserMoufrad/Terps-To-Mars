@@ -2,6 +2,7 @@
 // collects problems as "issues" instead of crashing. The app shows the issues
 // on screen, so a missing or broken file is never silently treated as "no hazards".
 
+// Imports use the .ts extension so the Node test runner can load this file directly.
 import {
   SCHEMA_VERSION,
   HAZARD_TYPES, HAZARD_CATEGORIES, SEVERITIES, EVIDENCE, HAZARD_AGENTS, STAGE_IDS,
@@ -9,7 +10,8 @@ import {
   COVERAGE_STATES, SENSORS,
   type HazardCollection, type RouteCollection, type CoverageCollection,
   type Mission, type OverlayBounds,
-} from './types';
+} from './types.ts';
+import { silentLogger, type Logger } from '../lib/logger.ts';
 
 export interface LoadIssue {
   file: string;
@@ -30,17 +32,24 @@ export interface MissionData {
 
 // ---------- small helpers ----------
 
-// Fetch one JSON file. Returns null (and records an issue) instead of throwing.
 async function fetchJson(
   baseUrl: string,
   file: string,
   issues: LoadIssue[],
   missingSeverity: LoadIssue['severity'],
 ): Promise<unknown | null> {
+  // Purpose: fetch and parse one file from public/data/. Never throws: on failure it
+  // records an issue in `issues` at `missingSeverity` ("error" for core files,
+  // "warning" for optional pipeline overlays) and returns null.
   try {
     const response = await fetch(`${baseUrl}data/${file}`);
     if (!response.ok) {
       issues.push({ file, severity: missingSeverity, message: `Could not load (HTTP ${response.status}).` });
+      return null;
+    }
+    // The dev server answers a missing file with its HTML page instead of a 404.
+    if (response.headers?.get('content-type')?.includes('text/html')) {
+      issues.push({ file, severity: missingSeverity, message: 'File not found.' });
       return null;
     }
     return await response.json();
@@ -50,7 +59,6 @@ async function fetchJson(
   }
 }
 
-// Check that a value is one of the allowed strings, recording an issue if not.
 function checkAllowed(
   value: unknown,
   allowed: readonly string[],
@@ -58,12 +66,15 @@ function checkAllowed(
   file: string,
   issues: LoadIssue[],
 ): void {
+  // Purpose: record an error if `value` is not one of the `allowed` contract values.
+  // `label` names the property in the message (e.g. "hazard hz-1 evidence").
   if (typeof value !== 'string' || !allowed.includes(value)) {
     issues.push({ file, severity: 'error', message: `${label} is "${String(value)}"; expected one of ${allowed.join(', ')}.` });
   }
 }
 
 function checkSchemaVersion(data: { schema_version?: unknown }, file: string, issues: LoadIssue[]): void {
+  // Purpose: record an error when a file's schema_version differs from SCHEMA_VERSION.
   if (data.schema_version !== SCHEMA_VERSION) {
     issues.push({
       file,
@@ -76,6 +87,8 @@ function checkSchemaVersion(data: { schema_version?: unknown }, file: string, is
 // ---------- per-file checks ----------
 
 function checkHazards(data: HazardCollection, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: validate every hazard's enum properties; adds each hazard id to `ids`
+  // so mission.json references can be checked afterwards.
   const file = 'hazards.geojson';
   checkSchemaVersion(data, file, issues);
   for (const f of data.features) {
@@ -92,6 +105,8 @@ function checkHazards(data: HazardCollection, issues: LoadIssue[], ids: Set<stri
 }
 
 function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: validate every route's enum properties, add its id to `ids`, and warn
+  // about any route whose status is not "ok" so failures are never silent.
   const file = 'routes.geojson';
   checkSchemaVersion(data, file, issues);
   for (const f of data.features) {
@@ -111,6 +126,8 @@ function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string
 }
 
 function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: validate coverage zones and enforce the honesty rule that robot
+  // coverage (rover_checked / drone_checked) is always marked simulated.
   const file = 'coverage.geojson';
   checkSchemaVersion(data, file, issues);
   for (const f of data.features) {
@@ -127,6 +144,8 @@ function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<s
 }
 
 function checkMission(data: Mission, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: check stage order, that every id mission.json references exists in `ids`
+  // (filled by the GeoJSON checks), and that chosen_option is empty or a real option.
   const file = 'mission.json';
   checkSchemaVersion(data, file, issues);
 
@@ -148,17 +167,22 @@ function checkMission(data: Mission, issues: LoadIssue[], ids: Set<string>): voi
     }
   }
 
+  // An empty chosen_option means the crew has not decided yet (Nic's pipeline leaves
+  // it empty until a human approves an option). Anything else must be a real option.
   const optionIds = data.discovery.options.map((o) => o.id);
-  if (!optionIds.includes(data.discovery.chosen_option)) {
+  if (data.discovery.chosen_option !== '' && !optionIds.includes(data.discovery.chosen_option)) {
     issues.push({ file, severity: 'error', message: `discovery.chosen_option "${data.discovery.chosen_option}" is not one of the options.` });
   }
 }
 
 // ---------- main entry point ----------
 
-// baseUrl: where the site is served from. In the app, pass import.meta.env.BASE_URL
-// (Vite sets it, e.g. "/Terps-To-Mars/" on GitHub Pages). It must end with "/".
-export async function loadMissionData(baseUrl: string): Promise<MissionData> {
+export async function loadMissionData(baseUrl: string, logger: Logger = silentLogger): Promise<MissionData> {
+  // Purpose: load and check every data file, returning what loaded plus `issues`.
+  // baseUrl: where the site is served from (import.meta.env.BASE_URL, ends with "/").
+  // logger: receives load.start, one event per issue, and a load.complete summary.
+  const started = performance.now();
+  logger.info('data', 'load.start', { base_url: baseUrl, schema_version: SCHEMA_VERSION });
   const issues: LoadIssue[] = [];
   const ids = new Set<string>();
 
@@ -192,6 +216,25 @@ export async function loadMissionData(baseUrl: string): Promise<MissionData> {
   ]
     .filter(([, data]) => (data as { placeholder?: boolean } | null)?.placeholder === true)
     .map(([file]) => file as string);
+
+  // One event per problem (there are only a handful), then one summary event.
+  for (const issue of issues) {
+    const fields = { file: issue.file, reason: issue.message };
+    if (issue.severity === 'error') logger.error('data', 'validation.error', fields);
+    else logger.warn('data', 'validation.warning', fields);
+  }
+  const errorCount = issues.filter((i) => i.severity === 'error').length;
+  logger.info('data', 'load.complete', {
+    outcome: errorCount === 0 ? 'ok' : 'errors',
+    duration_ms: Math.round(performance.now() - started),
+    errors: errorCount,
+    warnings: issues.length - errorCount,
+    hazards: hazards?.features.length ?? 0,
+    routes: routes?.features.length ?? 0,
+    coverage_zones: coverage?.features.length ?? 0,
+    placeholder_files: placeholderFiles,
+    overlays: { hirise: hiriseRaw !== null, slope: slopeRaw !== null },
+  });
 
   return {
     hazards,

@@ -16,10 +16,16 @@ NASA Space Apps Challenge 2026, challenge *Interplanetary Survival Guide: Martia
 Rules:
 
 1. **At session start:** `git pull`, then read `CLAUDE.md`, `docs/STATUS.md`, `docs/IMPLEMENTATION.md`.
-2. **Before ending a session or handing off:** update `docs/STATUS.md` (move your items, add decisions, note blockers), commit it with your work, push.
+2. **Before ending a session or handing off:** update `docs/STATUS.md` (move your items, add decisions, note blockers) and include it with your work; commit and push only when your person approves (see Git workflow).
 3. **Every decision that changes the plan** gets a dated line in the Decision log in `STATUS.md`, and the matching section of `IMPLEMENTATION.md` is edited in the same commit.
 4. Keep entries short: one line each, with the person's name, not "the agent".
 5. If `STATUS.md` and `IMPLEMENTATION.md` disagree, `IMPLEMENTATION.md` wins for the contract; raise the conflict in Open questions.
+6. **When new data lands, update the docs in the same change.** Any time a file in `public/data/` is added, replaced or changes from placeholder to real (including new endpoints from Geury or new pipeline outputs from Nic):
+   - update the status table in `public/data/SCHEMA.md` (placeholder vs real, who produced it, source dataset);
+   - add a dated line to `docs/STATUS.md` (Done, plus Handoffs if someone was waiting on it);
+   - update `docs/IMPLEMENTATION.md` wherever it quotes the old values (site endpoints, hazard rules, coverage model, sources);
+   - add any new dataset to the Sources section.
+7. **Test Python in a container when Docker is available,** using the commands in `pipeline/README.md` (`pipeline/Dockerfile`). Without Docker, push to a branch and let CI run the same checks; never report Python checks as passed unless they ran.
 
 ## Ownership (do not edit the other side's area without logging it)
 
@@ -33,13 +39,17 @@ Rules:
 
 The data contract (section 4 of `IMPLEMENTATION.md`) belongs to both. Change it only after both owners agree; bump `schema_version` when a field is added, renamed or removed.
 
-## Git workflow
+## Git workflow and merge policy
 
-- Branches: `ui/<topic>` (Yasser), `pipeline/<topic>` and `data/<topic>` (Nic), `docs/<topic>` (shared). Small doc and status updates may go straight to `main`.
-- `git pull --rebase` before starting work and before pushing.
-- Merge feature branches through pull requests at the sync points listed in `STATUS.md`.
+- **Pull first, always:** `git pull --rebase` (or `git fetch` + rebase) before starting work, before committing and before pushing. Read `docs/STATUS.md` after every pull.
+- **No unasked commits or pushes:** an agent commits or pushes only when its own person explicitly asks for that change. Otherwise it leaves the work uncommitted and reports what changed.
+- **Branches:** `ui/<topic>` (Yasser), `pipeline/<topic>` and `data/<topic>` (Nic), `docs/<topic>` (shared).
+- **Code reaches `main` only through a pull request** whose latest commit passes `frontend`, `pipeline` and `full-suite`, and whose description includes `## Logging and observability` (section 16). Docs-only and `STATUS.md` updates may go straight to `main`.
+- **Who merges:** the PR author's person, after CI is green; Yasser owns the repository settings. Stacked PRs merge in order (base first) and downstream PRs are retargeted to `main` after each merge.
+- **Never merge someone else's open PR while they are still changing it.** Check `STATUS.md` and the PR's latest commits; if in doubt, ask its owner.
+- **Never bypass CI or force-push to `main`.**
 - Never commit raw NASA files. `pipeline/raw/` is git-ignored; GitHub rejects files over 100 MB. Commit only processed, web-sized outputs.
-- On Windows, set `git config core.longpaths true` in this repo.
+- On Windows, set `git config core.longpaths true` in this repo, and use `npm.cmd` in PowerShell if script execution is disabled.
 - Commit messages: imperative summary line, short body saying why.
 
 ## Non-negotiable technical rules
@@ -48,6 +58,8 @@ The data contract (section 4 of `IMPLEMENTATION.md`) belongs to both. Change it 
 - **Map:** Mars Trek global tiles are plain lat/lon: react-leaflet uses `crs={L.CRS.EPSG4326}`.
 - **Distances:** computed in the pipeline with Mars radius 3,389.5 km; never with Leaflet's Earth-based tools.
 - **IDs:** every hazard, route and coverage zone has a stable `id`; every data file has `schema_version`.
+- **Writing into `public/data/` on Windows:** the Vite dev server watches that folder and crashes (`EBUSY`) if a file is read while still being written. The pipeline writes each output to a temporary name and then renames it into place (or stop `npm run dev` while exporting).
+- **Overlays appear automatically:** the app shows `hirise.jpg` / `slope.png` as soon as the matching `*.bounds.json` exists; corners are `south, west, north, east` in −180..180 longitude.
 - **Determinism:** the pipeline reads thresholds from `pipeline/hazard_rules.json` and produces identical outputs for identical inputs.
 
 ## Scientific honesty rules (these protect the Validity score)

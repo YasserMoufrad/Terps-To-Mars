@@ -7,7 +7,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 | Person | Working on | Next |
 | --- | --- | --- |
 | Nic | Project scaffold: Vite + React + TypeScript + react-leaflet, GitHub Pages deploy | Download and validate the Milankovic DTM + RED_C image; crop to the scarp |
-| Yasser | Managing; placeholder data and tile URLs done (branch `ui/placeholder-data`) | Mars map centered on Milankovic once the scaffold lands |
+| Yasser | Map app PR from `ui/map` (frontend logging included) | PR #4 merged by Nic; #5 → #6 merge when Nic says they are ready and CI is green; branch protection for `main` |
 | Geury | Exact endpoints: scarp foot, habitat, primary and backup observation points (inside the color strip) | Ice evidence specific to this scarp; evidence panel text |
 | Samar / Yasser's agent | Hazard rules v1 done (in IMPLEMENTATION.md section 5) | Sensor ranges for coverage; decision states; discovery scenario |
 | Brianna | Rover CAD on the JPL Open Source Rover base: dock, mast | Specs to Samar; hold the drill until "observation only" is confirmed |
@@ -19,6 +19,13 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-14 · Yasser's agent: Nic's PR #8 review addressed: intro/captions/labels/placeholder text say proposed, simulated and needs-inspection (no safe/confirmed/clearance claims); evidence card marks placeholder shapes as hypothetical even when they name a NASA dataset; placeholder soft-ground hazard no longer cites the THEMIS day-IR mosaic as thermal-inertia evidence; non-ok routes with geometry drawn amber dashed, empty routes reported in words
+- 2026-11-14 · Yasser's agent: frontend logging per CLAUDE.md section 16: `src/lib/logger.ts` (structured events, shared run_id, UTC timestamps, DEBUG off in production, secret-field redaction, sink failures never break the app) and `src/lib/appLogger.ts`; data loading, validation errors/warnings, stage changes, unavailable routes and the simulated discovery request are logged; 10 logging tests in `tests/logging.test.mjs`
+- 2026-11-14 · Yasser's agent: `package.json` `test` script now runs Node with `--experimental-strip-types` so tests can import the TypeScript sources (Nic's area; one-flag change, needed by the logging tests)
+- 2026-11-14 · Yasser's agent: CLAUDE.md git policy updated: pull first; agents commit/push only when their person asks; code reaches `main` only by PR with green `full-suite` and a Logging section; stacked PRs merge in order; never merge another person's PR while they are still changing it
+- 2026-11-14 · Yasser's agent: clarity pass on `ui/map`: mission-brief intro, guided Back/Next steps with a "what to look at" caption, bold outlined routes, on-map legend, Demo-data badge instead of banner, auto-fit view, loading message, coverage off by default, CTX z10 → z9 → THEMIS tile fallback; loader accepts an empty `chosen_option` (crew not yet decided) to match Nic's discovery export
+- 2026-11-14 · Yasser's agent: map app on branch `ui/map`: Mars basemap (CTX with THEMIS fallback), 4 stages, routes/hazards/coverage per stage, rover-needs-input card, click-a-hazard evidence card, layer toggles, auto HiRISE/slope overlays once bounds files exist (alignment verified pixel-exact with a test image)
+- 2026-11-14 · Yasser's agent: CLAUDE.md rules added: update docs when data lands; Python checks in Docker; write pipeline outputs via temp file + rename (Vite EBUSY on Windows)
 - 2026-11-14 · Nic: PR #5 corrected suite passed 57 Docker Python tests and npm ci/typecheck/test (4)/build; both crew and rover block unresolved scarp cells; observation work and actual backup-return budgets are tested; PR converted to draft for explicit merge hold
 - 2026-11-14 · Nic: Yasser UI/scientific-wording handoff posted at https://github.com/YasserMoufrad/Terps-To-Mars/pull/8#issuecomment-6883539861; loader logging/pending-option support already exists there; no UI/placeholder files changed
 - 2026-11-14 · Nic: PR #4 merged after 30 Docker Python tests, full frontend validation and latest frontend/pipeline/full-suite checks; PR #5 reopened against main after parent deletion closed it; cleanup guard added for stacked PR bases
@@ -66,10 +73,10 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Open questions
 
-- Yasser / PR #8: use proposed/candidate route wording, explicitly label placeholder boundaries, and distinguish inspection-required geometry from a failed route with no geometry; simulated reconnaissance is not astronaut clearance. Loader logging and pending-option support already exist in #8; review newer code rather than duplicating them.
+- ~~Yasser / PR #8: proposed/candidate wording, placeholder labels, inspection-required vs failed routes~~ Resolved in PR #8 (see Done).
+- ~~Yasser: placeholder `rt-orbital-guess-v1` 24° with `status: ok`~~ Resolved in PR #8: status is now `inspection_required`, drawn amber dashed and stated in words.
+- ~~Yasser: Section 16 browser logging~~ Resolved in PR #8: `src/lib/logger.ts` + `appLogger.ts`, loader/stage/safety events, 10 logging tests.
 - Brianna / Samar: supply actual rover CAD clearances/traversability and sensor model; current 24°/35 cm/20 cm figures remain provisional references, not team hardware limits; no orbital wheel-slip/clearance measurement is generated.
-- Yasser: placeholder `rt-orbital-guess-v1` has 24° max slope with `status: ok`; hypothetical geometry/stats are not crew clearance. Loader correctly returns `placeholderFiles` for `placeholder: true`. Present it explicitly as unverified/simulated and review its status; Nic left placeholder data/UI unchanged.
-- Yasser: new Section 16 requires browser logging for loader failures/schema mismatches and meaningful mission-stage changes; current loader returns issues but has no shared operational logger. Ownership handoff only; no UI edits made.
 - Confirm mission objective: observation only, no sampling or drilling (proposed)
 - Final project name (placeholder: IceScout)
 - Nic registered at the same Local Event as the team?
