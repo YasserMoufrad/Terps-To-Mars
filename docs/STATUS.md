@@ -19,7 +19,9 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
-- 2026-11-14 · Yasser's agent (branch `ui/mars-color`, not yet pushed): real Mars color on the basemap from the Viking MDIM 2.1 color mosaic, blended over CTX detail with CSS `mix-blend-mode: color` in its own pane (data layers unaffected), with a layer toggle; MGS MOC color atlas rejected (fully gray at this site); basemap tile failures logged once per layer (`map/tiles.error`) with 4 tests
+- 2026-11-14 · Yasser: project deployed to Vercel at https://terps-to-mars.vercel.app (auto-deploys `main`, preview per PR; build command `npm run build -- --base=/` because Vercel serves from the root; GitHub Pages unchanged)
+- 2026-11-14 · Yasser's agent (PR #11): real Mars color on the basemap from the Viking MDIM 2.1 color mosaic, blended over CTX detail with CSS `mix-blend-mode: color` in its own pane (data layers unaffected), with a layer toggle; MGS MOC color atlas rejected (fully gray at this site); basemap tile failures logged once per layer (`map/tiles.error`) with 4 tests
+- 2026-11-14 · Nic: audit provenance fixes (branch `docs/audit-provenance-fixes`): CRISM claim qualified (3 of 8 scarps, none confirmed for our face); placeholder drone alert no longer says "confirmed"; placeholder `chosen_option` empty (pending); README no longer says confirmed/safe; MAP_TILES documents THEMIS Night IR, MCD weather and imagery-resolution caveats; edited Yasser's placeholder `mission.json` (wording/pending only). Night IR toggle and weather display not built
 - 2026-11-14 · Nic: UI follow-up on merged #8 (branch `ui/pipeline-review-followup`): orbital stage hides post-discovery routes; drone/eva use only the post-discovery backup and report a missing one in words; drone perch label reflects its coverage record (no active-drone claim for an inspection-required marker); route review logging (`route.candidate`/`route.unavailable`, `crew_clearance: not_established`); 20 frontend tests, typecheck and build pass
 - 2026-11-14 · Nic: PR #6 refreshed against merged UI #8; integrated validation passed 76 Docker Python tests, 14 frontend/workflow tests, typecheck/build; actual eight-file synthetic bundle loaded by the TypeScript loader with zero errors and four expected inspection warnings
 - 2026-11-14 · Nic: discovery/export suite passed 76 Docker Python tests; thermal context no longer claims measured inertia; simulated decisions/versions have one correlated trace; real run requires confirmed endpoints and reviewed scarp inputs; atomic exports and candidate statistics are tested
@@ -77,6 +79,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Open questions
 
+- Yasser + Nic: agree optional `relief.png`/`relief.bounds.json` and `mission.json` `labels` (proposed in IMPLEMENTATION section 4; not implemented; decide whether `schema_version` bumps). Nic: fine to add as optional.
+- Nic's answer to Yasser's agent: the HiRISE overlay export does not need Geury's endpoints, only an agreed crop box. The ~1 m ORTHO we downloaded gives ~1 m pixels; a sharper overlay needs the 0.25 m HiRISE RED image (separate download, size to confirm) and its own PR. Real hazards/routes still need from Geury: habitat, scarp foot, primary and backup observation points, drone perch; plus measured scarp height/apron and manual scarp/landmark QC. PR #6 is merged. No ETA for real routes until those arrive. 3D still: not started.
 - ~~Yasser / PR #8: proposed/candidate wording, placeholder labels, inspection-required vs failed routes~~ Resolved in PR #8 (see Done).
 - ~~Yasser: placeholder `rt-orbital-guess-v1` 24° with `status: ok`~~ Resolved in PR #8: status is now `inspection_required`, drawn amber dashed and stated in words.
 - ~~Yasser: Section 16 browser logging~~ Resolved in PR #8: `src/lib/logger.ts` + `appLogger.ts`, loader/stage/safety events, 10 logging tests.

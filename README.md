@@ -13,7 +13,7 @@ In 2018, NASA's Mars Reconnaissance Orbiter revealed cliffs of nearly pure water
 1. **Orbital planning:** a first route from NASA terrain data, with hazards and unscouted areas marked.
 2. **Rover reconnaissance:** a scout rover drives the route (and returns on the backup route), detecting hazards astronauts can't see: under their feet, over their heads, and in the dark.
 3. **Drone inspection:** a drone launched from the rover inspects what the rover can't reach, including the cliff face.
-4. **Astronaut mission review:** the crew follows a confirmed route to a safe observation point, with a backup route home.
+4. **Astronaut mission review:** the crew reviews a proposed route to an observation point, with backup options. Nothing shown is crew clearance.
 
 > Real NASA observation → modeled hazard → rover reconnaissance → updated evidence → revised astronaut route → informed crew decision
 

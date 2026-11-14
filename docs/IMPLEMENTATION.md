@@ -32,7 +32,7 @@ An astronaut-facing map for planning one Marswalk to the exposed water-ice scarp
 | Overlay image | `ESP_071006_2345`, map-projected, 25 cm/px, equirectangular, north up — [image page](https://hirise.lpl.arizona.edu/ESP_071006_2345) |
 | Image coverage | Black and white about 5 km wide; enhanced color strip about 1 km wide |
 | Acquisition | 19 Sep 2021, local Mars time 15:26, Ls 101.2° (northern summer), Sun about 42° above the horizon |
-| Ice evidence | Milankovič is the only northern-hemisphere site among the eight ice scarps of Dundas et al. (2018, *Science*). Exposed ice is visible in HiRISE color and reported as water ice by CRISM. Blue tones in HiRISE enhanced color alone are **not** proof of ice; cite the spectral evidence. |
+| Ice evidence | Milankovič is the only northern-hemisphere site among the eight ice scarps of Dundas et al. (2018, *Science*). The target is a Milankovič ice-scarp candidate within a region documented to contain exposed subsurface water ice. Dundas et al. report CRISM water-ice signatures at three of the eight locations, not all eight; the face within our stereo pair (`ESP_071006_2345`/`ESP_071085_2345`) has no confirmed CRISM detection of its own, and the exact observation target and its spectral provenance require confirmation. Blue tones in HiRISE enhanced color alone are **not** proof of ice; cite the spectral evidence. Ice depth is unknown at any route point unless measured or specifically sourced: the 1–2 m overburden figure is from some studied scarps (a 2021 USGS study reports some ice under <1 m with large variability), and at an exposed scarp ice may already be visible on the cliff face. The pipeline deliberately produces no ice-depth raster. |
 | Resolution limit | HiRISE resolves objects of about 92 cm at best; the DTM cannot see individual rocks under about 1 m |
 
 Mars Trek has no HiRISE data for this spot: HiRISE comes from the HiRISE/PDS links above; CTX, MOLA, THEMIS and geology come from [Mars Trek](https://trek.nasa.gov/mars/).
@@ -69,6 +69,11 @@ All files live in `public/data/`. Every file carries `"schema_version": "1.0"` (
 { "schema_version": "1.0", "south": 54.10, "west": -147.95, "north": 54.19, "east": -147.84,
   "source": "HiRISE ESP_071006_2345", "processing": "cropped, reprojected to Mars lat/lon, downsampled" }
 ```
+
+**Proposed optional additions (not yet agreed or implemented; require both owners' agreement and a `schema_version` decision, see STATUS Open questions):**
+
+- `relief.png` + `relief.bounds.json`: DTM shaded relief, same format and alignment rules as `slope.png`; derived from the DTM (`nasa_derived`).
+- `mission.json` optional `labels`: list of `{"text", "lat", "lon"}` for map names (for example "Ice scarp", "Debris apron"). Labels name features; they must not assert evidence beyond the hazard/coverage records (no "Exposed ice" label without cited evidence for that point).
 
 ### `hazards.geojson` (Polygon or Point features)
 
@@ -291,7 +296,9 @@ Route search: cost grid from step 6, `skimage.graph.route_through_array` on the 
 - Software: [NumPy](https://numpy.org/doc/), [Rasterio](https://rasterio.readthedocs.io/), [SciPy ndimage](https://docs.scipy.org/doc/scipy/reference/ndimage.html), [scikit-image](https://scikit-image.org/docs/stable/), [pytest](https://docs.pytest.org/); versions in `pyproject.toml` / `uv.lock`.
 - [Challenge statement](https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/)
 - [HiRISE DTM: Scarps in Milankovic Crater](https://hirise.lpl.arizona.edu/dtm/ESP_071085_2345) · [ESP_071006_2345](https://hirise.lpl.arizona.edu/ESP_071006_2345) (NASA/JPL-Caltech/UArizona)
-- Dundas et al. (2018), *Exposed subsurface ice sheets in the Martian mid-latitudes*, Science
+- Dundas et al. (2018), *Exposed subsurface ice sheets in the Martian mid-latitudes*, Science: ice beginning 1-2 m below the surface and deposits over 100 m thick at some studied scarps; not a measured depth at our route points. Also a 2021 USGS study reporting some ice under 1 m with large depth variability.
+- THEMIS Night IR Controlled Mosaic (Mars Trek, 100 m/pixel; sent by Geury): qualitative regional imagery with about 200 m average absolute location accuracy; not in the app yet, tile URL untested. See `docs/MAP_TILES.md`.
+- [Mars Climate Database](https://www-mars.lmd.jussieu.fr/) (LMD/CNRS with ESA/CNES): modeled climatology only, not observed weather at the site.
 - [LPSC abstract on ice scarps (DLR)](https://elib.dlr.de/217131/1/2071.pdf)
 - [JPL Mars Trek](https://trek.nasa.gov/mars/) · [USGS-NASA geologic maps](https://astrogeology-usgs.hub.arcgis.com/pages/interactive-maps-mars)
 - [NASA exploration EVA testing and analogs (NTRS)](https://ntrs.nasa.gov/api/citations/20210000827/downloads/Exporation%20EVA%20Testing%20and%20Analogs%2020210000827.pdf)
