@@ -183,6 +183,22 @@ Route cost: hard exclusions first, then a weighted cost over the remaining cells
 
 Sensor ranges (modeled, per sensor) define the coverage footprint along each path.
 
+### Sensor coverage model (v1, for `coverage.geojson`)
+
+Planning values for our concept rover and drone, anchored to the closest flown instrument. Values marked *assumption* are ours and are labeled as modeled in the app.
+
+| Sensor | Flown analog and published figure | Coverage rule we use |
+| --- | --- | --- |
+| Mast stereo cameras | Perseverance Navcam: 96° × 73° field of view, 42.4 cm stereo baseline | `rover_checked` = rover path buffered **10 m each side** (*assumption*: range where stereo 3D is reliable enough to see rocks near the 35 cm wheel-drop limit) |
+| Hazard cameras | Perseverance Hazcam: 136° × 102° field of view; earlier MER Hazcams mapped terrain about 3 m ahead | Used only for the discovery event (wheel-level obstacles); no extra coverage area |
+| Thermal camera | No Perseverance thermal imager to copy | Same 10 m corridor as the stereo cameras (*assumption*); findings stay `inferred` |
+| Ground-penetrating radar | Perseverance RIMFAX: depth ≤ 10 m, vertical resolution 15–30 cm, soundings every 10–20 cm along the path | A line under the rover only; confirms the path itself, adds no width |
+| Wheel-slip sensing | Rover visual odometry vs wheel turns | The rover's own track only |
+| Drone survey camera | Ingenuity at 10 m altitude: Navcam about 3.6 cm/pixel, color camera about 0.53 cm/pixel; typical scouting altitude 10–12 m | `drone_checked` = the planned survey box (flight lines about 20 m apart, *assumption*) |
+| Drone perched camera | No flown analog (Ingenuity never perched to watch) | View cone toward the scarp, about 150 m range (*assumption*); used for overwatch alerts, not for `drone_checked` |
+
+Everything outside these footprints stays `orbit_only` or `unscouted`.
+
 ### Rover decision states
 
 | State | Condition | Result |
