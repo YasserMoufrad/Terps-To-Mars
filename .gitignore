@@ -147,3 +147,14 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Terps To Mars: raw NASA data and Python
+pipeline/raw/
+*.IMG
+*.img
+*.JP2
+*.jp2
+__pycache__/
+*.pyc
+.venv/
+venv/
