@@ -41,6 +41,28 @@ docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pip
 
 The centre is a diagnostic coordinate, not the confirmed scarp. Output goes to an ignored directory (never `public/data/`). Decoding a ~4K window takes about four minutes. Tile pyramid and map zoom changes are a separate patch.
 
+**Science view (ice band).** The 54.144 N preview sits south of the scarp. Geury's first-pass ice bands (`data/site/ice_zone.geojson`, PR #15) span about 54.161–54.168 N, −147.917 to −147.892, with the work site and observation points near −147.905. A 930 m × 1020 m crop centred at 54.1635, −147.9045 covers both bands and those points (centre still diagnostic until endpoints are confirmed):
+
+```bash
+docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.preview_hd --center-lat 54.1635 --center-lon -147.9045 --width-m 930 --height-m 1020 --format png --output pipeline/output/hirise-science-view
+```
+
+**Transparent no-data.** `--format png` writes grayscale+alpha PNGs: HiRISE null pixels (value 0) get alpha 0 instead of black. Reduction is no-data aware (`average_nodata_aware`): values and validity are averaged separately, so strip edges never blend null 0 into dark seams; an output pixel is kept when at least half its footprint is valid. JPEG output keeps nulls black and says so in `nodata_rendering`.
+
+**Registration check (measurement, not correction).** `python -m pipeline.registration` resamples the 0.25 m RED_A image onto the ~1 m RED_C orthoimage grid (the DTM's companion) at a grid of patches and measures each offset with upsampled phase cross-correlation. It reports per-patch north/east metres, RMS, max and `landmark_alignment` (`measured_within_tolerance`, `measured_exceeds_tolerance` or `insufficient_landmarks`). Featureless, no-data or poorly matched patches are skipped, never counted as agreement. No pixels are moved.
+
+```bash
+docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.registration --bounds 54.1590 -147.9140 54.1680 -147.8950 --grid 3 --output pipeline/output/hirise-science-view/registration.json
+```
+
+**Publishing to the map.** `python -m pipeline.publish_imagery --preview <preview dir> --registration <registration.json>` is the only way HD imagery reaches `public/data/`. It refuses non-HiRISE, reprojected/DTM-grid (`pipeline.run`'s `export_overlay`), upscaled or >4096 px images and mismatched registration reports. It re-encodes an opaque PNG as JPEG q95 (the map loads `hirise.jpg`), refuses a PNG with transparent no-data, writes atomically, and adds `hirise.meta.json` with pixel size and measured alignment for the map caption. Current real result at 54.1635, −147.9045: 4093×4088 px, 4.6 MB, RMS 0.86 m / max 1.05 m vs RED_C (consistent ~0.63 m north, ~0.55 m west shift; flagged `measured_exceeds_tolerance`).
+
+```bash
+docker run --rm -v "$PWD:/app" -w /app terps-pipeline:uv python -m pipeline.publish_imagery --preview pipeline/output/hirise-science-view --registration pipeline/output/hirise-science-view/registration.json
+```
+
+This compares two products of the same HiRISE stereo pipeline, so agreement shows the HD visual layer lines up with DTM-derived hazards; it is not independent ground truth, and CTX comparison is not performed.
+
 ## Structured logs and traceability
 
 Standard-library logging emits JSON to stderr at INFO by default. Significant operations have a UTC timestamp, level, shared execution `run_id`, stage, event, duration and applicable source/evidence/entity/threshold fields. Nested operations reuse the same run ID; separate top-level calls get different IDs. No per-cell tracing is emitted. `PIPELINE_LOG_LEVEL=DEBUG` enables diagnostic detail; `PIPELINE_LOG_FILE=pipeline/logs/run.jsonl` adds an ignored JSONL file. For Docker, pass `-e PIPELINE_LOG_LEVEL=DEBUG -e PIPELINE_LOG_FILE=pipeline/logs/run.jsonl` and mount the repository read/write if persisting logs. `configure_logging(human=True)` offers readable console output while JSONL remains JSON. Configuration contents are fingerprinted rather than logged wholesale; never place secrets in scientific metadata.

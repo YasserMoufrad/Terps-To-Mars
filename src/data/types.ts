@@ -177,3 +177,16 @@ export interface OverlayBounds {
   source: string;
   processing: string;
 }
+
+// hirise.meta.json, written by Nic's pipeline.publish_imagery next to hirise.jpg.
+// Only the fields the app shows or checks are listed; the file carries more provenance.
+export interface HiriseMeta {
+  schema_version: string;
+  source: string;
+  output_pixels: [number, number]; // image width, height in pixels
+  ground_sampling_m_ew_ns: [number, number]; // ground metres per pixel, east-west and north-south
+  resampling: string; // "none_native" = every pixel is a real source pixel
+  landmark_alignment: string; // not_verified | measured_within_tolerance | measured_exceeds_tolerance | insufficient_landmarks
+  registration_rms_m?: number; // measured offset vs the DTM-companion orthoimage, metres
+  registration_max_m?: number;
+}

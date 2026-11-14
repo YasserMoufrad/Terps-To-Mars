@@ -9,8 +9,10 @@ import { appLogger } from '../lib/appLogger';
 import { createTileErrorReporter, type TileCoords } from './tileErrors';
 import type {
   StageId, Mission, HazardCollection, RouteCollection, CoverageCollection,
-  HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds,
+  HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds, HiriseMeta,
 } from '../data/types';
+import { MAP_MAX_ZOOM, imageryAttribution, imageryCaption } from './imagery';
+import { ZoomToImagery } from './ZoomToImagery';
 import { hazardsFor, routesFor, coverageFor, hasLine } from './stageFilters';
 import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
 import type { LayerVisibility } from './layers';
@@ -46,6 +48,7 @@ interface MarsMapProps {
   routes: RouteCollection;
   coverage: CoverageCollection;
   hiriseBounds: OverlayBounds | null;
+  hiriseMeta: HiriseMeta | null;
   slopeBounds: OverlayBounds | null;
   layers: LayerVisibility;
   onSelectHazard: (hazard: HazardProperties) => void;
@@ -72,10 +75,11 @@ function dataUrl(file: string): string {
 }
 
 export function MarsMap({
-  stage, mission, hazards, routes, coverage, hiriseBounds, slopeBounds, layers, onSelectHazard,
+  stage, mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, slopeBounds, layers, onSelectHazard,
 }: MarsMapProps) {
   // Purpose: draw the basemap and every data layer for the current `stage`.
   // `layers` holds the user's toggles; `onSelectHazard` opens a hazard's evidence card.
+  // `hiriseMeta` describes the native-resolution HiRISE image (pixel size, measured alignment).
   // `imageryLoaded` hides the loading message once the first CTX tiles arrive.
   const [imageryLoaded, setImageryLoaded] = useState(false);
 
@@ -112,7 +116,7 @@ export function MarsMap({
         center={toLatLng(mission.site)}
         zoom={12}
         minZoom={4}
-        maxZoom={15}
+        maxZoom={MAP_MAX_ZOOM}
       >
         <FitToMission
           geometries={[...routes.features, ...hazards.features].map((f) => f.geometry.coordinates)}
@@ -123,18 +127,18 @@ export function MarsMap({
           url={THEMIS_URL}
           attribution={THEMIS_ATTRIBUTION}
           maxNativeZoom={9}
-          maxZoom={15}
+          maxZoom={MAP_MAX_ZOOM}
           eventHandlers={onTileError(tileErrors.themis)}
         />
         {/* Three layers, best on top. The CTX server sometimes fails a zoom-10 tile
             (HTTP 500); when that happens the zoom-9 CTX copy underneath shows through,
             and THEMIS is the last resort. A failed tile never leaves a black hole. */}
-        <TileLayer url={CTX_URL} maxNativeZoom={9} maxZoom={15} eventHandlers={onTileError(tileErrors.ctx9)} />
+        <TileLayer url={CTX_URL} maxNativeZoom={9} maxZoom={MAP_MAX_ZOOM} eventHandlers={onTileError(tileErrors.ctx9)} />
         <TileLayer
           url={CTX_URL}
           attribution={CTX_ATTRIBUTION}
           maxNativeZoom={10}
-          maxZoom={15}
+          maxZoom={MAP_MAX_ZOOM}
           eventHandlers={{ load: () => setImageryLoaded(true), ...onTileError(tileErrors.ctx10) }}
         />
 
@@ -146,16 +150,25 @@ export function MarsMap({
               url={VIKING_COLOR_URL}
               attribution={VIKING_COLOR_ATTRIBUTION}
               maxNativeZoom={7}
-              maxZoom={15}
+              maxZoom={MAP_MAX_ZOOM}
               eventHandlers={onTileError(tileErrors.color)}
             />
           </Pane>
         )}
 
-        {/* Pipeline images: drawn only once Nic's bounds files exist and the toggle is on. */}
+        {/* Native-resolution HiRISE (grayscale RED band), drawn only once Nic's bounds file exists.
+            Its pane sits between the basemap tiles (200) and the color pane (250), so the real
+            Viking color tints it exactly as it tints CTX: hue from color data, every detail from HiRISE. */}
         {hiriseBounds && layers.hirise && (
-          <ImageOverlay url={dataUrl('hirise.jpg')} bounds={toCorners(hiriseBounds)} attribution="HiRISE: NASA/JPL-Caltech/UArizona" />
+          <Pane name="hirise-detail" style={{ zIndex: 220 }}>
+            <ImageOverlay
+              url={dataUrl('hirise.jpg')}
+              bounds={toCorners(hiriseBounds)}
+              attribution={imageryAttribution(hiriseMeta)}
+            />
+          </Pane>
         )}
+        {hiriseBounds && <ZoomToImagery bounds={hiriseBounds} caption={imageryCaption(hiriseMeta)} />}
         {slopeBounds && layers.slope && (
           <ImageOverlay url={dataUrl('slope.png')} bounds={toCorners(slopeBounds)} opacity={0.6} />
         )}
@@ -215,8 +228,9 @@ export function MarsMap({
         <CircleMarker center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
           <Tooltip permanent direction="left" className="map-label">Habitat</Tooltip>
         </CircleMarker>
-        <CircleMarker center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#3ddc97', fillOpacity: 1, weight: 2 }}>
-          <Tooltip permanent direction="right" className="map-label">Observation point</Tooltip>
+        <CircleMarker center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
+          {/* Amber, not green: the point is an unconfirmed candidate, not a cleared site. */}
+          <Tooltip permanent direction="right" className="map-label">Observation point (candidate)</Tooltip>
         </CircleMarker>
 
         {stage === 'rover' && (

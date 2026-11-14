@@ -9,7 +9,7 @@ import {
   ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES,
   COVERAGE_STATES, SENSORS,
   type HazardCollection, type RouteCollection, type CoverageCollection,
-  type Mission, type OverlayBounds,
+  type Mission, type OverlayBounds, type HiriseMeta,
 } from './types.ts';
 import { silentLogger, type Logger } from '../lib/logger.ts';
 
@@ -25,6 +25,7 @@ export interface MissionData {
   coverage: CoverageCollection | null;
   mission: Mission | null;
   hiriseBounds: OverlayBounds | null;
+  hiriseMeta: HiriseMeta | null;
   slopeBounds: OverlayBounds | null;
   issues: LoadIssue[];
   placeholderFiles: string[];
@@ -175,6 +176,44 @@ function checkMission(data: Mission, issues: LoadIssue[], ids: Set<string>): voi
   }
 }
 
+export function checkOverlayBounds(raw: unknown, file: string, issues: LoadIssue[]): OverlayBounds | null {
+  // Purpose: accept an overlay bounds file only if it can place the image correctly.
+  // A misplaced image is worse than none, so bad bounds are an error and return null (not drawn).
+  if (raw === null) return null;
+  const b = raw as Partial<OverlayBounds>;
+  const nums = [b.south, b.west, b.north, b.east];
+  if (!nums.every((v) => typeof v === 'number' && Number.isFinite(v))) {
+    issues.push({ file, severity: 'error', message: 'south, west, north and east must be numbers.' });
+    return null;
+  }
+  const [south, west, north, east] = nums as number[];
+  if (!(-90 <= south && south < north && north <= 90 && -180 <= west && west < east && east <= 180)) {
+    issues.push({ file, severity: 'error', message: 'Bounds must be signed degrees with south < north and west < east (longitude -180..180).' });
+    return null;
+  }
+  checkSchemaVersion(b, file, issues);
+  if (!b.source || !b.processing) {
+    issues.push({ file, severity: 'warning', message: 'Overlay has no source/processing provenance.' });
+  }
+  return b as OverlayBounds;
+}
+
+export function checkHiriseMeta(raw: unknown, file: string, issues: LoadIssue[]): HiriseMeta | null {
+  // Purpose: check the HD image metadata the map states to viewers (pixel size, alignment).
+  // Missing or malformed metadata only removes the caption; the image itself still draws.
+  if (raw === null) return null;
+  const m = raw as Partial<HiriseMeta>;
+  const pairOk = (p: unknown) => Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === 'number' && v > 0);
+  if (!pairOk(m.output_pixels) || !pairOk(m.ground_sampling_m_ew_ns) || typeof m.landmark_alignment !== 'string') {
+    issues.push({ file, severity: 'warning', message: 'Image metadata incomplete; resolution and alignment not shown.' });
+    return null;
+  }
+  if (m.resampling !== 'none_native' && m.resampling !== 'average_nodata_aware') {
+    issues.push({ file, severity: 'warning', message: `Image resampling "${String(m.resampling)}" is not native resolution.` });
+  }
+  return m as HiriseMeta;
+}
+
 // ---------- main entry point ----------
 
 export async function loadMissionData(baseUrl: string, logger: Logger = silentLogger): Promise<MissionData> {
@@ -208,6 +247,13 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
   if (coverage) checkCoverage(coverage, issues, ids);
   if (mission) checkMission(mission, issues, ids);
 
+  // The HD image's metadata is only fetched when the image itself is published.
+  const hiriseBounds = checkOverlayBounds(hiriseRaw, 'hirise.bounds.json', issues);
+  const slopeBounds = checkOverlayBounds(slopeRaw, 'slope.bounds.json', issues);
+  const hiriseMeta = hiriseBounds
+    ? checkHiriseMeta(await fetchJson(baseUrl, 'hirise.meta.json', issues, 'warning'), 'hirise.meta.json', issues)
+    : null;
+
   const placeholderFiles = [
     ['hazards.geojson', hazards],
     ['routes.geojson', routes],
@@ -233,7 +279,9 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     routes: routes?.features.length ?? 0,
     coverage_zones: coverage?.features.length ?? 0,
     placeholder_files: placeholderFiles,
-    overlays: { hirise: hiriseRaw !== null, slope: slopeRaw !== null },
+    overlays: { hirise: hiriseBounds !== null, slope: slopeBounds !== null },
+    hirise_pixels: hiriseMeta?.output_pixels ?? null,
+    hirise_alignment: hiriseMeta?.landmark_alignment ?? null,
   });
 
   return {
@@ -241,8 +289,9 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     routes,
     coverage,
     mission,
-    hiriseBounds: hiriseRaw as OverlayBounds | null,
-    slopeBounds: slopeRaw as OverlayBounds | null,
+    hiriseBounds,
+    hiriseMeta,
+    slopeBounds,
     issues,
     placeholderFiles,
   };

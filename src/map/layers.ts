@@ -19,7 +19,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
 
 export const LAYER_LABELS: Record<keyof LayerVisibility, string> = {
   color: 'Mars color (Viking color mosaic)',
-  hirise: 'HiRISE image (25 cm)',
+  hirise: 'HiRISE image (0.25 m sampling)', // map sampling, not optical resolution (~1 m objects)
   slope: 'Slope map',
   hazards: 'Hazards',
   coverage: 'Scouting coverage',

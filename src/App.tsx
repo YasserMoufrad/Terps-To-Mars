@@ -58,7 +58,7 @@ export function App() {
 
   if (!data) return <div className="loading">Loading mission data…</div>;
 
-  const { mission, hazards, routes, coverage, hiriseBounds, slopeBounds } = data;
+  const { mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, slopeBounds } = data;
   const ready = mission && hazards && routes && coverage;
 
   // A layer can only be switched on if its data exists.
@@ -105,6 +105,7 @@ export function App() {
               routes={routes}
               coverage={coverage}
               hiriseBounds={hiriseBounds}
+              hiriseMeta={hiriseMeta}
               slopeBounds={slopeBounds}
               layers={layers}
               onSelectHazard={setSelectedHazard}

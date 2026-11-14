@@ -1,0 +1,57 @@
+{
+  "effective_resolution_m": [
+    0.24915629140975,
+    0.24915629140975
+  ],
+  "format": "jpg",
+  "ground_sampling_m_ew_ns": [
+    0.2269405730209165,
+    0.24915629140975
+  ],
+  "jpeg_quality": 95,
+  "landmark_alignment": "measured_exceeds_tolerance",
+  "limitations": "Map-projected 0.25 m sampling is not 0.25 m optical resolution; visible rocks are candidates requiring inspection, not verified hazards; the DTM stays ~1 m.",
+  "nodata_fraction": 0.0,
+  "nodata_rendering": "none_present",
+  "nodata_value": 0,
+  "output_pixels": [
+    4093,
+    4088
+  ],
+  "published_bytes": 4565841,
+  "registration_max_m": 1.0484301251288293,
+  "registration_patches": 9,
+  "registration_reference": "ESP_071006_2345_RED_C_01_ORTHO.JP2",
+  "registration_rms_m": 0.856803226465998,
+  "reprojection": "none",
+  "requested_bounds": [
+    54.15487900942568,
+    -147.9179255521268,
+    54.17212099057432,
+    -147.89107444787322
+  ],
+  "resampling": "none_native",
+  "review_state": "diagnostic_unverified",
+  "schema_version": "1.0",
+  "source": "ESP_071006_2345_RED_A_01_ORTHO.JP2",
+  "source_crs": "PROJCS[\"Equirectangular MARS\",GEOGCS[\"GCS_MARS\",DATUM[\"D_MARS\",SPHEROID[\"MARS_localRadius\",3384416.5044892,0]],PRIMEM[\"Reference_Meridian\",0],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9122\"]]],PROJECTION[\"Equirectangular\"],PARAMETER[\"standard_parallel_1\",50],PARAMETER[\"central_meridian\",212.12],PARAMETER[\"false_easting\",0],PARAMETER[\"false_northing\",0],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]",
+  "source_pixels": [
+    4093,
+    4088
+  ],
+  "source_resolution_m": [
+    0.24915629140975,
+    0.24915629140975
+  ],
+  "source_window_px": [
+    10020,
+    19359,
+    4093,
+    4088
+  ],
+  "stretch": {
+    "high": 211.0,
+    "low": 64.0,
+    "method": "percentile"
+  }
+}

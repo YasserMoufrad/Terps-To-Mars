@@ -19,6 +19,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-14 · Nic: 4K HiRISE on the map (branch `pipeline/hirise-registration-and-science-view`): real `public/data/hirise.jpg` + bounds + meta published by new `pipeline.publish_imagery` (4093×4088 native px, 4.6 MB, centred 54.1635, −147.9045 to cover Geury's ice bands, work site and observation points); `pipeline.registration` vs RED_C: 9/9 patches, RMS 0.86 m, max 1.05 m, consistent ~0.63 m N / ~0.55 m W shift (`measured_exceeds_tolerance`, reported, not corrected); PNG export with transparent no-data and no-data-aware averaging; `preview_hd --format png`. **Edited Yasser's `src/` at Nic's request:** map zoom 18, HiRISE in its own pane under the Viking color blend, "Zoom to HiRISE detail" control, caption with sampling (not optical resolution) and measured alignment, loader checks bounds (bad bounds = error, not drawn) and optional `hirise.meta.json`, primary observation marker amber "(candidate)", layer label "0.25 m sampling"; new `tests/hiriseImagery.test.mjs`
+- 2026-11-14 · Nic: answered Yasser's asks on #14/#15; ran `data/site/feasibility_audit*.json` on the real DTM (walk-only `infeasible` on the 4.1 km lower bound; from parking `no_route_found` until scarp measurements exist; habitat and backup point have ≥20° slope within 15 m); #13 now accepts `window_latlon`
 - 2026-11-14 · Nic: Patch A native-resolution HiRISE (branch `pipeline/high-resolution-hirise-overlay`): downloaded `ESP_071006_2345_RED_A_01_ORTHO.JP2` (390,402,430 bytes, SHA-256 `ab1d5f6c…1d12`, 0.249 m/pixel, 30081×50631, 8-bit); `export_hirise_hd` + `python -m pipeline.preview_hd`; real diagnostic preview at 54.144, −147.894 = 4091×4088 native pixels (~930 m × 1020 m ground; 0.227 m E-W / 0.249 m N-S ground sampling), no resampling or warp, JPEG q95 4.2 MB, 254 s decode; visibly sharper than the 1 m ORTHO on the same area. 96 Docker Python tests (20 new), 20 frontend tests. Not done: tile pyramid, map zoom > 15, `run.py` integration, landmark alignment (`not_verified`); preview centre is not the confirmed scarp
 - 2026-11-14 · Yasser: project deployed to Vercel at https://terps-to-mars.vercel.app (auto-deploys `main`, preview per PR; build command `npm run build -- --base=/` because Vercel serves from the root; GitHub Pages unchanged)
 - 2026-11-14 · Yasser's agent (PR #11): real Mars color on the basemap from the Viking MDIM 2.1 color mosaic, blended over CTX detail with CSS `mix-blend-mode: color` in its own pane (data layers unaffected), with a layer toggle; MGS MOC color atlas rejected (fully gray at this site); basemap tile failures logged once per layer (`map/tiles.error`) with 4 tests
@@ -70,6 +72,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Decision log
 
+- 2026-11-14 · Nic: HD imagery reaches `public/data/` only through `pipeline.publish_imagery` (native or no-data-aware pixels, ≤4096 px, provenance + measured alignment in `hirise.meta.json`, additive so schema stays 1.0); map max zoom 18
 - 2026-11-14 · Nic: team second-pass request adopts provisional one-height rockfall buffer, nearest odd roughness window with uncertainty disclosure, and uv dependency management; schema remains 1.0
 - 2026-11-14 · Site: Scarps in Milankovic Crater (only northern-hemisphere site of Dundas et al. 2018)
 - 2026-11-14 · Stack: Vite + React + TypeScript + react-leaflet on GitHub Pages; Python pipeline
@@ -80,6 +83,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Open questions
 
+- Geury: in the 0.25 m HiRISE crop the bright cliff face sits at ~54.164 N (matches `ice-upper-band`); `ice-main-band` (54.1608–54.1619) lines up with a fainter feature. Labels swapped or traced from another image?
+- Yasser: `src/` was edited for the 4K overlay (see Done); review when convenient. Transparent-edge PNG overlays would need the map to load `hirise.png`; not needed for the current crop (no no-data)
 - Yasser + Nic: agree optional `relief.png`/`relief.bounds.json` and `mission.json` `labels` (proposed in IMPLEMENTATION section 4; not implemented; decide whether `schema_version` bumps). Nic: fine to add as optional.
 - Nic's answer to Yasser's agent: the HiRISE overlay export does not need Geury's endpoints, only an agreed crop box. The ~1 m ORTHO we downloaded gives ~1 m pixels; a sharper overlay needs the 0.25 m HiRISE RED image (separate download, size to confirm) and its own PR. Real hazards/routes still need from Geury: habitat, scarp foot, primary and backup observation points, drone perch; plus measured scarp height/apron and manual scarp/landmark QC. PR #6 is merged. No ETA for real routes until those arrive. 3D still: not started.
 - ~~Yasser / PR #8: proposed/candidate wording, placeholder labels, inspection-required vs failed routes~~ Resolved in PR #8 (see Done).
