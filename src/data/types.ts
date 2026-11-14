@@ -1,6 +1,7 @@
 // Types for the data files in public/data/.
 // They mirror the data contract in docs/IMPLEMENTATION.md, section 4.
 // If the contract changes, change it there first, then here, and bump SCHEMA_VERSION.
+// This file has no imports, so the Node test runner can load it directly.
 
 export const SCHEMA_VERSION = '1.0';
 
@@ -150,7 +151,7 @@ export interface Discovery {
   uncertainty: string;
   decision: 'continue' | 'reroute' | 'request_input' | 'stop';
   options: DiscoveryOption[];
-  chosen_option: string;
+  chosen_option: string; // '' = the crew has not decided yet
 }
 
 export interface Mission {
