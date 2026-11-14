@@ -1,10 +1,12 @@
 // The map itself: Mars basemap tiles plus our data layers for the current stage.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { GeoJsonObject } from 'geojson';
-import { MapContainer, TileLayer, GeoJSON, CircleMarker, Tooltip, ImageOverlay } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Tooltip, ImageOverlay, Pane } from 'react-leaflet';
+import { appLogger } from '../lib/appLogger';
+import { createTileErrorReporter, type TileCoords } from './tileErrors';
 import type {
   StageId, Mission, HazardCollection, RouteCollection, CoverageCollection,
   HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds,
@@ -25,6 +27,15 @@ const CTX_ATTRIBUTION = 'CTX: NASA/JPL/MSSS, Caltech Murray Lab, Esri';
 const THEMIS_URL =
   'https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png';
 const THEMIS_ATTRIBUTION = 'THEMIS: NASA/JPL/ASU via Mars Trek';
+
+// Real Mars color from the Viking MDIM 2.1 global color mosaic (232 m/px, via Mars Trek).
+// It is coarse (tiles stop at zoom 7 here), so it is blended with CSS `mix-blend-mode:
+// color`: hue and saturation come from this real color data, brightness and detail
+// from the CTX tiles underneath. No invented tint. (The MGS MOC color atlas was tried
+// first but is fully gray at this site.)
+const VIKING_COLOR_URL =
+  'https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg';
+const VIKING_COLOR_ATTRIBUTION = 'Color: Viking MDIM 2.1 color mosaic, NASA/USGS via Mars Trek';
 
 const EVIDENCE_LABEL = { nasa_derived: 'NASA-derived', inferred: 'Inferred', simulated: 'Simulated' } as const;
 
@@ -68,6 +79,21 @@ export function MarsMap({
   // `imageryLoaded` hides the loading message once the first CTX tiles arrive.
   const [imageryLoaded, setImageryLoaded] = useState(false);
 
+  // One tile-error reporter per basemap layer, created once for the life of the map.
+  const tileErrors = useMemo(
+    () => ({
+      themis: createTileErrorReporter(appLogger, 'themis_day_ir'),
+      ctx9: createTileErrorReporter(appLogger, 'ctx_z9'),
+      ctx10: createTileErrorReporter(appLogger, 'ctx_z10'),
+      color: createTileErrorReporter(appLogger, 'viking_color'),
+    }),
+    [],
+  );
+  const onTileError = (reporter: { report: (c: TileCoords) => void }) => ({
+    // Leaflet's tileerror event carries the failed tile's z/x/y in `coords`.
+    tileerror: (e: L.TileErrorEvent) => reporter.report(e.coords),
+  });
+
   const visibleHazards = hazardsFor(stage, hazards);
   const visibleCoverage = coverageFor(stage, coverage, mission);
   const stageRoutes = routesFor(stage, routes, mission);
@@ -93,18 +119,38 @@ export function MarsMap({
           points={[mission.endpoints.habitat, mission.endpoints.observation_primary]}
         />
 
-        <TileLayer url={THEMIS_URL} attribution={THEMIS_ATTRIBUTION} maxNativeZoom={9} maxZoom={15} />
+        <TileLayer
+          url={THEMIS_URL}
+          attribution={THEMIS_ATTRIBUTION}
+          maxNativeZoom={9}
+          maxZoom={15}
+          eventHandlers={onTileError(tileErrors.themis)}
+        />
         {/* Three layers, best on top. The CTX server sometimes fails a zoom-10 tile
             (HTTP 500); when that happens the zoom-9 CTX copy underneath shows through,
             and THEMIS is the last resort. A failed tile never leaves a black hole. */}
-        <TileLayer url={CTX_URL} maxNativeZoom={9} maxZoom={15} />
+        <TileLayer url={CTX_URL} maxNativeZoom={9} maxZoom={15} eventHandlers={onTileError(tileErrors.ctx9)} />
         <TileLayer
           url={CTX_URL}
           attribution={CTX_ATTRIBUTION}
           maxNativeZoom={10}
           maxZoom={15}
-          eventHandlers={{ load: () => setImageryLoaded(true) }}
+          eventHandlers={{ load: () => setImageryLoaded(true), ...onTileError(tileErrors.ctx10) }}
         />
+
+        {/* Real Mars color, in its own pane just above the tiles (tilePane is z-index 200,
+            overlays start at 400) so it colors the basemap but never the data layers. */}
+        {layers.color && (
+          <Pane name="mars-color" style={{ zIndex: 250, mixBlendMode: 'color' }}>
+            <TileLayer
+              url={VIKING_COLOR_URL}
+              attribution={VIKING_COLOR_ATTRIBUTION}
+              maxNativeZoom={7}
+              maxZoom={15}
+              eventHandlers={onTileError(tileErrors.color)}
+            />
+          </Pane>
+        )}
 
         {/* Pipeline images: drawn only once Nic's bounds files exist and the toggle is on. */}
         {hiriseBounds && layers.hirise && (

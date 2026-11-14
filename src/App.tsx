@@ -62,7 +62,10 @@ export function App() {
   const ready = mission && hazards && routes && coverage;
 
   // A layer can only be switched on if its data exists.
-  const available = { hirise: hiriseBounds !== null, slope: slopeBounds !== null, hazards: true, coverage: true };
+  // The Mars color layer comes from Mars Trek tiles, so it is always available.
+  const available = {
+    color: true, hirise: hiriseBounds !== null, slope: slopeBounds !== null, hazards: true, coverage: true,
+  };
 
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
   const routeNotices =
