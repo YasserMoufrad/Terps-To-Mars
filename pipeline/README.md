@@ -6,6 +6,7 @@ From the repository root, use Python 3.11 or newer:
 
 ```sh
 python -m pip install -r pipeline/requirements.txt
+python -m pipeline.validate_contract
 python -m pytest pipeline/tests
 ```
 

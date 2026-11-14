@@ -53,6 +53,7 @@ The Python contract checks use Python 3.11 or newer:
 
 ```bash
 python -m pip install -r pipeline/requirements.txt
+python -m pipeline.validate_contract
 python -m pytest pipeline/tests
 ```
 
