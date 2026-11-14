@@ -11,6 +11,10 @@ BASE = "https://hirise.lpl.arizona.edu/PDS/DTM/ESP/ORB_071000_071099/ESP_071085_
 SOURCES = {
     "dtm": "DTEEC_071085_2345_071006_2345_A01.IMG",
     "image": "ESP_071006_2345_RED_C_01_ORTHO.JP2",
+    # Full-resolution (~0.25 m/pixel, 8-bit, 30081x50631) orthoimage for visual inspection
+    # only; the DTM stays the elevation source. ~390 MB, never committed.
+    "image_hd": "ESP_071006_2345_RED_A_01_ORTHO.JP2",
+    "image_hd_label": "ESP_071006_2345_RED_A_01_ORTHO.LBL",
 }
 
 

@@ -243,6 +243,7 @@ The pipeline precomputes both versions; nothing is simulated live in the browser
 10. Discovery scenario: insert the simulated hazard, re-run, export before/after.
 11. Shadow layer from the DTM using the image's Sun geometry (labeled illustrative lighting).
 12. Reproject outputs to Mars lat/lon, downsample, export, validate against the schema.
+13. Visual imagery: `export_hirise_hd` reads the 0.25 m RED_A orthoimage directly (windowed, no DTM-grid intermediate, no upscaling, area-average only when above 4096 px). The DTM remains the only source for slope, roughness, hazards and routes.
 
 Route search: cost grid from step 6, `skimage.graph.route_through_array` on the metric grid; convert the path to lat/lon only at export.
 
@@ -304,4 +305,5 @@ Route search: cost grid from step 6, `skimage.graph.route_through_array` on the 
 - [NASA exploration EVA testing and analogs (NTRS)](https://ntrs.nasa.gov/api/citations/20210000827/downloads/Exporation%20EVA%20Testing%20and%20Analogs%2020210000827.pdf)
 - [NASA Walkback test (NTRS)](https://ntrs.nasa.gov/api/citations/20080013604/downloads/20080013604.pdf)
 - [Perseverance driving updates (Oct 2026)](https://newspaceeconomy.ca/2026/10/22/perseverance-driving-updates-support-longer-autonomous-travel-on-mars/?amp=1)
+- [HiRISE DTM product directory](https://hirise.lpl.arizona.edu/PDS/DTM/ESP/ORB_071000_071099/ESP_071085_2345_ESP_071006_2345/): `ESP_071006_2345_RED_A_01_ORTHO.JP2` + `.LBL` (0.249 m/pixel, 8-bit), SHA-256 `ab1d5f6c3834d8046329e7771031409ed83c29b6ff277293074c4b8ede591d12`.
 - [JPL Open Source Rover](https://github.com/nasa-jpl/open-source-rover) (Apache-2.0)

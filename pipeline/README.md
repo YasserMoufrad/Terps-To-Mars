@@ -29,6 +29,18 @@ Acquire official inputs with `python -m pipeline.acquire dtm` and `python -m pip
 
 The provisional rockfall buffer is `max(visible apron, 1.0 × measured cliff height)`, not a NASA-certified distance. `hazard_masks(..., scarp_risk=mask)` marks a reviewed risk region. Missing edge/foot geometry, height or apron measurements produce `inspection_required` in that region, exported as inferred edge exclusions. Synthetic terrain defaults to cliff-free; NASA-derived terrain with no risk-region input conservatively treats the crop as unresolved. Explicit all-false `scarp_risk` is a reviewed cliff-free declaration, not an automatic inference. Route planning must block unresolved regions (implemented in the dependent routing PR).
 
+## Native-resolution HiRISE imagery (visual layer only)
+
+`python -m pipeline.acquire image_hd` downloads `ESP_071006_2345_RED_A_01_ORTHO.JP2` (390,402,430 bytes; 30081 x 50631 px, 8-bit, equirectangular, 50 N standard parallel, 3,384.4 km local sphere, 0.249 m/pixel, null 0) into ignored `pipeline/raw/` with a checksum manifest; `image_hd_label` fetches its `.LBL`. The Docker image's GDAL 3.9.3 decodes it with JP2OpenJPEG.
+
+`pipeline.export.export_hirise_hd` reads only the requested window straight from the source. It never passes imagery through the ~1 m DTM grid and never upscales. Equirectangular pixels map linearly to the map's lat/lon grid, so no warp is applied. Crops wider than `max_dimension` (default 4096) are area-averaged; JPEG quality is 95; a 2-98 % display stretch and an unenhanced reference are written. Projected metres are true only at 50 N: at 54.1 N an east-west pixel spans ~0.228 m of ground, so ~932 ground m gives 4096 native pixels. The 0.25 m map sampling is not 0.25 m optical resolution; visible rocks are candidates, not verified hazards. Alignment to the DTM is `not_verified` until landmark review.
+
+```bash
+docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.preview_hd --center-lat 54.144 --center-lon -147.894 --width-m 930 --height-m 1020 --output pipeline/output/hirise-hd-preview
+```
+
+The centre is a diagnostic coordinate, not the confirmed scarp. Output goes to an ignored directory (never `public/data/`). Decoding a ~4K window takes about four minutes. Tile pyramid and map zoom changes are a separate patch.
+
 ## Structured logs and traceability
 
 Standard-library logging emits JSON to stderr at INFO by default. Significant operations have a UTC timestamp, level, shared execution `run_id`, stage, event, duration and applicable source/evidence/entity/threshold fields. Nested operations reuse the same run ID; separate top-level calls get different IDs. No per-cell tracing is emitted. `PIPELINE_LOG_LEVEL=DEBUG` enables diagnostic detail; `PIPELINE_LOG_FILE=pipeline/logs/run.jsonl` adds an ignored JSONL file. For Docker, pass `-e PIPELINE_LOG_LEVEL=DEBUG -e PIPELINE_LOG_FILE=pipeline/logs/run.jsonl` and mount the repository read/write if persisting logs. `configure_logging(human=True)` offers readable console output while JSONL remains JSON. Configuration contents are fingerprinted rather than logged wholesale; never place secrets in scientific metadata.
