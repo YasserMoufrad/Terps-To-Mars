@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { Mission, StageId, HazardProperties } from '../data/types';
 import { DiscoveryCard } from './DiscoveryCard';
 import { EvidenceCard } from './EvidenceCard';
+import { alertSeverity } from './alertSeverity';
 
 interface StagePanelProps {
   stage: StageId;
@@ -54,10 +55,15 @@ export function StagePanel({
       )}
 
       {alerts.length > 0 && (
-        <section className="card alerts">
-          {alerts.map((a) => (
-            <div key={a}>{a}</div>
-          ))}
+        <section className="card alerts" aria-label="Alerts">
+          {alerts.map((a) => {
+            const severity = alertSeverity(a);
+            return (
+              <div key={a} className={`alert alert-${severity}`}>
+                <span className="alert-tag">{severity === 'stop' ? 'Stop' : severity === 'caution' ? 'Caution' : 'Info'}</span> {a}
+              </div>
+            );
+          })}
         </section>
       )}
 

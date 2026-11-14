@@ -9,7 +9,7 @@ import {
   ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES,
   COVERAGE_STATES, SENSORS,
   type HazardCollection, type RouteCollection, type CoverageCollection,
-  type Mission, type OverlayBounds,
+  type Mission, type OverlayBounds, type HiriseMeta, type HiriseTiles,
 } from './types.ts';
 import { silentLogger, type Logger } from '../lib/logger.ts';
 
@@ -25,6 +25,8 @@ export interface MissionData {
   coverage: CoverageCollection | null;
   mission: Mission | null;
   hiriseBounds: OverlayBounds | null;
+  hiriseMeta: HiriseMeta | null;
+  hiriseTiles: HiriseTiles[]; // wide, then context, then core (draw order); empty when not published
   slopeBounds: OverlayBounds | null;
   issues: LoadIssue[];
   placeholderFiles: string[];
@@ -84,6 +86,59 @@ function checkSchemaVersion(data: { schema_version?: unknown }, file: string, is
   }
 }
 
+const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+function coordinatesOk(c: unknown): boolean {
+  // Purpose: true when `c` is a GeoJSON position ([lon, lat] in signed degrees) or a non-empty
+  // nested array of positions. Rejects NaN/Infinity and longitudes outside -180..180 (e.g. 0..360 east).
+  if (!Array.isArray(c) || c.length === 0) return false;
+  if (c.every((v) => typeof v === 'number')) {
+    const [lon, lat] = c as number[];
+    return c.length >= 2 && c.every(Number.isFinite) && lon >= -180 && lon <= 180 && lat >= -90 && lat <= 90;
+  }
+  return c.every(coordinatesOk);
+}
+
+export function checkFeatureCollection(raw: unknown, file: string, issues: LoadIssue[]): unknown | null {
+  // Purpose: structural check before a GeoJSON file is cast to its contract type. A file that is not a
+  // FeatureCollection of features with object `properties`, a string `id` and valid geometry is an
+  // error and returns null, so later code never dereferences a missing field and crashes the page.
+  if (raw === null) return null;
+  if (!isObject(raw) || raw.type !== 'FeatureCollection' || !Array.isArray(raw.features)) {
+    issues.push({ file, severity: 'error', message: 'Not a GeoJSON FeatureCollection; file ignored.' });
+    return null;
+  }
+  const bad = raw.features.findIndex((f: unknown) => !isObject(f) || !isObject(f.properties)
+    || typeof f.properties.id !== 'string' || !isObject(f.geometry) || typeof f.geometry.type !== 'string'
+    || !coordinatesOk(f.geometry.coordinates));
+  if (bad >= 0) {
+    issues.push({ file, severity: 'error', message: `Feature ${bad} has no id, properties or valid [lon, lat] geometry; file ignored.` });
+    return null;
+  }
+  return raw;
+}
+
+export function checkMissionShape(raw: unknown, issues: LoadIssue[]): unknown | null {
+  // Purpose: structural check of mission.json (site, stages, discovery with options, drone) before it
+  // is cast; a malformed file is an error and returns null instead of crashing the panel.
+  if (raw === null) return null;
+  const ok = isObject(raw) && isObject(raw.site) && typeof raw.site.name === 'string' && Array.isArray(raw.stages)
+    && raw.stages.every((st: unknown) => isObject(st) && typeof st.id === 'string')
+    && isObject(raw.discovery) && Array.isArray(raw.discovery.options) && isObject(raw.drone);
+  if (!ok) {
+    issues.push({ file: 'mission.json', severity: 'error', message: 'mission.json is missing site, stages, discovery or drone; file ignored.' });
+    return null;
+  }
+  return raw;
+}
+
+function addId(id: string, label: string, file: string, ids: Set<string>, issues: LoadIssue[]): void {
+  // Purpose: register a stable id; a duplicate makes mission.json references ambiguous, so it is an error.
+  if (ids.has(id)) issues.push({ file, severity: 'error', message: `${label} id "${id}" is used more than once.` });
+  ids.add(id);
+}
+
 // ---------- per-file checks ----------
 
 function checkHazards(data: HazardCollection, issues: LoadIssue[], ids: Set<string>): void {
@@ -94,7 +149,7 @@ function checkHazards(data: HazardCollection, issues: LoadIssue[], ids: Set<stri
   for (const f of data.features) {
     const p = f.properties;
     const label = `hazard ${p.id}`;
-    ids.add(p.id);
+    addId(p.id, 'hazard', file, ids, issues);
     checkAllowed(p.type, HAZARD_TYPES, `${label} type`, file, issues);
     checkAllowed(p.category, HAZARD_CATEGORIES, `${label} category`, file, issues);
     checkAllowed(p.severity, SEVERITIES, `${label} severity`, file, issues);
@@ -112,7 +167,7 @@ function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string
   for (const f of data.features) {
     const p = f.properties;
     const label = `route ${p.id}`;
-    ids.add(p.id);
+    addId(p.id, 'route', file, ids, issues);
     checkAllowed(p.kind, ROUTE_KINDS, `${label} kind`, file, issues);
     checkAllowed(p.agent, ROUTE_AGENTS, `${label} agent`, file, issues);
     checkAllowed(p.version, ROUTE_VERSIONS, `${label} version`, file, issues);
@@ -133,7 +188,7 @@ function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<s
   for (const f of data.features) {
     const p = f.properties;
     const label = `coverage ${p.id}`;
-    ids.add(p.id);
+    addId(p.id, 'coverage', file, ids, issues);
     checkAllowed(p.state, COVERAGE_STATES, `${label} state`, file, issues);
     checkAllowed(p.sensor, SENSORS, `${label} sensor`, file, issues);
     // Honesty rule: robot coverage in this demo is always simulated.
@@ -175,6 +230,93 @@ function checkMission(data: Mission, issues: LoadIssue[], ids: Set<string>): voi
   }
 }
 
+export function checkOverlayBounds(raw: unknown, file: string, issues: LoadIssue[]): OverlayBounds | null {
+  // Purpose: accept an overlay bounds file only if it can place the image correctly.
+  // A misplaced image is worse than none, so bad bounds are an error and return null (not drawn).
+  if (raw === null) return null;
+  const b = raw as Partial<OverlayBounds>;
+  const nums = [b.south, b.west, b.north, b.east];
+  if (!nums.every((v) => typeof v === 'number' && Number.isFinite(v))) {
+    issues.push({ file, severity: 'error', message: 'south, west, north and east must be numbers.' });
+    return null;
+  }
+  const [south, west, north, east] = nums as number[];
+  if (!(-90 <= south && south < north && north <= 90 && -180 <= west && west < east && east <= 180)) {
+    issues.push({ file, severity: 'error', message: 'Bounds must be signed degrees with south < north and west < east (longitude -180..180).' });
+    return null;
+  }
+  if (b.schema_version !== SCHEMA_VERSION) {
+    // A different contract version may mean different corner semantics: never draw it.
+    checkSchemaVersion(b, file, issues);
+    return null;
+  }
+  if (!b.source || !b.processing) {
+    issues.push({ file, severity: 'warning', message: 'Overlay has no source/processing provenance.' });
+  }
+  return b as OverlayBounds;
+}
+
+export const ALIGNMENT_STATES = [
+  'not_verified', 'measured_within_tolerance', 'measured_exceeds_tolerance', 'insufficient_landmarks',
+] as const;
+
+export function checkHiriseMeta(raw: unknown, file: string, issues: LoadIssue[]): HiriseMeta | null {
+  // Purpose: check the HD image metadata the map states to viewers (pixel size, sampling, alignment).
+  // Returns null with an error when it is malformed or not native resolution; the loader then refuses
+  // to draw the image, because an image with wrong provenance must not look authoritative.
+  if (raw === null) return null;
+  const m = raw as Partial<HiriseMeta>;
+  const pair = (p: unknown, lo: number, hi: number) => Array.isArray(p) && p.length === 2
+    && p.every((v) => finite(v) && v >= lo && v <= hi);
+  const reasons: string[] = [];
+  if (!pair(m.output_pixels, 1, 16384) || !(m.output_pixels as number[]).every(Number.isInteger)) {
+    reasons.push('output_pixels must be two integers in 1..16384');
+  }
+  if (!pair(m.ground_sampling_m_ew_ns, 0.05, 2)) reasons.push('ground_sampling_m_ew_ns must be two values in 0.05..2 m');
+  if (!(ALIGNMENT_STATES as readonly unknown[]).includes(m.landmark_alignment)) {
+    reasons.push(`landmark_alignment "${String(m.landmark_alignment)}" is not a known state`);
+  }
+  if (m.resampling !== 'none_native' && m.resampling !== 'average_nodata_aware') {
+    reasons.push(`resampling "${String(m.resampling)}" is not native resolution`);
+  }
+  for (const key of ['registration_rms_m', 'registration_max_m'] as const) {
+    const v = m[key];
+    if (v !== undefined && !(finite(v) && v >= 0 && v < 100)) reasons.push(`${key} must be a finite non-negative distance`);
+  }
+  if (reasons.length > 0) {
+    issues.push({ file, severity: 'error', message: `HiRISE metadata rejected: ${reasons.join('; ')}.` });
+    return null;
+  }
+  return m as HiriseMeta;
+}
+
+export function checkHiriseTiles(raw: unknown, file: string, issues: LoadIssue[]): HiriseTiles | null {
+  // Purpose: accept a tile set only if Leaflet can place and request it correctly.
+  // A malformed set is skipped with a warning; the single 4K overlay and CTX still show.
+  if (raw === null) return null;
+  const t = raw as Partial<HiriseTiles>;
+  const b = t.bounds;
+  const boundsOk = !!b && [b.south, b.west, b.north, b.east].every((v) => typeof v === 'number' && Number.isFinite(v))
+    && -90 <= b.south && b.south < b.north && b.north <= 90 && -180 <= b.west && b.west < b.east && b.east <= 180;
+  const zoomOk = Number.isInteger(t.min_zoom) && Number.isInteger(t.max_native_zoom)
+    && (t.min_zoom as number) <= (t.max_native_zoom as number) && (t.max_native_zoom as number) <= 19;
+  const urlOk = typeof t.url_template === 'string' && /\{z\}.*\{x\}.*\{y\}/.test(t.url_template) && !t.url_template.includes('..');
+  if (!boundsOk || !zoomOk || !urlOk || !['wide', 'context', 'core'].includes(t.role as string)) {
+    issues.push({ file, severity: 'warning', message: 'HiRISE tile set is malformed and was skipped.' });
+    return null;
+  }
+  checkSchemaVersion(t, file, issues);
+  return t as HiriseTiles;
+}
+
+async function fetchOptional(baseUrl: string, file: string, issues: LoadIssue[]): Promise<unknown | null> {
+  // Purpose: fetch a file that may legitimately be absent (no issue for 404); parse errors still warn.
+  const local: LoadIssue[] = [];
+  const result = await fetchJson(baseUrl, file, local, 'warning');
+  issues.push(...local.filter((i) => !/HTTP 404|File not found/.test(i.message)));
+  return result;
+}
+
 // ---------- main entry point ----------
 
 export async function loadMissionData(baseUrl: string, logger: Logger = silentLogger): Promise<MissionData> {
@@ -197,16 +339,31 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     fetchJson(baseUrl, 'slope.bounds.json', issues, 'warning'),
   ]);
 
-  const hazards = hazardsRaw as HazardCollection | null;
-  const routes = routesRaw as RouteCollection | null;
-  const coverage = coverageRaw as CoverageCollection | null;
-  const mission = missionRaw as Mission | null;
+  // Shape first: only structurally valid files are cast to their contract types.
+  const hazards = checkFeatureCollection(hazardsRaw, 'hazards.geojson', issues) as HazardCollection | null;
+  const routes = checkFeatureCollection(routesRaw, 'routes.geojson', issues) as RouteCollection | null;
+  const coverage = checkFeatureCollection(coverageRaw, 'coverage.geojson', issues) as CoverageCollection | null;
+  const mission = checkMissionShape(missionRaw, issues) as Mission | null;
 
   // GeoJSON files first, so their IDs are known before mission.json is checked.
   if (hazards) checkHazards(hazards, issues, ids);
   if (routes) checkRoutes(routes, issues, ids);
   if (coverage) checkCoverage(coverage, issues, ids);
   if (mission) checkMission(mission, issues, ids);
+
+  // The HD image's metadata is only fetched when the image itself is published.
+  // Missing metadata (an older publish) keeps the image without a caption; metadata that is present
+  // but invalid withdraws the image, so a malformed HD asset never draws just because bounds exist.
+  let hiriseBounds = checkOverlayBounds(hiriseRaw, 'hirise.bounds.json', issues);
+  const slopeBounds = checkOverlayBounds(slopeRaw, 'slope.bounds.json', issues);
+  const hiriseMetaRaw = hiriseBounds ? await fetchJson(baseUrl, 'hirise.meta.json', issues, 'warning') : null;
+  const hiriseMeta = checkHiriseMeta(hiriseMetaRaw, 'hirise.meta.json', issues);
+  if (hiriseMetaRaw !== null && hiriseMeta === null) hiriseBounds = null;
+  // Tile pyramids are optional: whole strip (low zoom) first, ~1 m context ring, native core on top.
+  const hiriseTiles = (await Promise.all(['wide', 'context', 'core'].map(async (role) => {
+    const file = `hirise-tiles/${role}/tiles.json`;
+    return checkHiriseTiles(await fetchOptional(baseUrl, file, issues), file, issues);
+  }))).filter((t): t is HiriseTiles => t !== null);
 
   const placeholderFiles = [
     ['hazards.geojson', hazards],
@@ -233,7 +390,10 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     routes: routes?.features.length ?? 0,
     coverage_zones: coverage?.features.length ?? 0,
     placeholder_files: placeholderFiles,
-    overlays: { hirise: hiriseRaw !== null, slope: slopeRaw !== null },
+    overlays: { hirise: hiriseBounds !== null, slope: slopeBounds !== null },
+    hirise_pixels: hiriseMeta?.output_pixels ?? null,
+    hirise_alignment: hiriseMeta?.landmark_alignment ?? null,
+    hirise_tiles: hiriseTiles.map((t) => `${t.role}:z${t.min_zoom}-${t.max_native_zoom}`),
   });
 
   return {
@@ -241,8 +401,10 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     routes,
     coverage,
     mission,
-    hiriseBounds: hiriseRaw as OverlayBounds | null,
-    slopeBounds: slopeRaw as OverlayBounds | null,
+    hiriseBounds,
+    hiriseMeta,
+    hiriseTiles,
+    slopeBounds,
     issues,
     placeholderFiles,
   };

@@ -145,15 +145,18 @@ def _validate_mars_image(dataset):
     return parameters, radius
 
 
-def stretch_to_uint8(values, valid, stretch):
+def stretch_to_uint8(values, valid, stretch, eight_bit=None):
     """Map values (2D array) to uint8 using only valid pixels (bool mask).
 
     stretch: 'percentile' = deterministic 2nd-98th percentile display stretch;
     'none' = unenhanced reference (identity for 8-bit data, min-max otherwise).
+    eight_bit: the source was 8-bit (default: values.dtype is uint8); keeps 'none' an identity
+    after area averaging has turned values into floats.
     Returns (gray uint8 array, low, high); invalid pixels become 0.
     """
+    eight_bit = values.dtype == np.uint8 if eight_bit is None else eight_bit
     if stretch == "none":
-        if values.dtype == np.uint8:
+        if eight_bit:
             low, high = 0.0, 255.0
         else:
             low, high = float(values[valid].min()), float(values[valid].max())
@@ -167,16 +170,41 @@ def stretch_to_uint8(values, valid, stretch):
     return gray, low, high
 
 
-def _write_jpeg(gray, path, quality):
-    """Atomically write gray (2D uint8) to path as a grayscale JPEG at the given quality (1-100)."""
+HD_MAX_NATIVE_READ = 8192  # pixels per side decoded at once; larger crops must be split or tiled
+
+
+def _write_image(gray, valid, path, quality):
+    """Atomically write gray (2D uint8) to path; .png keeps no-data transparent, .jpg renders it black.
+
+    valid: bool mask of real pixels; used as the PNG alpha channel. quality applies to JPEG only.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=path.parent, delete=False, suffix=".tmp") as stream:
         temporary = Path(stream.name)
     try:
-        Image.fromarray(gray, mode="L").save(temporary, format="JPEG", quality=int(quality), optimize=True)
+        if path.suffix.lower() == ".png":
+            alpha = np.where(valid, 255, 0).astype(np.uint8)
+            Image.fromarray(np.stack([gray, alpha], axis=-1), mode="LA").save(temporary, format="PNG", optimize=True)
+        else:
+            Image.fromarray(gray, mode="L").save(temporary, format="JPEG", quality=int(quality), optimize=True)
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def reduce_ignoring_nodata(values, valid, out_shape):
+    """Area-average values (2D) to out_shape (rows, cols) using only valid pixels.
+
+    A plain average would blend the null value (0) into edge pixels and draw dark seams.
+    Returns (float32 values, valid mask); an output pixel is valid when at least half its
+    source area was valid.
+    """
+    size = (out_shape[1], out_shape[0])
+    total = Image.fromarray(np.where(valid, values, 0).astype(np.float32), mode="F").resize(size, Image.Resampling.BOX)
+    count = Image.fromarray(valid.astype(np.float32), mode="F").resize(size, Image.Resampling.BOX)
+    total, count = np.asarray(total), np.asarray(count)
+    reduced = np.divide(total, count, out=np.zeros_like(total), where=count > 0)
+    return reduced, count >= 0.5
 
 
 @traced("hd_imagery_export")
@@ -186,7 +214,8 @@ def export_hirise_hd(source_path, bounds, output_path, max_dimension=HD_MAX_DIME
     """Export a native-resolution HiRISE crop read directly from the source (never via the DTM grid).
 
     bounds: requested crop, signed Mars lat/lon degrees {south, west, north, east}.
-    max_dimension: output cap in pixels; larger crops are area-averaged, smaller crops are never upscaled.
+    max_dimension: output cap in pixels; larger crops are area-averaged ignoring no-data, smaller crops are never upscaled.
+    output_path: .jpg (no-data black) or .png (no-data transparent, for boundary crops).
     stretch: 'percentile' (display) or 'none' (unenhanced reference).
     nodata: source null value; defaults to the file's no-data, else HiRISE CORE_NULL 0.
     label: review state recorded in metadata; DTM landmark alignment is not verified here.
@@ -233,10 +262,11 @@ def export_hirise_hd(source_path, bounds, output_path, max_dimension=HD_MAX_DIME
         native_shape = (row1 - row0, col1 - col0)  # rows, columns of real source pixels
         scale = max(1.0, native_shape[0] / max_dimension, native_shape[1] / max_dimension)
         out_shape = (max(1, int(round(native_shape[0] / scale))), max(1, int(round(native_shape[1] / scale))))
-        resampling = "none_native" if out_shape == native_shape else "average"
-        # Windowed read decodes only the crop; any reduction is area averaging, never enlargement.
-        values = dataset.read(1, window=window, out_shape=out_shape,
-                              resampling=Resampling.average if resampling == "average" else Resampling.nearest)
+        resampling = "none_native" if out_shape == native_shape else "average_nodata_aware"
+        if max(native_shape) > HD_MAX_NATIVE_READ:
+            raise ValueError(f"Crop exceeds {HD_MAX_NATIVE_READ} native pixels per side; split it or use tiles")
+        # Windowed read decodes only the crop at native resolution; never enlarged.
+        values = dataset.read(1, window=window)
         crop_transform = window_transform(window, dataset.transform)
         projected = array_bounds(native_shape[0], native_shape[1], crop_transform)
         geo_west, geo_south, geo_east, geo_north = transform_bounds(dataset.crs, MARS_GEOGRAPHIC, *projected, densify_pts=21)
@@ -244,16 +274,21 @@ def export_hirise_hd(source_path, bounds, output_path, max_dimension=HD_MAX_DIME
     valid = values != null
     if np.issubdtype(values.dtype, np.floating):
         valid &= np.isfinite(values)
+    eight_bit = values.dtype == np.uint8
+    if resampling != "none_native":
+        values, valid = reduce_ignoring_nodata(values, valid, out_shape)
     if not valid.any():
         event("hd_crop_rejected", level=40, reason="no_valid_pixels", window=[col0, row0, native_shape[1], native_shape[0]])
         raise ValueError("Requested crop contains only no-data pixels")
     nodata_fraction = float((~valid).mean())
+    rendering = "transparent" if output_path.suffix.lower() == ".png" else "black"
     if nodata_fraction > 0:
-        event("hd_nodata_present", level=30, nodata_fraction=nodata_fraction, rendering="black_excluded_from_stretch")
-    gray, low, high = stretch_to_uint8(values, valid, stretch)
-    _write_jpeg(gray, output_path, quality)
+        event("hd_nodata_present", level=30, nodata_fraction=nodata_fraction,
+              rendering=f"{rendering}_excluded_from_stretch")
+    gray, low, high = stretch_to_uint8(values, valid, stretch, eight_bit)
+    _write_image(gray, valid, output_path, quality)
     if reference_path is not None:
-        _write_jpeg(stretch_to_uint8(values, valid, "none")[0], Path(reference_path), quality)
+        _write_image(stretch_to_uint8(values, valid, "none", eight_bit)[0], valid, Path(reference_path), quality)
     effective_m = (resolution_m[0] * native_shape[1] / out_shape[1], resolution_m[1] * native_shape[0] / out_shape[0])
     # Projected metres are true only at the standard parallel (lat_ts); east-west ground spacing
     # at the crop centre scales by cos(lat)/cos(lat_ts). ground_m is what a viewer actually sees.
@@ -262,7 +297,7 @@ def export_hirise_hd(source_path, bounds, output_path, max_dimension=HD_MAX_DIME
     ground_m = (float(effective_m[0] * ew_scale), float(effective_m[1]))
     processing = (f"Native HiRISE pixels read in a window from {source_path.name}; no DTM-grid intermediate; "
                   f"no warp (equirectangular is linear in lat/lon); resampling={resampling}; "
-                  f"stretch={stretch} [{low:.1f}, {high:.1f}]; JPEG q{int(quality)}; "
+                  f"stretch={stretch} [{low:.1f}, {high:.1f}]; {output_path.suffix.lstrip('.').upper()} (no-data {rendering}); "
                   f"effective {effective_m[0]:.3f} m/pixel projected, ~{ground_m[0]:.3f} m E-W ground; "
                   f"landmark_alignment=not_verified; {label}")
     payload = {"schema_version": "1.0", "south": geo_south, "west": signed_longitude(geo_west),
@@ -277,7 +312,7 @@ def export_hirise_hd(source_path, bounds, output_path, max_dimension=HD_MAX_DIME
             "effective_resolution_m": list(effective_m), "ground_sampling_m_ew_ns": list(ground_m),
             "resampling": resampling, "reprojection": "none",
             "stretch": {"method": stretch, "low": low, "high": high}, "jpeg_quality": int(quality),
-            "nodata_value": null, "nodata_fraction": nodata_fraction, "requested_bounds": [south, west, north, east],
+            "nodata_value": null, "nodata_fraction": nodata_fraction, "nodata_rendering": rendering, "format": output_path.suffix.lstrip(".").lower(), "requested_bounds": [south, west, north, east],
             "landmark_alignment": "not_verified", "review_state": label,
             "limitations": ("Map-projected 0.25 m sampling is not 0.25 m optical resolution; visible rocks are "
                             "candidates requiring inspection, not verified hazards; the DTM stays ~1 m.")}

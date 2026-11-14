@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import type { LatLon } from '../data/types';
 
-function collectPositions(value: unknown, out: [number, number][]): void {
+export function collectPositions(value: unknown, out: [number, number][]): void {
   // Purpose: walk any GeoJSON coordinates array (point, line or polygon) and push every
   // [lon, lat] position into `out` as Leaflet's [lat, lon].
   if (Array.isArray(value) && value.length === 2 && typeof value[0] === 'number' && typeof value[1] === 'number') {
