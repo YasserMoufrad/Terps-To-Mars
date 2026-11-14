@@ -1,0 +1,79 @@
+{
+  "type": "FeatureCollection",
+  "schema_version": "1.0",
+  "placeholder": true,
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "rt-orbital-guess-v1",
+        "kind": "orbital_guess",
+        "agent": "crew",
+        "version": "before",
+        "status": "ok",
+        "stats": { "length_m": 1000, "round_trip_m": 2000, "est_time_min": 40, "elevation_gain_m": 30, "max_slope_deg": 24, "shared_with_main_m": 0 }
+      },
+      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.137], [-147.893, 54.145]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "rt-crew-main-v1",
+        "kind": "main",
+        "agent": "crew",
+        "version": "before",
+        "status": "ok",
+        "stats": { "length_m": 820, "round_trip_m": 1640, "est_time_min": 35, "elevation_gain_m": 18, "max_slope_deg": 12, "shared_with_main_m": 0 }
+      },
+      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.892, 54.137], [-147.890, 54.141]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "rt-crew-main-v2",
+        "kind": "main",
+        "agent": "crew",
+        "version": "after",
+        "status": "ok",
+        "stats": { "length_m": 940, "round_trip_m": 1880, "est_time_min": 41, "elevation_gain_m": 21, "max_slope_deg": 13, "shared_with_main_m": 0 }
+      },
+      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.888, 54.131], [-147.884, 54.136], [-147.890, 54.141]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "rt-crew-backup-v1",
+        "kind": "backup",
+        "agent": "crew",
+        "version": "before",
+        "status": "ok",
+        "stats": { "length_m": 990, "round_trip_m": 1980, "est_time_min": 44, "elevation_gain_m": 15, "max_slope_deg": 11, "shared_with_main_m": 40 }
+      },
+      "geometry": { "type": "LineString", "coordinates": [[-147.890, 54.141], [-147.903, 54.138], [-147.908, 54.133], [-147.900, 54.128]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "rt-rover-v1",
+        "kind": "rover_path",
+        "agent": "rover",
+        "version": "before",
+        "status": "ok",
+        "stats": { "length_m": 1810, "round_trip_m": 1810, "est_time_min": 120, "elevation_gain_m": 18, "max_slope_deg": 12, "shared_with_main_m": 820 }
+      },
+      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.894, 54.135]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "rt-rover-v2",
+        "kind": "rover_path",
+        "agent": "rover",
+        "version": "after",
+        "status": "ok",
+        "stats": { "length_m": 1930, "round_trip_m": 1930, "est_time_min": 135, "elevation_gain_m": 21, "max_slope_deg": 13, "shared_with_main_m": 940 }
+      },
+      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.894, 54.135], [-147.888, 54.131], [-147.884, 54.136], [-147.890, 54.141], [-147.903, 54.138], [-147.908, 54.133], [-147.900, 54.128]] }
+    }
+  ]
+}

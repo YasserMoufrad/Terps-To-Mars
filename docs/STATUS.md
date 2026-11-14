@@ -7,7 +7,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 | Person | Working on | Next |
 | --- | --- | --- |
 | Nic | Project scaffold: Vite + React + TypeScript + react-leaflet, GitHub Pages deploy | Download and validate the Milankovic DTM + RED_C image; crop to the scarp |
-| Yasser | Managing; waiting for the scaffold | Placeholder data files per the contract; Mars map centered on Milankovic |
+| Yasser | Managing; placeholder data and tile URLs done (branch `ui/placeholder-data`) | Mars map centered on Milankovic once the scaffold lands |
 | Geury | Exact endpoints: scarp foot, habitat, primary and backup observation points (inside the color strip) | Ice evidence specific to this scarp; evidence panel text |
 | Samar / Yasser's agent | Hazard rules v1 done (in IMPLEMENTATION.md section 5) | Sensor ranges for coverage; decision states; discovery scenario |
 | Brianna | Rover CAD on the JPL Open Source Rover base: dock, mast | Specs to Samar; hold the drill until "observation only" is confirmed |
@@ -18,6 +18,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-14 · Yasser's agent: placeholder `routes`, `hazards`, `coverage` GeoJSON and `mission.json` at the site (contract check passes, 18 features); `public/data/SCHEMA.md`
+- 2026-11-14 · Yasser's agent: basemap tile URLs tested at the site (CTX z≤10, THEMIS z≤9, MOLA z≤7), see `docs/MAP_TILES.md`
 - 2026-11-14 · Yasser: repo created; README and `docs/IMPLEMENTATION.md` published
 - 2026-11-14 · Geury: site locked (Scarps in Milankovic Crater, DTM `DTEEC_071085_2345_071006_2345_A01`)
 - 2026-11-14 · Yasser's agent: hazard rules v1 with sources
@@ -52,6 +54,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 - Confirm mission objective: observation only, no sampling or drilling (proposed)
 - Final project name (placeholder: IceScout)
 - Nic registered at the same Local Event as the team?
+- Placeholder endpoints (habitat, observation points) are approximate; Geury to replace with real coordinates
+- CTX tiles come from the Esri OnMars server: check visually that they line up with MOLA and the HiRISE overlay
 
 ## Sync points
 

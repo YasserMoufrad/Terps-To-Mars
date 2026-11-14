@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "schema_version": "1.0",
+  "placeholder": true,
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "cov-orbit-001", "state": "orbit_only", "simulated": false, "sensor": "none" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.935, 54.124], [-147.855, 54.124], [-147.855, 54.150], [-147.935, 54.150], [-147.935, 54.124]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "cov-rover-001", "state": "rover_checked", "simulated": true, "sensor": "stereo_cam" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.910, 54.127], [-147.882, 54.127], [-147.882, 54.142], [-147.910, 54.142], [-147.910, 54.127]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "cov-drone-001", "state": "drone_checked", "simulated": true, "sensor": "drone_cam" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.905, 54.140], [-147.875, 54.140], [-147.875, 54.149], [-147.905, 54.149], [-147.905, 54.140]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "cov-drone-perch", "state": "drone_checked", "simulated": true, "sensor": "drone_cam" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.890, 54.151], [-147.902, 54.143], [-147.878, 54.143], [-147.890, 54.151]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "cov-unscouted-001", "state": "unscouted", "simulated": false, "sensor": "none" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.875, 54.124], [-147.855, 54.124], [-147.855, 54.140], [-147.875, 54.140], [-147.875, 54.124]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "cov-inspect-001", "state": "inspection_required", "simulated": false, "sensor": "none" },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.925, 54.130], [-147.917, 54.130], [-147.917, 54.135], [-147.925, 54.135], [-147.925, 54.130]]] }
+    }
+  ]
+}

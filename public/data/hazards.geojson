@@ -1,0 +1,97 @@
+{
+  "type": "FeatureCollection",
+  "schema_version": "1.0",
+  "placeholder": true,
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hz-slope-001",
+        "type": "U",
+        "category": "slope",
+        "severity": "exclude",
+        "evidence": "nasa_derived",
+        "agent": "both",
+        "stage": "orbital",
+        "source": "HiRISE DTEEC_071085_2345_071006_2345_A01 (placeholder geometry)",
+        "note": "Scarp face steeper than the 20 degree crew limit and 24 degree rover limit."
+      },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.930, 54.146], [-147.860, 54.146], [-147.860, 54.149], [-147.930, 54.149], [-147.930, 54.146]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hz-rockfall-001",
+        "type": "O",
+        "category": "rockfall",
+        "severity": "exclude",
+        "evidence": "inferred",
+        "agent": "both",
+        "stage": "orbital",
+        "source": "Rockfall buffer from scarp height and visible boulder apron (placeholder geometry)",
+        "note": "Buffer below the actively retreating scarp; real extent comes from the DTM and image."
+      },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.930, 54.143], [-147.860, 54.143], [-147.860, 54.146], [-147.930, 54.146], [-147.930, 54.143]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hz-soft-001",
+        "type": "U",
+        "category": "soft_ground",
+        "severity": "caution",
+        "evidence": "inferred",
+        "agent": "both",
+        "stage": "orbital",
+        "source": "THEMIS thermal data via Mars Trek (placeholder geometry)",
+        "note": "Low thermal inertia suggests loose material; THEMIS is coarse, so this is regional only."
+      },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.884, 54.129], [-147.874, 54.129], [-147.874, 54.134], [-147.884, 54.134], [-147.884, 54.129]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hz-shadow-001",
+        "type": "S",
+        "category": "shadow",
+        "severity": "caution",
+        "evidence": "inferred",
+        "agent": "both",
+        "stage": "orbital",
+        "source": "Hillshade from the DTM using ESP_071006_2345 Sun geometry (placeholder geometry)",
+        "note": "Pole-facing scarp foot in shadow at mission time; illustrative lighting, not a forecast."
+      },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.880, 54.141], [-147.862, 54.141], [-147.862, 54.143], [-147.880, 54.143], [-147.880, 54.141]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hz-nodata-001",
+        "type": "U",
+        "category": "no_data",
+        "severity": "exclude",
+        "evidence": "nasa_derived",
+        "agent": "both",
+        "stage": "orbital",
+        "source": "DTM no-data mask (placeholder geometry)",
+        "note": "No elevation data here; inspection required before anyone crosses it."
+      },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.925, 54.130], [-147.917, 54.130], [-147.917, 54.135], [-147.925, 54.135], [-147.925, 54.130]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hz-sim-001",
+        "type": "U",
+        "category": "soft_ground",
+        "severity": "exclude",
+        "evidence": "simulated",
+        "agent": "both",
+        "stage": "rover",
+        "source": "Simulated rover observation, discovery scenario disc-001",
+        "note": "Simulated: rover wheel slip of 38 percent on ground that looked firm from orbit."
+      },
+      "geometry": { "type": "Polygon", "coordinates": [[[-147.897, 54.134], [-147.891, 54.134], [-147.891, 54.137], [-147.897, 54.137], [-147.897, 54.134]]] }
+    }
+  ]
+}
