@@ -11,12 +11,15 @@ interface StagePanelProps {
   stage: StageId;
   mission: Mission;
   selectedHazard: HazardProperties | null;
+  hazardsArePlaceholder: boolean;
   onCloseHazard: () => void;
   routeNotices: string[];
   toggles: ReactNode; // the layer checkboxes, built by App
 }
 
-export function StagePanel({ stage, mission, selectedHazard, onCloseHazard, routeNotices, toggles }: StagePanelProps) {
+export function StagePanel({
+  stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, toggles,
+}: StagePanelProps) {
   // Purpose: side panel for `stage`: evidence card (if `selectedHazard`), stage stats,
   // honest route failures (`routeNotices`), alerts, the rover card, and layer toggles.
   const current = mission.stages.find((s) => s.id === stage);
@@ -25,7 +28,9 @@ export function StagePanel({ stage, mission, selectedHazard, onCloseHazard, rout
 
   return (
     <aside className="panel">
-      {selectedHazard && <EvidenceCard hazard={selectedHazard} onClose={onCloseHazard} />}
+      {selectedHazard && (
+        <EvidenceCard hazard={selectedHazard} isPlaceholder={hazardsArePlaceholder} onClose={onCloseHazard} />
+      )}
 
       <section className="card">
         <h2>{current.title}</h2>

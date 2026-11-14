@@ -13,12 +13,14 @@ const EVIDENCE_TEXT = {
 
 interface EvidenceCardProps {
   hazard: HazardProperties;
+  isPlaceholder: boolean; // true while hazards.geojson is placeholder data
   onClose: () => void;
 }
 
-export function EvidenceCard({ hazard, onClose }: EvidenceCardProps) {
+export function EvidenceCard({ hazard, isPlaceholder, onClose }: EvidenceCardProps) {
   // Purpose: explain one clicked `hazard`: type, severity, who it affects, evidence
-  // class in plain words, source and note. `onClose` hides the card.
+  // class in plain words, source and note. `isPlaceholder` adds a warning that the
+  // shape is hypothetical even when it names a NASA dataset. `onClose` hides the card.
   return (
     <section className="card evidence-card" style={{ borderColor: HAZARD_COLORS[hazard.type] }}>
       <div className="card-head">
@@ -35,7 +37,16 @@ export function EvidenceCard({ hazard, onClose }: EvidenceCardProps) {
         <div><dt>Applies to</dt><dd>{hazard.agent}</dd></div>
         <div><dt>First seen at</dt><dd>{hazard.stage} stage</dd></div>
       </dl>
-      <p className="evidence-kind">{EVIDENCE_TEXT[hazard.evidence]}</p>
+      {isPlaceholder && (
+        <p className="placeholder-warning">
+          Placeholder: this shape is hypothetical, drawn for the demo. It is not derived from the dataset named
+          below and is not crew clearance.
+        </p>
+      )}
+      <p className="evidence-kind">
+        {isPlaceholder ? 'Intended evidence class: ' : ''}
+        {EVIDENCE_TEXT[hazard.evidence]}
+      </p>
       <p><span className="muted">Source:</span> {hazard.source}</p>
       <p>{hazard.note}</p>
     </section>

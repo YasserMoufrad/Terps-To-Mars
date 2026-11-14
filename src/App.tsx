@@ -116,6 +116,7 @@ export function App() {
               stage={stage}
               mission={mission}
               selectedHazard={selectedHazard}
+              hazardsArePlaceholder={data.placeholderFiles.includes('hazards.geojson')}
               onCloseHazard={() => setSelectedHazard(null)}
               routeNotices={routeNotices}
               toggles={<LayerToggles layers={layers} available={available} onChange={setLayers} />}

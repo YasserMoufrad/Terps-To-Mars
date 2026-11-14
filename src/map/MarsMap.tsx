@@ -174,13 +174,13 @@ export function MarsMap({
 
         {stage === 'rover' && (
           <CircleMarker center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="left" className="map-label">Rover stopped: soft ground</Tooltip>
+            <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground?</Tooltip>
           </CircleMarker>
         )}
 
         {stage === 'eva' && (
           <CircleMarker center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="right" className="map-label">Drone watching the cliff</Tooltip>
+            <Tooltip permanent direction="right" className="map-label">Drone (simulated) watching the cliff</Tooltip>
           </CircleMarker>
         )}
       </MapContainer>

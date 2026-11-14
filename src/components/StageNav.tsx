@@ -13,9 +13,9 @@ const STAGE_NAMES: Record<StageId, string> = {
 // What to look for on the map at each step.
 const LOOK_FOR: Record<StageId, string> = {
   orbital: 'The amber dashed line is the first route planned from orbit: unverified, it crosses terrain too steep for a suited astronaut. Colored areas are hazards NASA data can show.',
-  rover: 'The rover (dotted line) stopped at the red marker: soft ground. The gray dashed line is the old route; green is the new one.',
-  drone: 'The drone images the cliff face the rover cannot see. Green lines are the confirmed main route and backup.',
-  eva: 'The crew walks the solid green route to the observation point. The blue drone watches the cliff for rockfall.',
+  rover: 'The simulated rover (dotted line) stopped at the red marker: suspected soft ground. The gray dashed line is the old route; green is the proposed new one.',
+  drone: 'The simulated drone images the cliff face the rover cannot see. Green lines are the proposed main route and backup, not crew clearance.',
+  eva: 'Review the proposed route (solid green) to the observation point, the backup (dashed), and the evidence behind each hazard. The blue marker is the simulated drone watching the cliff.',
 };
 
 interface StageNavProps {

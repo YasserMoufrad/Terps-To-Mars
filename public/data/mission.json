@@ -35,13 +35,13 @@
     {
       "id": "drone",
       "title": "Drone inspection",
-      "text": "The drone launches from the rover and images the scarp face and the areas the rover cannot reach, confirming the observation point sits outside the rockfall zone.",
-      "stats": { "Overhead (O)": "Rockfall zone mapped", "Observation point": "Confirmed", "Coverage": "Simulated" }
+      "text": "The simulated drone launches from the rover and images the scarp face and the areas the rover cannot reach, checking whether the observation point sits outside the rockfall zone.",
+      "stats": { "Overhead (O)": "Rockfall zone mapped (simulated)", "Observation point": "Outside mapped rockfall zone", "Coverage": "Simulated" }
     },
     {
       "id": "eva",
       "title": "Astronaut mission review",
-      "text": "Two astronauts walk the confirmed route to the observation point while the perched drone watches the scarp. A confirmed backup route leads home.",
+      "text": "Review the proposed route two astronauts would walk to the observation point, the reconnaissance evidence behind it, and the backup route home. The simulated drone watches the scarp. None of this is crew clearance.",
       "stats": { "Round trip": "1.9 km", "Walk time": "41 min each way", "Steepest slope": "13 degrees" }
     }
   ],
@@ -49,7 +49,7 @@
     "orbital": ["Plan unverified: small hazards are below orbital resolution"],
     "rover": ["Rover stopped: wheel slip 38 percent, requesting input"],
     "drone": ["Scarp face imaged: rockfall zone confirmed"],
-    "eva": ["Overwatch: scarp clear", "Backup route ready"]
+    "eva": ["Simulated overwatch: no rockfall observed", "Backup route available for review"]
   },
   "drone": {
     "perch": { "lat": 54.151, "lon": -147.890 },
@@ -63,7 +63,7 @@
     "location": { "lat": 54.135, "lon": -147.894 },
     "sensor_evidence": {
       "wheel_slip_pct": 38,
-      "thermal": "low thermal inertia (inferred loose material)",
+      "thermal": "simulated thermal camera: surface cooler than surroundings (possible loose material)",
       "orbital_prior": "Looked firm in HiRISE imagery"
     },
     "evidence": "simulated",
