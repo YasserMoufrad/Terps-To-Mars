@@ -13,12 +13,7 @@ import { LayerToggles } from './components/LayerToggles';
 import { StageNav } from './components/StageNav';
 import { MissionBrief } from './components/MissionBrief';
 import { appLogger } from './lib/appLogger';
-
-const ROUTE_STATUS_TEXT = {
-  no_viable_route: 'No safe route was found',
-  backup_unavailable: 'No independent backup route was found',
-  inspection_required: 'This route needs inspection before use',
-} as const;
+import { logRouteReview, reviewNotices, missingBackupAssessment } from './map/reviewPresentation';
 
 export function App() {
   // Purpose: top-level screen. State: `data` (loaded files + issues), `stage` (current
@@ -43,9 +38,10 @@ export function App() {
     appLogger.info('ui', 'stage.change', { mission_stage: stage });
 
     for (const f of routesFor(stage, routes, mission).features) {
-      if (f.properties.status !== 'ok') {
-        appLogger.warn('safety', 'route.unavailable', { mission_stage: stage, route_id: f.properties.id, status: f.properties.status });
-      }
+      logRouteReview(appLogger, f, stage);
+    }
+    if (missingBackupAssessment(stage, routes)) {
+      appLogger.warn('safety', 'backup.assessment_missing', { mission_stage: stage, required_version: 'after' });
     }
     if (stage === 'rover') {
       const d = mission.discovery;
@@ -71,9 +67,7 @@ export function App() {
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
   const routeNotices =
     ready
-      ? routesFor(stage, routes, mission).features
-          .filter((f) => f.properties.status !== 'ok')
-          .map((f) => `${ROUTE_STATUS_TEXT[f.properties.status as keyof typeof ROUTE_STATUS_TEXT]} (${f.properties.kind.replace('_', ' ')}).`)
+      ? reviewNotices(stage, routes, mission)
       : [];
 
   const changeStage = (next: StageId) => {

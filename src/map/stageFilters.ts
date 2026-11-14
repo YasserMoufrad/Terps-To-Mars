@@ -40,14 +40,14 @@ export function routesFor(stage: StageId, routes: RouteCollection, mission: Miss
     const p = f.properties;
     switch (stage) {
       case 'orbital':
-        return p.kind === 'orbital_guess';
+        return p.kind === 'orbital_guess' && p.version === 'before';
       case 'rover':
         // Show the discovery: the rover's path, the old crew route and the new one.
         return (p.kind === 'rover_path' && p.version === 'after') || p.id === beforeId || p.id === afterId;
       case 'drone':
       case 'eva':
-        // The confirmed crew routes: the rerouted main route and the backup.
-        return p.id === afterId || (p.kind === 'backup' && p.agent === 'crew');
+        // Post-discovery candidates only; a preliminary backup is not a new assessment.
+        return p.id === afterId || (p.kind === 'backup' && p.agent === 'crew' && p.version === 'after');
     }
   });
 }

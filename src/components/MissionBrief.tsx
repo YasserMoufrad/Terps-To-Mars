@@ -24,7 +24,7 @@ export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProp
         <ol className="brief-steps">
           <li><strong>Orbital planning:</strong> a first candidate route from NASA orbital data, needing inspection.</li>
           <li><strong>Rover reconnaissance:</strong> a simulated rover drives ahead and reports a hidden hazard.</li>
-          <li><strong>Drone inspection:</strong> a simulated drone looks at the cliff face the rover can't see.</li>
+          <li><strong>Drone inspection concept:</strong> review planned coverage and inspection limits.</li>
           <li><strong>Astronaut mission review:</strong> review the proposed route, the reconnaissance evidence and the backup options.</li>
         </ol>
         <p className="muted">Nothing on this map is crew clearance; it shows what the evidence supports and what still needs inspection.</p>
