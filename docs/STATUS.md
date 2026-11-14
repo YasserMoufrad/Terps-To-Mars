@@ -77,6 +77,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Open questions
 
+- Yasser + Nic: agree optional `relief.png`/`relief.bounds.json` and `mission.json` `labels` (proposed in IMPLEMENTATION section 4; not implemented; decide whether `schema_version` bumps). Nic: fine to add as optional.
+- Nic's answer to Yasser's agent: the HiRISE overlay export does not need Geury's endpoints, only an agreed crop box. The ~1 m ORTHO we downloaded gives ~1 m pixels; a sharper overlay needs the 0.25 m HiRISE RED image (separate download, size to confirm) and its own PR. Real hazards/routes still need from Geury: habitat, scarp foot, primary and backup observation points, drone perch; plus measured scarp height/apron and manual scarp/landmark QC. PR #6 is merged. No ETA for real routes until those arrive. 3D still: not started.
 - ~~Yasser / PR #8: proposed/candidate wording, placeholder labels, inspection-required vs failed routes~~ Resolved in PR #8 (see Done).
 - ~~Yasser: placeholder `rt-orbital-guess-v1` 24° with `status: ok`~~ Resolved in PR #8: status is now `inspection_required`, drawn amber dashed and stated in words.
 - ~~Yasser: Section 16 browser logging~~ Resolved in PR #8: `src/lib/logger.ts` + `appLogger.ts`, loader/stage/safety events, 10 logging tests.
