@@ -11,7 +11,7 @@ import type {
   StageId, Mission, HazardCollection, RouteCollection, CoverageCollection,
   HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds,
 } from '../data/types';
-import { hazardsFor, routesFor, coverageFor, hasLine } from './stageFilters';
+import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } from './stageFilters';
 import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle, DRIVE_COLOR } from './layerStyles';
 import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
 import type { LayerVisibility } from './layers';
@@ -165,17 +165,21 @@ export function MarsMap({
 
         {/* `key` makes React rebuild a layer when the stage changes; Leaflet's GeoJSON
             layer does not redraw by itself when its data prop changes. */}
-        {layers.coverage && (
-          <GeoJSON
-            key={`coverage-${stage}`}
-            data={asGeoJson(visibleCoverage)}
-            style={(f) => coverageStyle(f?.properties as CoverageProperties)}
-            onEachFeature={(f, layer) => {
-              const p = f.properties as CoverageProperties;
-              layer.bindTooltip(`Coverage: ${p.state.replace('_', ' ')}${p.simulated ? ' (simulated)' : ''}`);
-            }}
-          />
-        )}
+        {/* Coverage: everything when the toggle is on; otherwise just this stage's key zones. */}
+        <GeoJSON
+          key={`coverage-${stage}-${layers.coverage}`}
+          data={asGeoJson(layers.coverage ? visibleCoverage : highlightCoverageFor(stage, coverage, mission))}
+          style={(f) => {
+            // The drone's field of view is drawn stronger than ordinary coverage so the cone reads clearly.
+            const p = f?.properties as CoverageProperties;
+            return p.id === mission.drone.view_cone_id ? { ...coverageStyle(p), weight: 2, fillOpacity: 0.25 } : coverageStyle(p);
+          }}
+          onEachFeature={(f, layer) => {
+            const p = f.properties as CoverageProperties;
+            const what = p.id === mission.drone.view_cone_id ? 'Drone field of view' : `Coverage: ${p.state.replace('_', ' ')}`;
+            layer.bindTooltip(`${what}${p.simulated ? ' (simulated)' : ''}`);
+          }}
+        />
 
         {layers.hazards && (
           <GeoJSON
@@ -239,7 +243,7 @@ export function MarsMap({
           </CircleMarker>
         )}
 
-        {stage === 'eva' && (
+        {(stage === 'drone' || stage === 'eva') && (
           <CircleMarker center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
             {/* "top": the perch is only ~50 m from the observation point, whose label sits to the right. */}
             <Tooltip permanent direction="top" offset={[0, -8]} className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>

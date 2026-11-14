@@ -8,6 +8,8 @@ import { DiscoveryCard } from './DiscoveryCard';
 import { EvidenceCard } from './EvidenceCard';
 import { alertSeverity } from './alertSeverity';
 import { GroundViewCard } from './GroundViewCard';
+import { StageSummaryCard } from './StageSummaryCard';
+import type { StageSummary } from '../map/stageSummary';
 
 interface StagePanelProps {
   stage: StageId;
@@ -16,14 +18,15 @@ interface StagePanelProps {
   hazardsArePlaceholder: boolean;
   onCloseHazard: () => void;
   routeNotices: string[];
+  summary: StageSummary; // "what this step shows", computed from the data by App
   toggles: ReactNode; // the layer checkboxes, built by App
 }
 
 export function StagePanel({
-  stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, toggles,
+  stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, summary, toggles,
 }: StagePanelProps) {
-  // Purpose: side panel for `stage`: evidence card (if `selectedHazard`), stage stats,
-  // honest route failures (`routeNotices`), alerts, the rover card, and layer toggles.
+  // Purpose: side panel for `stage`: evidence card (if `selectedHazard`), stage stats, the
+  // stage `summary`, honest route failures (`routeNotices`), alerts, the rover card, and toggles.
   const current = mission.stages.find((s) => s.id === stage);
   const alerts = mission.alerts[stage] ?? [];
   // Several routes can share one notice (e.g. main and backup both need inspection):
@@ -49,6 +52,8 @@ export function StagePanel({
           ))}
         </dl>
       </section>
+
+      <StageSummaryCard summary={summary} />
 
       {notices.length > 0 && (
         <section className="card notices">
