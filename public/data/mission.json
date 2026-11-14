@@ -24,7 +24,7 @@
       "id": "orbital",
       "title": "Orbital planning",
       "text": "A first route from NASA orbital data. Large slopes and the rockfall zone are visible; small hazards are not.",
-      "stats": { "Detail": "1 m terrain, 25 cm imagery", "Confirmed hazards": "0 on the ground", "Route": "Unverified" }
+      "stats": { "Detail": "1 m terrain, 25 cm imagery", "Hazards on the ground": "none verified", "Route": "Unverified" }
     },
     {
       "id": "rover",
@@ -48,7 +48,7 @@
   "alerts": {
     "orbital": ["Plan unverified: small hazards are below orbital resolution"],
     "rover": ["Rover stopped: wheel slip 38 percent, requesting input"],
-    "drone": ["Scarp face imaged: rockfall zone confirmed"],
+    "drone": ["Simulated drone concept: rockfall zone suspected, not verified"],
     "eva": ["Simulated overwatch: no rockfall observed", "Backup route available for review"]
   },
   "drone": {
@@ -74,6 +74,6 @@
       { "id": "opt-drone", "label": "Send the drone to inspect", "consequence": "+15 min, may clear the area" },
       { "id": "opt-continue", "label": "Continue slowly", "consequence": "Risk accepted by crew" }
     ],
-    "chosen_option": "opt-reroute"
+    "chosen_option": ""
   }
 }

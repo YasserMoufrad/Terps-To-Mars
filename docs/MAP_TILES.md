@@ -38,3 +38,15 @@ Sources: [Mars Trek API layer list](https://trek.nasa.gov/tiles/apidoc/trekAPI.h
 THEMIS infrared sampling is approximately 100 m/pixel ([ASU fact sheet](https://themis.mars.asu.edu/factsheet)). A day/night infrared basemap is a regional display product, not automatically a quantitative thermal-inertia map or a rover-scale soft-ground classification. Quantitative thermal inertia requires an identified processed product and a defensible thermal model with its assumptions and uncertainties ([USGS THEMIS-derived thermal-inertia product](https://astrogeology.usgs.gov/search/map/mars-themis-derived-global-thermal-inertia-mosaic)). No rover-scale exclusion polygon is generated from tile brightness.
 
 A single simulated thermal-camera reading does not establish thermal inertia. The demo's primary rover observation is simulated 38% wheel slip; loose/soft ground remains a suspected interpretation. Rover dimensions and obstacle limits must come from Brianna's CAD/sensor model. Day/night context can inform human review without certifying traversability. Color-altimetry previews help locate a scarp, but numeric height must be measured from a validated DTM, not from display colors.
+
+## THEMIS Night IR (candidate layer, not yet in the app)
+
+The THEMIS Night IR Controlled Mosaic is listed in NASA Mars Trek (100 m/pixel, covers 54°N). The app does not use it yet, and the exact tile URL has not been confirmed to return images; test tile loading in a browser before adding it as a separate toggle. A 2026 study of the controlled mosaics reports roughly 200 m average horizontal absolute location accuracy, so brightness must not be aligned to individual ~1 m HiRISE/DTM cells. USGS describes these mosaics as qualitative imagery, not calibrated thermal inertia. Use it only as a regional background: no meter-scale soft-ground hazards and no bearing-strength interpretation from pixel brightness.
+
+## Weather context (not implemented)
+
+The Mars Climate Database chart (LMD/CNRS with ESA/CNES support) is modeled climatology near Ls 100° at 10 m altitude, not observed weather at this cliff and not simultaneous with the Ls 101.2° HiRISE image. Wind maxima are modeled climatological values, not gust limits. No wind-speed exclusion threshold is justified without a defined drone envelope and an uncertainty model. Any display must carry the scenario and altitude.
+
+## Imagery resolution
+
+The map-projected HiRISE product is 25 cm/pixel, but native image resolution is about 30.6 cm/pixel; small objects need several pixels to resolve. The downloaded DTM-folder ORTHO is ~1 m/pixel.
