@@ -14,10 +14,11 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
-- Nic: scaffold and CI in PR #3 (`pipeline/nic-scaffold-ci-v2`); merge protection requires repository admin
+- Nic: terrain/hazard processing on `pipeline/terrain-hazards`; scaffold PR #3 merged with CI passing; merge protection requires repository admin
 
 ## Done
 
+- 2026-11-14 · Nic: downloaded official DTM to ignored raw storage (380,863,440 bytes; SHA-256 `6543d410aabcdfed6d8c67117235c1dcaf0f67716dcf72c0ba13c6dd8d85c8f1`); verified Mars equirectangular CRS, declared no-data, 1 m pixels, and 128×128 center diagnostic crop; scarp/alignment validation still pending
 - 2026-11-14 · Nic: added merged-PR branch cleanup workflow; repository-level automatic deletion setting denied (admin required); workflow preserves default/base/fork branches and branches with newer commits
 - 2026-11-14 · Nic: added minimal Vite/React/TypeScript bootstrap, Pages path, Python contract tests, CI and Pages workflows; preserved Yasser's placeholder data
 - 2026-11-14 · Nic: local typecheck, frontend test (1), production build, contract validator, and Python contract tests (5) passed; PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/3 opened; initial CI run passed
@@ -30,7 +31,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 ## Blocked / waiting on
 
 - Yasser: enable GitHub Pages (Settings → Pages → Build and deployment → GitHub Actions) and protect `main` (Settings → Branches → Add rule for `main`: require PR, require `full-suite`, require branches up to date, and do not allow bypass); Nic's connected account has push but no admin permission
-- Yasser's app work → Nic's scaffold
+- Nic: real-data landmark alignment, scarp QC and edge/foot masks remain manual validation steps
 - Nic's routes → Geury's endpoints
 - Brianna's instrument rack → team confirmation of "observation only"
 

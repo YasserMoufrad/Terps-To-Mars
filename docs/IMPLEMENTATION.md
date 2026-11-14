@@ -267,6 +267,7 @@ Route search: cost grid from step 6, `skimage.graph.route_through_array` on the 
 
 ## 12. Sources
 
+- Software: [NumPy](https://numpy.org/doc/), [Rasterio](https://rasterio.readthedocs.io/), [SciPy ndimage](https://docs.scipy.org/doc/scipy/reference/ndimage.html), [scikit-image](https://scikit-image.org/docs/stable/), [pytest](https://docs.pytest.org/); versions in `pipeline/requirements.txt`.
 - [Challenge statement](https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/)
 - [HiRISE DTM: Scarps in Milankovic Crater](https://hirise.lpl.arizona.edu/dtm/ESP_071085_2345) · [ESP_071006_2345](https://hirise.lpl.arizona.edu/ESP_071006_2345) (NASA/JPL-Caltech/UArizona)
 - Dundas et al. (2018), *Exposed subsurface ice sheets in the Martian mid-latitudes*, Science

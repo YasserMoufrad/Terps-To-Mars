@@ -1,6 +1,7 @@
 """Validate the JSON handoff between the Python pipeline and React app."""
 
 import json
+import math
 from pathlib import Path
 
 
@@ -8,6 +9,30 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "public" / "data"
 COLLECTIONS = ("hazards.geojson", "routes.geojson", "coverage.geojson")
 ROUTE_STATUSES = {"ok", "no_viable_route", "backup_unavailable", "inspection_required"}
 EVIDENCE = {"nasa_derived", "inferred", "simulated"}
+
+
+def _enum(properties, field, values):
+    if properties.get(field) not in values:
+        raise ValueError(f"Invalid or missing {field}")
+
+
+def _geometry(geometry):
+    coordinates = geometry["coordinates"]
+    if geometry["type"] == "Point":
+        _position(coordinates)
+    elif geometry["type"] == "LineString":
+        if len(coordinates) < 2:
+            raise ValueError("LineString requires at least two positions")
+        for point in coordinates:
+            _position(point)
+    else:
+        if not coordinates:
+            raise ValueError("Polygon requires rings")
+        for ring in coordinates:
+            if len(ring) < 4 or ring[0] != ring[-1]:
+                raise ValueError("Polygon requires closed rings")
+            for point in ring:
+                _position(point)
 
 
 def _position(value):
@@ -58,11 +83,34 @@ def validate_collection(payload, name):
             pass
         else:
             _coordinates(coordinates)
+            _geometry(geometry)
 
         if name == "hazards.geojson" and properties.get("evidence") not in EVIDENCE:
             raise ValueError(f"{name}: missing hazard evidence label")
+        if name == "hazards.geojson":
+            _enum(properties, "type", {"U", "O", "S"})
+            _enum(properties, "category", {"slope", "roughness", "rockfall", "edge", "soft_ground", "void", "shadow", "no_data", "artifact"})
+            _enum(properties, "severity", {"exclude", "caution"})
+            _enum(properties, "agent", {"crew", "rover", "both"})
+            _enum(properties, "stage", {"orbital", "rover", "drone", "eva"})
+            if not all(isinstance(properties.get(key), str) and properties[key] for key in ("source", "note")):
+                raise ValueError("Hazard source and note required")
         if name == "routes.geojson" and properties.get("status") not in ROUTE_STATUSES:
             raise ValueError(f"{name}: invalid route status")
+        if name == "routes.geojson":
+            _enum(properties, "kind", {"orbital_guess", "main", "backup", "rover_path"})
+            _enum(properties, "agent", {"crew", "rover"})
+            _enum(properties, "version", {"before", "after"})
+            stats = properties.get("stats", {})
+            for key in ("length_m", "round_trip_m", "est_time_min", "elevation_gain_m", "max_slope_deg", "shared_with_main_m"):
+                value = stats.get(key)
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                    raise ValueError(f"Invalid route statistic {key}")
+        if name == "coverage.geojson":
+            _enum(properties, "state", {"orbit_only", "rover_checked", "drone_checked", "unscouted", "inspection_required"})
+            _enum(properties, "sensor", {"stereo_cam", "hazard_cam", "thermal", "drone_cam", "none"})
+            if not isinstance(properties.get("simulated"), bool):
+                raise ValueError("Coverage simulated flag must be boolean")
         if name == "coverage.geojson" and properties.get("state") in {"rover_checked", "drone_checked"}:
             if properties.get("simulated") is not True:
                 raise ValueError(f"{name}: robot coverage must be simulated")
@@ -83,7 +131,8 @@ def _validate_lat_lon_objects(value):
             _validate_lat_lon_objects(child)
 
 
-def validate_data(data_dir=DATA_DIR):
+def validate_data(data_dir=DATA_DIR, require_overlays=False):
+    data_dir = Path(data_dir)
     for name in COLLECTIONS:
         payload = json.loads((data_dir / name).read_text(encoding="utf-8"))
         validate_collection(payload, name)
@@ -93,6 +142,18 @@ def validate_data(data_dir=DATA_DIR):
     _validate_lat_lon_objects(mission)
     if mission.get("discovery", {}).get("evidence") != "simulated":
         raise ValueError("mission.json: rover discovery must be simulated")
+    if require_overlays:
+        from PIL import Image
+        for basename, extension in (("hirise", "jpg"), ("slope", "png")):
+            with Image.open(data_dir / f"{basename}.{extension}") as image:
+                image.verify()
+            bounds = json.loads((data_dir / f"{basename}.bounds.json").read_text())
+            if bounds.get("schema_version") != "1.0":
+                raise ValueError("Overlay schema version mismatch")
+            if not (-180 <= bounds["west"] < bounds["east"] <= 180 and -90 <= bounds["south"] < bounds["north"] <= 90):
+                raise ValueError("Invalid overlay bounds")
+            if not bounds.get("source") or not bounds.get("processing"):
+                raise ValueError("Overlay provenance required")
 
 
 if __name__ == "__main__":

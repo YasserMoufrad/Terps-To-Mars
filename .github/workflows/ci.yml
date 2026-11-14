@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: pipeline/requirements.txt
+          cache-dependency-path: pipeline/requirements.lock
       - run: python -m pip install -r pipeline/requirements.txt
       - run: python -m pipeline.validate_contract
       - run: python -m pytest pipeline/tests
