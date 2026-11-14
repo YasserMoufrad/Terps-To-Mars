@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 from urllib.request import urlopen
+from pipeline.logging_config import traced, event
 
 BASE = "https://hirise.lpl.arizona.edu/PDS/DTM/ESP/ORB_071000_071099/ESP_071085_2345_ESP_071006_2345/"
 SOURCES = {
@@ -13,6 +14,7 @@ SOURCES = {
 }
 
 
+@traced("acquisition")
 def download(kind, directory=Path("pipeline/raw")):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -21,6 +23,7 @@ def download(kind, directory=Path("pipeline/raw")):
         raise FileExistsError(f"Will not overwrite {destination}")
     partial = destination.with_suffix(destination.suffix + ".part")
     digest = hashlib.sha256()
+    event("download_started", dataset_id=SOURCES[kind], source=BASE + SOURCES[kind])
     try:
         with urlopen(BASE + SOURCES[kind], timeout=60) as response, partial.open("xb") as output:
             size = 0
@@ -30,13 +33,16 @@ def download(kind, directory=Path("pipeline/raw")):
                 size += len(chunk)
             expected = response.headers.get("Content-Length")
             if expected is not None and size != int(expected):
+                event("integrity_failure", level=40, expected_bytes=int(expected), actual_bytes=size)
                 raise ValueError("Incomplete download")
         partial.rename(destination)
     except Exception:
+        event("download_failed", level=40, dataset_id=SOURCES[kind], source=BASE + SOURCES[kind], exc_info=True)
         partial.unlink(missing_ok=True)
         raise
     manifest = {"source": BASE + SOURCES[kind], "bytes": size, "sha256": digest.hexdigest()}
     destination.with_suffix(destination.suffix + ".json").write_text(json.dumps(manifest, indent=2) + "\n")
+    event("download_completed", dataset_id=SOURCES[kind], **manifest)
     return manifest
 
 

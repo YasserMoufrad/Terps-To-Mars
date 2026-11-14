@@ -11,12 +11,16 @@ from rasterio.transform import array_bounds
 from rasterio.warp import calculate_default_transform, reproject
 
 from pipeline.terrain import MARS_GEOGRAPHIC, signed_longitude
+from pipeline.logging_config import traced, event, operation
 
 
+@traced("json_export")
 def write_json(path, payload):
     Path(path).write_text(json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    event("json_exported", filename=Path(path).name, schema_version=payload.get("schema_version"), feature_count=len(payload.get("features", [])))
 
 
+@traced("raster_export")
 def export_overlay(terrain, data, destination, source, max_pixels=1024):
     if data.shape != terrain.elevation.shape or max_pixels < 1:
         raise ValueError("Overlay grid must match terrain and output size must be positive")
@@ -28,9 +32,10 @@ def export_overlay(terrain, data, destination, source, max_pixels=1024):
     out_width, out_height = max(1, int(out_width / scale)), max(1, int(out_height / scale))
     transform = transform * rasterio.Affine.scale(scale, scale)
     output = np.full((out_height, out_width), np.nan, dtype="float32")
-    reproject(data.astype("float32"), output, src_transform=terrain.transform,
-              src_crs=terrain.crs, src_nodata=np.nan, dst_transform=transform,
-              dst_crs=MARS_GEOGRAPHIC, dst_nodata=np.nan, resampling=Resampling.nearest)
+    with operation("reprojection", source=source, evidence=terrain.evidence):
+        reproject(data.astype("float32"), output, src_transform=terrain.transform,
+                  src_crs=terrain.crs, src_nodata=np.nan, dst_transform=transform,
+                  dst_crs=MARS_GEOGRAPHIC, dst_nodata=np.nan, resampling=Resampling.nearest)
     valid = np.isfinite(output)
     if not valid.any():
         raise ValueError("Overlay has no valid pixels")
@@ -54,9 +59,12 @@ def export_overlay(terrain, data, destination, source, max_pixels=1024):
     if bounds["west"] >= bounds["east"]:
         raise ValueError("Antimeridian overlays must be split before export")
     write_json(destination.with_suffix(".bounds.json"), bounds)
+    event("overlay_exported", filename=destination.name, evidence=terrain.evidence,
+          dimensions=[out_height, out_width], invalid_cells=int((~valid).sum()), source=source)
     return bounds
 
 
+@traced("image_reprojection")
 def aligned_image(path, terrain):
     """Reproject orthoimage to the terrain crop. Human landmark QC is still needed."""
     with rasterio.open(path) as image:
@@ -71,4 +79,5 @@ def aligned_image(path, terrain):
                   dst_nodata=np.nan, resampling=Resampling.nearest)
         if not np.isfinite(output).any():
             raise ValueError("Image does not cover the terrain crop")
+        event("image_reprojected", source=Path(path).name, invalid_cells=int((~np.isfinite(output)).sum()), landmark_alignment="not_verified")
         return output

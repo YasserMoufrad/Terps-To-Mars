@@ -93,10 +93,18 @@ Every operational code PR must test applicable logging behavior: structured even
 
 Every code PR description must contain `## Logging and observability` documenting each item below; mark N/A with a reason where inapplicable:
 
-- Meaningful new/modified operations have appropriate logging; errors and expected failures are observable.
-- Safety decisions are traceable; correlation IDs propagate; evidence classification is preserved.
-- Logging tests were added/updated; no secrets, sensitive values or unnecessary high-volume logs are emitted.
-- Logging preserves deterministic outputs; the complete suite and latest CI checks were executed.
+- [ ] New or modified functionality has appropriate logging.
+- [ ] Errors and expected failure conditions are observable.
+- [ ] Significant safety decisions are traceable.
+- [ ] Execution correlation IDs are propagated where applicable.
+- [ ] Evidence classification is preserved where applicable.
+- [ ] Logging tests were added or updated where needed.
+- [ ] Logging does not expose secrets or sensitive information.
+- [ ] Logging does not change deterministic processing outcomes.
+- [ ] No unnecessary high-volume logging was introduced.
+- [ ] Full test suite and CI checks were executed.
+
+Implement related validation, I/O, state/decision tracing, error handling, timing and observability tests alongside the behavior in the same PR. Do not defer these adjacent requirements to a later cleanup or substitute a checklist for working instrumentation. Every PR description ends with a runnable walkthrough.
 
 An applicable incomplete item blocks readiness for review/merge. All code PRs must pass `frontend`, `pipeline`, and `full-suite` on their latest commit. The merge policy requires `full-suite`; do not claim GitHub enforcement unless branch protection/rulesets are actually configured. Never bypass test or logging failures.
 

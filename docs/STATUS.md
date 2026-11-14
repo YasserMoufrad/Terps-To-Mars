@@ -19,6 +19,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-14 · Nic: PR #4 corrections passed 30 Python tests in Docker and npm ci/typecheck/test/build; added AGENTS.md and a PR template mirroring Section 16's mandatory logging/checklist/walkthrough requirements; Yasser loader/placeholder findings documented without modifying his code
+- 2026-11-14 · Nic: PR #4 review corrections add nearest-odd roughness windows, uncertainty warnings, one-height provisional rockfall buffer and explicit unresolved scarp-risk exclusions; uv project/lock replaces requirements files; all implemented terrain/acquisition/export/validation stages have correlated structured logs
 - 2026-11-14 · Nic: downloaded official DTM to ignored raw storage (380,863,440 bytes; SHA-256 `6543d410aabcdfed6d8c67117235c1dcaf0f67716dcf72c0ba13c6dd8d85c8f1`); verified Mars equirectangular CRS, declared no-data, 1 m pixels, and 128×128 center diagnostic crop; scarp/alignment validation still pending
 - 2026-11-14 · Yasser's agent: `src/data/types.ts` (contract types) and `src/data/loadMissionData.ts` (loads all data files, reports issues instead of crashing); strict typecheck passes; tested against the placeholders and deliberately broken data
 - 2026-11-14 · Yasser's agent: sensor coverage model v1 added to IMPLEMENTATION.md section 6 (for Nic's `coverage.geojson`)
@@ -51,6 +53,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Decision log
 
+- 2026-11-14 · Nic: team second-pass request adopts provisional one-height rockfall buffer, nearest odd roughness window with uncertainty disclosure, and uv dependency management; schema remains 1.0
 - 2026-11-14 · Site: Scarps in Milankovic Crater (only northern-hemisphere site of Dundas et al. 2018)
 - 2026-11-14 · Stack: Vite + React + TypeScript + react-leaflet on GitHub Pages; Python pipeline
 - 2026-11-14 · Demo format: 30-second video; depth on the project page and README
@@ -60,6 +63,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Open questions
 
+- Yasser: placeholder `rt-orbital-guess-v1` has 24° max slope with `status: ok`; hypothetical geometry/stats are not crew clearance. Loader correctly returns `placeholderFiles` for `placeholder: true`. Present it explicitly as unverified/simulated and review its status; Nic left placeholder data/UI unchanged.
+- Yasser: new Section 16 requires browser logging for loader failures/schema mismatches and meaningful mission-stage changes; current loader returns issues but has no shared operational logger. Ownership handoff only; no UI edits made.
 - Confirm mission objective: observation only, no sampling or drilling (proposed)
 - Final project name (placeholder: IceScout)
 - Nic registered at the same Local Event as the team?

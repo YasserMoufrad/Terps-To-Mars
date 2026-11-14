@@ -3,7 +3,7 @@ import pytest
 import rasterio
 from rasterio.transform import from_origin
 
-from pipeline.terrain import Terrain, analyze, read_terrain, signed_longitude, load_rules
+from pipeline.terrain import Terrain, analyze, read_terrain, signed_longitude, load_rules, roughness_window
 from pipeline.hazards import hazard_masks, export_hazards
 from pipeline.validate_contract import validate_collection
 
@@ -84,3 +84,36 @@ def test_read_and_crop_raster(tmp_path):
     assert result.transform.c == 2
     with pytest.raises(ValueError, match="coverage"):
         read_terrain(path, (8, 8, 5, 5))
+
+
+@pytest.mark.parametrize("resolution,pixels", [(0.99, 3), (1, 3), (0.5, 5), (1.5, 1), (10, 1)])
+def test_nearest_odd_physical_roughness_window(resolution, pixels):
+    assert roughness_window(3, resolution) == pixels
+    t = Terrain(np.zeros((11, 11)), from_origin(0, 11, resolution, resolution), CRS, "fixture", "simulated")
+    result = analyze(t)
+    assert result["roughness_window_m"] == pytest.approx(pixels * resolution)
+    if pixels < 3:
+        assert np.isnan(result["roughness"]).all() and result["roughness_uncertain"]
+
+
+@pytest.mark.parametrize("missing", ["edge_distance", "foot_distance", "scarp_height", "apron_m"])
+def test_missing_scarp_measurements_block_only_risk_area(missing):
+    t = terrain()
+    risk = np.zeros((11, 11), bool)
+    risk[:, 5] = True
+    inputs = {"edge_distance": np.full((11, 11), 100.), "foot_distance": np.full((11, 11), 100.),
+              "scarp_height": 20., "apron_m": 10.}
+    inputs[missing] = None
+    masks = hazard_masks(t, analyze(t), scarp_risk=risk, **inputs)
+    np.testing.assert_array_equal(masks["inspection_required"], risk)
+
+
+def test_one_height_rockfall_boundary_and_explicit_cliff_free():
+    t = terrain()
+    distance = np.full((11, 11), 40.)
+    distance[0, 0] += 0.0001
+    masks = hazard_masks(t, analyze(t), edge_distance=np.full((11, 11), 100.),
+                         foot_distance=distance, scarp_height=40, apron_m=12)
+    assert masks["rockfall"][1, 1] and not masks["rockfall"][0, 0]
+    assert not masks["inspection_required"].any()
+    assert not hazard_masks(t, analyze(t), scarp_risk=np.zeros((11, 11), bool))["inspection_required"].any()

@@ -2,6 +2,7 @@
 
 import json
 import math
+from pipeline.logging_config import traced, event
 from pathlib import Path
 
 
@@ -55,6 +56,7 @@ def _coordinates(value):
             _coordinates(child)
 
 
+@traced("schema_validation")
 def validate_collection(payload, name):
     if payload.get("schema_version") != "1.0":
         raise ValueError(f"{name}: expected schema_version 1.0")
@@ -131,6 +133,7 @@ def _validate_lat_lon_objects(value):
             _validate_lat_lon_objects(child)
 
 
+@traced("bundle_validation")
 def validate_data(data_dir=DATA_DIR, require_overlays=False):
     data_dir = Path(data_dir)
     for name in COLLECTIONS:
@@ -154,6 +157,7 @@ def validate_data(data_dir=DATA_DIR, require_overlays=False):
                 raise ValueError("Invalid overlay bounds")
             if not bounds.get("source") or not bounds.get("processing"):
                 raise ValueError("Overlay provenance required")
+    event("data_contract_validated", schema_version="1.0", directory=str(data_dir), require_overlays=require_overlays)
 
 
 if __name__ == "__main__":
