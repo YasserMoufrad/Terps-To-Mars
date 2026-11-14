@@ -6,8 +6,8 @@
 import {
   SCHEMA_VERSION,
   HAZARD_TYPES, HAZARD_CATEGORIES, SEVERITIES, EVIDENCE, HAZARD_AGENTS, STAGE_IDS,
-  ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES,
-  COVERAGE_STATES, SENSORS,
+  ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES, LEG_MODES,
+  COVERAGE_STATES, SENSORS, type RouteLeg,
   type HazardCollection, type RouteCollection, type CoverageCollection,
   type Mission, type OverlayBounds,
 } from './types.ts';
@@ -122,7 +122,29 @@ function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string
     if (p.status !== 'ok') {
       issues.push({ file, severity: 'warning', message: `${label} status is ${p.status}.` });
     }
+    checkLegs(p.legs, f.geometry.coordinates.length, label, issues);
   }
+}
+
+export function checkLegs(legs: unknown, pointCount: number, label: string, issues: LoadIssue[]): void {
+  // Purpose: validate the optional drive/walk `legs` of one route. `pointCount` is the
+  // number of coordinates in its line. Bad legs are a warning, not an error: the route
+  // is still drawn as one walking line, so nothing is hidden.
+  if (legs === undefined) return;
+  const file = 'routes.geojson';
+  const warn = (message: string): void => {
+    issues.push({ file, severity: 'warning', message: `${label} legs: ${message}` });
+  };
+  if (!Array.isArray(legs)) return warn('expected a list.');
+  let expectedFrom = 0;
+  for (const leg of legs as RouteLeg[]) {
+    if (!(LEG_MODES as readonly string[]).includes(String(leg?.mode))) return warn(`mode "${String(leg?.mode)}" is not drive or walk.`);
+    if (!Number.isInteger(leg.from) || !Number.isInteger(leg.to) || leg.from !== expectedFrom || leg.to <= leg.from || leg.to >= pointCount) {
+      return warn('indexes must run along the line without gaps or overlaps.');
+    }
+    expectedFrom = leg.to;
+  }
+  if (expectedFrom !== pointCount - 1) warn('do not cover the whole line.');
 }
 
 function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<string>): void {

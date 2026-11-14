@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "name": "ice_zone",
+  "description": "Geury's exposed-ice zones at the Milankovic scarps, measured from HiRISE enhanced color (ESP_071006_2345) by selecting pixels bluer than red/green, grouped into bands; about +/-15 m. Rebuilt from the bounds in Geury's site pack (rectangles), not his original traced shapes. Blue tone is consistent with ice, not proof; see docs/IMPLEMENTATION.md section 2.",
+  "source": "Geury, Terps To Mars site and data pack, 2026-11-14; image NASA/JPL-Caltech/UArizona",
+  "crs_note": "GeoJSON [longitude, latitude], longitude -180..180 (147.9 W = -147.9)",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ice-main-band",
+        "name": "Main band",
+        "use": "Plan A sample site",
+        "size": "~805 m x ~65 m",
+        "note": "North-facing (pole-facing) scarp; high plain to the south, depression floor to the north"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-147.916, 54.1608], [-147.895, 54.1608], [-147.895, 54.1619], [-147.916, 54.1619], [-147.916, 54.1608]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ice-upper-band",
+        "name": "Upper band area",
+        "use": "Secondary; includes bluish shading",
+        "size": "~960 m x ~280 m"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-147.917, 54.1628], [-147.892, 54.1628], [-147.892, 54.1675], [-147.917, 54.1675], [-147.917, 54.1628]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ice-southern-scarp",
+        "name": "Southern scarp",
+        "use": "Alternate site, ~3 km south",
+        "size": "~500 m x ~65 m"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-147.890, 54.1343], [-147.877, 54.1343], [-147.877, 54.1354], [-147.890, 54.1354], [-147.890, 54.1343]]]
+      }
+    }
+  ]
+}

@@ -12,7 +12,8 @@ import type {
   HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds,
 } from '../data/types';
 import { hazardsFor, routesFor, coverageFor, hasLine } from './stageFilters';
-import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
+import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle, DRIVE_COLOR } from './layerStyles';
+import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
 import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
@@ -100,9 +101,11 @@ export function MarsMap({
   // Routes with no line (failed searches) are reported in the side panel instead.
   // A non-"ok" route that still has a line (e.g. the unverified orbital guess) is drawn,
   // styled amber so it never looks like a cleared route.
-  const drawnRoutes = { ...stageRoutes, features: stageRoutes.features.filter((f) => hasLine(f.geometry.coordinates)) };
+  // Crew routes with drive/walk legs are split so the drive leg can be drawn differently.
+  const drawnRoutes = splitRouteLegs({ ...stageRoutes, features: stageRoutes.features.filter((f) => hasLine(f.geometry.coordinates)) });
   // During the rover stage the old crew route is shown faded next to the new one.
   const supersededId = stage === 'rover' ? mission.discovery.before_route_id : null;
+  const parking = stage === 'eva' ? crewRoverParking(stageRoutes) : null;
 
   return (
     <div className="map-wrap">
@@ -203,12 +206,17 @@ export function MarsMap({
           data={asGeoJson(drawnRoutes)}
           style={(f) => routeStyle(f?.properties as RouteProperties, supersededId)}
           onEachFeature={(f, layer) => {
-            const p = f.properties as RouteProperties;
+            const p = f.properties as DrawnRouteProperties;
             const label =
               p.id === supersededId
                 ? 'Old route (replaced)'
-                : `${p.agent} ${p.kind.replace('_', ' ')}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')})` : ''}`;
-            layer.bindTooltip(`${label}: ${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip, steepest ${p.stats.max_slope_deg}°`);
+                : `${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')})` : ''}`;
+            const legs = legSummary(p);
+            layer.bindTooltip(
+              `${label}: ${legs ?? `${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip`}, ` +
+                `${p.stats.est_time_min} min round trip, steepest ${p.stats.max_slope_deg}°` +
+                (p.walkback_min ? `<br/>Walkback if the crew rover fails: ${p.walkback_min} min on foot` : ''),
+            );
           }}
         />
 
@@ -222,6 +230,12 @@ export function MarsMap({
         {stage === 'rover' && (
           <CircleMarker center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
             <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground?</Tooltip>
+          </CircleMarker>
+        )}
+
+        {parking && (
+          <CircleMarker center={parking} radius={7} pathOptions={{ color: '#0b0d10', fillColor: DRIVE_COLOR, fillOpacity: 1, weight: 2 }}>
+            <Tooltip permanent direction="right" className="map-label">Crew rover parks (proposed)</Tooltip>
           </CircleMarker>
         )}
 

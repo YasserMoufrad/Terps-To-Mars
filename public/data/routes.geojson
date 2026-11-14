@@ -12,13 +12,30 @@
         "version": "before",
         "status": "inspection_required",
         "stats": {
-          "length_m": 2062,
-          "round_trip_m": 4123,
-          "est_time_min": 206,
+          "length_m": 2086,
+          "round_trip_m": 4172,
+          "est_time_min": 68,
           "elevation_gain_m": 30,
           "max_slope_deg": 38,
           "shared_with_main_m": 0
-        }
+        },
+        "legs": [
+          {
+            "mode": "drive",
+            "from": 0,
+            "to": 1,
+            "length_m": 1853,
+            "est_time_min": 22
+          },
+          {
+            "mode": "walk",
+            "from": 1,
+            "to": 3,
+            "length_m": 234,
+            "est_time_min": 12
+          }
+        ],
+        "walkback_min": 93
       },
       "geometry": {
         "type": "LineString",
@@ -29,7 +46,11 @@
           ],
           [
             -147.904,
-            54.16
+            54.1595
+          ],
+          [
+            -147.904,
+            54.1625
           ],
           [
             -147.90546,
@@ -47,13 +68,30 @@
         "version": "before",
         "status": "inspection_required",
         "stats": {
-          "length_m": 2532,
-          "round_trip_m": 5063,
-          "est_time_min": 253,
+          "length_m": 2540,
+          "round_trip_m": 5080,
+          "est_time_min": 113,
           "elevation_gain_m": 30,
           "max_slope_deg": 14,
           "shared_with_main_m": 0
-        }
+        },
+        "legs": [
+          {
+            "mode": "drive",
+            "from": 0,
+            "to": 2,
+            "length_m": 1859,
+            "est_time_min": 22
+          },
+          {
+            "mode": "walk",
+            "from": 2,
+            "to": 4,
+            "length_m": 681,
+            "est_time_min": 34
+          }
+        ],
+        "walkback_min": 93
       },
       "geometry": {
         "type": "LineString",
@@ -67,8 +105,8 @@
             54.15
           ],
           [
-            -147.8935,
-            54.16
+            -147.8925,
+            54.159
           ],
           [
             -147.893,
@@ -88,15 +126,32 @@
         "kind": "main",
         "agent": "crew",
         "version": "after",
-        "status": "inspection_required",
+        "status": "ok",
         "stats": {
-          "length_m": 2645,
-          "round_trip_m": 5291,
-          "est_time_min": 265,
+          "length_m": 2667,
+          "round_trip_m": 5335,
+          "est_time_min": 116,
           "elevation_gain_m": 30,
           "max_slope_deg": 15,
           "shared_with_main_m": 0
-        }
+        },
+        "legs": [
+          {
+            "mode": "drive",
+            "from": 0,
+            "to": 4,
+            "length_m": 1986,
+            "est_time_min": 24
+          },
+          {
+            "mode": "walk",
+            "from": 4,
+            "to": 6,
+            "length_m": 681,
+            "est_time_min": 34
+          }
+        ],
+        "walkback_min": 99
       },
       "geometry": {
         "type": "LineString",
@@ -118,8 +173,8 @@
             54.156
           ],
           [
-            -147.8935,
-            54.16
+            -147.8925,
+            54.159
           ],
           [
             -147.893,
@@ -139,15 +194,32 @@
         "kind": "backup",
         "agent": "crew",
         "version": "after",
-        "status": "inspection_required",
+        "status": "ok",
         "stats": {
-          "length_m": 2848,
-          "round_trip_m": 5494,
-          "est_time_min": 275,
+          "length_m": 2809,
+          "round_trip_m": 5619,
+          "est_time_min": 130,
           "elevation_gain_m": 30,
           "max_slope_deg": 16,
-          "shared_with_main_m": 0
-        }
+          "shared_with_main_m": 1986
+        },
+        "legs": [
+          {
+            "mode": "walk",
+            "from": 0,
+            "to": 4,
+            "length_m": 823,
+            "est_time_min": 41
+          },
+          {
+            "mode": "drive",
+            "from": 4,
+            "to": 8,
+            "length_m": 1986,
+            "est_time_min": 24
+          }
+        ],
+        "walkback_min": 99
       },
       "geometry": {
         "type": "LineString",
@@ -157,20 +229,32 @@
             54.16291
           ],
           [
-            -147.912,
-            54.1632
+            -147.9,
+            54.1637
           ],
           [
-            -147.9185,
-            54.163
+            -147.891,
+            54.1638
           ],
           [
-            -147.9185,
+            -147.8905,
+            54.16
+          ],
+          [
+            -147.8925,
+            54.159
+          ],
+          [
+            -147.896,
+            54.156
+          ],
+          [
+            -147.903,
+            54.1525
+          ],
+          [
+            -147.9005,
             54.147
-          ],
-          [
-            -147.906,
-            54.145
           ],
           [
             -147.90287,
@@ -219,12 +303,12 @@
         "version": "after",
         "status": "ok",
         "stats": {
-          "length_m": 5912,
-          "round_trip_m": 5912,
-          "est_time_min": 2365,
+          "length_m": 5477,
+          "round_trip_m": 5477,
+          "est_time_min": 2191,
           "elevation_gain_m": 30,
           "max_slope_deg": 15,
-          "shared_with_main_m": 2645
+          "shared_with_main_m": 2667
         }
       },
       "geometry": {
@@ -233,10 +317,6 @@
           [
             -147.90287,
             54.12819
-          ],
-          [
-            -147.8965,
-            54.15
           ],
           [
             -147.9005,
@@ -251,8 +331,8 @@
             54.156
           ],
           [
-            -147.8935,
-            54.16
+            -147.8925,
+            54.159
           ],
           [
             -147.893,
@@ -263,20 +343,32 @@
             54.16291
           ],
           [
-            -147.912,
-            54.1632
+            -147.9,
+            54.1637
           ],
           [
-            -147.9185,
-            54.163
+            -147.891,
+            54.1638
           ],
           [
-            -147.9185,
+            -147.8905,
+            54.16
+          ],
+          [
+            -147.8925,
+            54.159
+          ],
+          [
+            -147.896,
+            54.156
+          ],
+          [
+            -147.903,
+            54.1525
+          ],
+          [
+            -147.9005,
             54.147
-          ],
-          [
-            -147.906,
-            54.145
           ],
           [
             -147.90287,

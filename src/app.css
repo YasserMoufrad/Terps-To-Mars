@@ -90,6 +90,7 @@ button { font: inherit; }
 .line { display: inline-block; width: 22px; height: 0; border-top-width: 4px; margin-left: 6px; }
 .line:first-child { margin-left: 0; }
 .line-main { border-top: 5px solid var(--good); }
+.line-drive { border-top: 5px solid #7cc4ff; }
 .line-backup { border-top: 4px dashed var(--good); }
 .line-rover { border-top: 4px dotted #ffffff; }
 .line-unverified { border-top: 4px dashed var(--warn); }

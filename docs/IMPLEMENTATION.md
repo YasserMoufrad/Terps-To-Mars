@@ -35,7 +35,7 @@ An astronaut-facing map for planning one Marswalk to the exposed water-ice scarp
 | Ice evidence | Milankovič is the only northern-hemisphere site among the eight ice scarps of Dundas et al. (2018, *Science*). The target is a Milankovič ice-scarp candidate within a region documented to contain exposed subsurface water ice. Dundas et al. report CRISM water-ice signatures at three of the eight locations, not all eight; the face within our stereo pair (`ESP_071006_2345`/`ESP_071085_2345`) has no confirmed CRISM detection of its own, and the exact observation target and its spectral provenance require confirmation. Blue tones in HiRISE enhanced color alone are **not** proof of ice; cite the spectral evidence. Ice depth is unknown at any route point unless measured or specifically sourced: the 1–2 m overburden figure is from some studied scarps (a 2021 USGS study reports some ice under <1 m with large variability), and at an exposed scarp ice may already be visible on the cliff face. The pipeline deliberately produces no ice-depth raster. |
 | Resolution limit | HiRISE resolves objects of about 92 cm at best; the DTM cannot see individual rocks under about 1 m |
 | Endpoints (Geury, first pass, traced on HiRISE color, about 15 m accuracy; not yet QC'd against the DTM) | Habitat 54.12819°N, −147.90287 · scarp foot 54.16211°N, −147.90546 · primary observation 54.16291°N, −147.90546 · backup observation 54.16524°N, −147.89585 · drone perch 54.16334°N, −147.90287 · Plan B drill point 54.15921°N, −147.90553 |
-| EVA budget check (placeholder routes) | At 20 m/min with 240 min EVA and 30% reserve, travel must stay within 168 min, i.e. about 1.68 km each way. The habitat is about 2.05 km straight-line from the observation point (the cliff is in between), and the placeholder walk around the ice band is about 2.6 km each way (265 min round trip), so it **exceeds** the budget; the habitat likely needs to move to about 1.2–1.6 km from the observation point. Open question for Geury and Nic. |
+| EVA budget check (placeholder routes) | Walking the whole way (about 2.6 km each way around the ice band, 265 min round trip at 20 m/min) **exceeds** the 168 min travel budget. Proposed fix (keeps the habitat's safe 2 km standoff from the cliff): drive the crew rover about 2.0 km to a parking point on the high plain east of the band (54.1590°N, −147.8925, placeholder), then walk about 680 m around the band's east end to the observation point: about 116 min travel round trip; walkback from the parking point 99 min, 191 of 240 min EVA in total. See the `legs` proposal in section 4. Parking point and drive speed need Geury and Nic. |
 
 Mars Trek has no HiRISE data for this spot: HiRISE comes from the HiRISE/PDS links above; CTX, MOLA, THEMIS and geology come from [Mars Trek](https://trek.nasa.gov/mars/).
 
@@ -103,6 +103,15 @@ All files live in `public/data/`. Every file carries `"schema_version": "1.0"` (
 | `stats` | `{ "length_m", "round_trip_m", "est_time_min", "elevation_gain_m", "max_slope_deg", "shared_with_main_m" }` (Mars geometry, radius 3,389.5 km) |
 
 A route with a non-`ok` status may have empty geometry. The app must show the status, never hide it.
+
+**Proposed, optional (Yasser, 2026-11-14; needs Nic's agreement before `schema_version` changes): drive-then-walk crew routes.** The crew drives an unpressurized crew rover most of the way and walks the last part, as on Apollo 15–17 and in Artemis surface plans. Two optional properties on crew routes:
+
+| Property | Values |
+| --- | --- |
+| `legs` | ordered list of `{ "mode": "drive" \| "walk", "from", "to", "length_m", "est_time_min" }`. `from`/`to` are indexes into the route's coordinates; legs run end to end over the whole line. Lengths and times are one way. |
+| `walkback_min` | minutes to walk home along the drive legs if the crew rover fails (NASA walkback constraint) |
+
+With legs, `est_time_min` is the round trip at each leg's own speed; `length_m`/`round_trip_m` are unchanged (geometry, ×2 for crew). Placeholder assumptions: walk 20 m/min, drive 5 km/h (cautious; the Apollo LRV's top speed was about 13 km/h). A route without `legs` is walked end to end, so existing pipeline outputs remain valid. The app splits routes by leg (drive drawn light blue) and warns, without hiding the route, when legs are malformed. Budget rule for a route with legs: travel within 168 min (240 min EVA, 30% reserve) **and** drive out + site walk + walkback within the full 240 min EVA.
 
 ### `coverage.geojson` (Polygon features)
 
@@ -309,4 +318,6 @@ Route search: cost grid from step 6, `skimage.graph.route_through_array` on the 
 - [Perseverance driving updates (Oct 2026)](https://newspaceeconomy.ca/2026/10/22/perseverance-driving-updates-support-longer-autonomous-travel-on-mars/?amp=1)
 - [HiRISE DTM product directory](https://hirise.lpl.arizona.edu/PDS/DTM/ESP/ORB_071000_071099/ESP_071085_2345_ESP_071006_2345/): `ESP_071006_2345_RED_A_01_ORTHO.JP2` + `.LBL` (0.249 m/pixel, 8-bit), SHA-256 `ab1d5f6c3834d8046329e7771031409ed83c29b6ff277293074c4b8ede591d12`.
 - [JPL Open Source Rover](https://github.com/nasa-jpl/open-source-rover) (Apache-2.0)
+- Geury's site inputs: `data/site/ice_zone.geojson` and `data/site/site_points.geojson` (HiRISE ESP_071006_2345 enhanced color, about ±15 m; rebuilt from his site-pack tables)
+- Apollo Lunar Roving Vehicle (Apollo 15–17) and the Artemis Lunar Terrain Vehicle: precedent for drive-then-walk surface EVAs; the walkback limit follows the NASA Walkback test cited above
 - Ground-view example photos (side panel, chosen by Geury; NASA public domain; labeled "Example Mars terrain, not this site"; hotlinked from NASA's image CDN): [PIA10682 Icy, Patterned Ground](https://photojournal.jpl.nasa.gov/catalog/PIA10682) and [PIA11383 Phoenix Deepens Trenches](https://photojournal.jpl.nasa.gov/catalog/PIA11383) and [PIA10903 "Dodo-Goldilocks" Trench](https://photojournal.jpl.nasa.gov/catalog/PIA10903) (Phoenix, NASA/JPL-Caltech/UArizona, PIA11383/PIA10903 also Texas A&M); [PIA00571 Ice on Mars Utopia Planitia Again](https://photojournal.jpl.nasa.gov/catalog/PIA00571) (Viking 2, NASA/JPL)

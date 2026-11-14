@@ -330,6 +330,47 @@
           ]
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hz-slope-003",
+        "type": "U",
+        "category": "slope",
+        "severity": "exclude",
+        "evidence": "inferred",
+        "agent": "both",
+        "stage": "orbital",
+        "source": "Geury's southern-scarp ice zone (HiRISE color, about 15 m), placeholder rectangle",
+        "note": "Southern ice scarp, about 500 m long; treated as a cliff to avoid until the DTM slope is checked."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.89,
+              54.1343
+            ],
+            [
+              -147.877,
+              54.1343
+            ],
+            [
+              -147.877,
+              54.1354
+            ],
+            [
+              -147.89,
+              54.1354
+            ],
+            [
+              -147.89,
+              54.1343
+            ]
+          ]
+        ]
+      }
     }
   ]
 }
