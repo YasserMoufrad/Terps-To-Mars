@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'pipeline/**', 'ui/**', 'data/**']
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  pipeline:
+    name: pipeline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - run: python -m pip install -r pipeline/requirements.txt
+      - run: python -m pytest pipeline/tests
+
+  full-suite:
+    name: full-suite
+    needs: [frontend, pipeline]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all checks to pass
+        env:
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          PIPELINE_RESULT: ${{ needs.pipeline.result }}
+        run: |
+          test "$FRONTEND_RESULT" = success
+          test "$PIPELINE_RESULT" = success
