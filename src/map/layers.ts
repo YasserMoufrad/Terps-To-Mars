@@ -2,6 +2,7 @@
 // markers are always shown; everything else can be toggled (progressive disclosure).
 
 export interface LayerVisibility {
+  color: boolean; // real Mars color (Viking MDIM 2.1 color mosaic) blended over the CTX detail
   hirise: boolean; // sharp HiRISE image (Nic's pipeline)
   slope: boolean; // colored slope map (Nic's pipeline)
   hazards: boolean;
@@ -9,6 +10,7 @@ export interface LayerVisibility {
 }
 
 export const DEFAULT_LAYERS: LayerVisibility = {
+  color: true,
   hirise: true,
   slope: false, // off by default so the map is not cluttered
   hazards: true,
@@ -16,6 +18,7 @@ export const DEFAULT_LAYERS: LayerVisibility = {
 };
 
 export const LAYER_LABELS: Record<keyof LayerVisibility, string> = {
+  color: 'Mars color (Viking color mosaic)',
   hirise: 'HiRISE image (25 cm)',
   slope: 'Slope map',
   hazards: 'Hazards',
