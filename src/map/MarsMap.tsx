@@ -14,6 +14,7 @@ import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './laye
 import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
+import { dronePerchLabel } from './reviewPresentation';
 
 // CTX global mosaic: real tiles exist up to zoom 10 here (see docs/MAP_TILES.md).
 // Its server sometimes fails a tile, so THEMIS (from Mars Trek) sits underneath:
@@ -180,7 +181,7 @@ export function MarsMap({
 
         {stage === 'eva' && (
           <CircleMarker center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="right" className="map-label">Drone (simulated) watching the cliff</Tooltip>
+            <Tooltip permanent direction="right" className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
           </CircleMarker>
         )}
       </MapContainer>

@@ -6,7 +6,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 | Person | Working on | Next |
 | --- | --- | --- |
-| Nic | Terrain/routing corrections merged; discovery/export integration under final validation | Merge #6, then separately review/test UI integration fixes on main and pause |
+| Nic | Terrain, routing, discovery and UI follow-up merged | Paused until real endpoints and DTM QC land |
 | Yasser | Map app PR #8 merged with wording, placeholder evidence and candidate drawing fixes | Branch protection for main; further visual/scientific review |
 | Geury | Exact endpoints: scarp foot, habitat, primary and backup observation points (inside the color strip) | Ice evidence specific to this scarp; evidence panel text |
 | Samar / Yasser's agent | Hazard rules v1 done (in IMPLEMENTATION.md section 5) | Sensor ranges for coverage; decision states; discovery scenario |
@@ -19,6 +19,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-14 · Nic: UI follow-up on merged #8 (branch `ui/pipeline-review-followup`): orbital stage hides post-discovery routes; drone/eva use only the post-discovery backup and report a missing one in words; drone perch label reflects its coverage record (no active-drone claim for an inspection-required marker); route review logging (`route.candidate`/`route.unavailable`, `crew_clearance: not_established`); 20 frontend tests, typecheck and build pass
 - 2026-11-14 · Nic: PR #6 refreshed against merged UI #8; integrated validation passed 76 Docker Python tests, 14 frontend/workflow tests, typecheck/build; actual eight-file synthetic bundle loaded by the TypeScript loader with zero errors and four expected inspection warnings
 - 2026-11-14 · Nic: discovery/export suite passed 76 Docker Python tests; thermal context no longer claims measured inertia; simulated decisions/versions have one correlated trace; real run requires confirmed endpoints and reviewed scarp inputs; atomic exports and candidate statistics are tested
 - 2026-11-14 · Yasser's agent: Nic's PR #8 review addressed: intro/captions/labels/placeholder text say proposed, simulated and needs-inspection (no safe/confirmed/clearance claims); evidence card marks placeholder shapes as hypothetical even when they name a NASA dataset; placeholder soft-ground hazard no longer cites the THEMIS day-IR mosaic as thermal-inertia evidence; non-ok routes with geometry drawn amber dashed, empty routes reported in words
