@@ -199,3 +199,33 @@ def test_audit_from_config_needs_no_review_flags(tmp_path):
     assert report["points"]["habitat"]["uncertainty"]["status"] == "inspection_required"
     with pytest.raises(FileExistsError):
         audit_from_config(config, tmp_path / "audit")
+
+
+def test_window_latlon_resolves_to_covering_pixel_window(tmp_path, caplog):
+    """A lat/lon box (as in data/site/feasibility_audit*.json) replaces a hand-computed pixel window."""
+    from pipeline.feasibility import window_from_latlon
+    from pipeline.terrain import read_terrain
+    crs = "+proj=eqc +lat_ts=0 +R=3389500 +units=m +no_defs"
+    dtm = tmp_path / "dtm.tif"
+    with rasterio.open(dtm, "w", driver="GTiff", width=60, height=60, count=1, dtype="float32", crs=crs,
+                       transform=from_origin(0, 60, 1, 1), nodata=-9999) as dataset:
+        dataset.write(np.zeros((60, 60), "float32"), 1)
+    grid = read_terrain(dtm, (0, 0, 60, 60))
+    (west, north), (east, south) = grid.lonlat(10, 5), grid.lonlat(40, 50)
+    window = window_from_latlon(dtm, {"south": south, "west": west, "north": north, "east": east})
+    col, row, width, height = window
+    assert col <= 5 and row <= 10 and col + width >= 51 and row + height >= 41  # covers both corner cells
+    point = lambda r, c: dict(zip(("lon", "lat"), grid.lonlat(r, c)))
+    caplog.set_level(logging.INFO, logger="terps.pipeline")
+    report = audit_from_config({"dtm": str(dtm), "window": None, "eva_minutes": 240, "speed_m_min": 20,
+                                "observation_minutes": 20,
+                                "window_latlon": {"south": south, "west": west, "north": north, "east": east},
+                                "points": {"habitat": point(20, 15), "observation_primary": point(30, 40)}},
+                               tmp_path / "audit")
+    assert report["verdict"] == "no_route_found"
+    assert events(caplog, "feasibility_window_resolved")[0].fields["window"] == window
+    with pytest.raises(ValueError, match="outside the DTM"):
+        window_from_latlon(dtm, {"south": 50, "west": 10, "north": 51, "east": 11})
+    with pytest.raises(ValueError, match="window or window_latlon"):
+        audit_from_config({"dtm": str(dtm), "eva_minutes": 240, "speed_m_min": 20, "observation_minutes": 20,
+                           "points": {}}, tmp_path / "audit2")

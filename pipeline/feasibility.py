@@ -131,12 +131,40 @@ def _cell(terrain, point, name):
     return int(row), int(col)
 
 
+def window_from_latlon(dtm_path, box):
+    """Convert a signed lat/lon box {south, west, north, east} to an integer DTM window [col, row, width, height].
+
+    The window is the smallest pixel block covering the box (outward rounding), clipped to the
+    raster; a box that falls outside the DTM raises instead of returning an empty crop.
+    """
+    from rasterio.warp import transform_bounds
+    from rasterio.windows import from_bounds
+
+    south, west, north, east = (float(box[key]) for key in ("south", "west", "north", "east"))
+    if not (-90 <= south < north <= 90 and -180 <= west < east <= 180):
+        raise ValueError("window_latlon needs signed south < north and west < east")
+    with rasterio.open(dtm_path) as dataset:
+        left, bottom, right, top = transform_bounds(MARS_GEOGRAPHIC, dataset.crs, west, south, east, north,
+                                                    densify_pts=21)
+        raw = from_bounds(left, bottom, right, top, dataset.transform)
+        col0, row0 = max(0, math.floor(raw.col_off)), max(0, math.floor(raw.row_off))
+        col1 = min(dataset.width, math.ceil(raw.col_off + raw.width))
+        row1 = min(dataset.height, math.ceil(raw.row_off + raw.height))
+    if col1 - col0 < 3 or row1 - row0 < 3:
+        raise ValueError("window_latlon lies outside the DTM")
+    window = [col0, row0, col1 - col0, row1 - row0]
+    event("feasibility_window_resolved", window_latlon=[south, west, north, east], window=window,
+          source_dtm=Path(dtm_path).name)
+    return window
+
+
 @traced("feasibility_audit_run")
 def audit_from_config(config, output):
     """Read the DTM crop and candidate points from config, audit them and write feasibility_report.json.
 
-    config keys: dtm, window [col, row, width, height], points {habitat, observation_primary,
-    optional observation_backup} as {lat, lon}, eva_minutes, speed_m_min, observation_minutes.
+    config keys: dtm, window [col, row, width, height] or window_latlon {south, west, north, east},
+    points {habitat, observation_primary, optional observation_backup} as {lat, lon}, eva_minutes,
+    speed_m_min, observation_minutes.
     Optional: artifact_mask, edge_distance, foot_distance, scarp_risk (.npy), scarp_height_m, apron_m.
     No review flags are required; missing scarp measurements keep the crop unresolved (conservative).
     """
@@ -146,9 +174,13 @@ def audit_from_config(config, output):
         raise ValueError("Write audits to an ignored directory, not public/data")
     if output.exists() and any(output.iterdir()):
         raise FileExistsError("Output directory must be empty")
-    for key in ("dtm", "window", "points", "eva_minutes", "speed_m_min", "observation_minutes"):
+    for key in ("dtm", "points", "eva_minutes", "speed_m_min", "observation_minutes"):
         if key not in config:
             raise ValueError(f"Audit config requires {key}")
+    if config.get("window") is None:
+        if not config.get("window_latlon"):
+            raise ValueError("Audit config requires window or window_latlon")
+        config = {**config, "window": window_from_latlon(config["dtm"], config["window_latlon"])}
     event("feasibility_inputs", config_fingerprint=fingerprint(config), source_dtm=Path(config["dtm"]).name,
           input_status="unconfirmed_candidates", points=sorted(config["points"]))
     artifact = np.load(config["artifact_mask"], allow_pickle=False) if config.get("artifact_mask") else None
