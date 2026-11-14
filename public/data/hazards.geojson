@@ -43,8 +43,8 @@
         "evidence": "inferred",
         "agent": "both",
         "stage": "orbital",
-        "source": "THEMIS thermal data via Mars Trek (placeholder geometry)",
-        "note": "Low thermal inertia suggests loose material; THEMIS is coarse, so this is regional only."
+        "source": "Hypothetical placeholder (no soft-ground dataset processed yet)",
+        "note": "Suspected loose material, drawn for the demo. The THEMIS day-infrared basemap is not thermal-inertia or bearing-strength evidence; a real layer would need derived thermal inertia."
       },
       "geometry": { "type": "Polygon", "coordinates": [[[-147.884, 54.129], [-147.874, 54.129], [-147.874, 54.134], [-147.884, 54.134], [-147.884, 54.129]]] }
     },

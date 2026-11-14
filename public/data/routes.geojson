@@ -10,7 +10,7 @@
         "kind": "orbital_guess",
         "agent": "crew",
         "version": "before",
-        "status": "ok",
+        "status": "inspection_required",
         "stats": { "length_m": 1000, "round_trip_m": 2000, "est_time_min": 40, "elevation_gain_m": 30, "max_slope_deg": 24, "shared_with_main_m": 0 }
       },
       "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.137], [-147.893, 54.145]] }
