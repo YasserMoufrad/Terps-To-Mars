@@ -43,7 +43,7 @@ def cost_grid(terrain, analysis, masks, agent="crew", unscouted=None):
     return costs
 
 
-def shortest_path(costs, start, end):
+def shortest_path(costs, start, end, spacing=None):
     costs = np.asarray(costs, dtype=float)
     if costs.ndim != 2 or np.isnan(costs).any() or (costs <= 0).any():
         raise ValueError("Costs must be positive or infinity in a 2D grid")
@@ -74,7 +74,8 @@ def shortest_path(costs, start, end):
             r, c = neighbour
             if not 0 <= r < costs.shape[0] or not 0 <= c < costs.shape[1] or not np.isfinite(costs[neighbour]):
                 continue
-            candidate = current_cost + (costs[current] / 2 + costs[neighbour] / 2)
+            step = 1.0 if spacing is None else (spacing[0] if r != row else spacing[1][row])
+            candidate = current_cost + (costs[current] / 2 + costs[neighbour] / 2) * step
             if candidate < distance.get(neighbour, np.inf):
                 distance[neighbour] = candidate
                 parent[neighbour] = current
@@ -127,7 +128,8 @@ def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=24
         raise ValueError("Invalid backup independence settings")
     rules = rules or load_rules()
     costs = cost_grid(terrain, analysis, masks)
-    primary = shortest_path(costs, start, end)
+    spacing = (terrain.resolution, terrain.column_spacing)
+    primary = shortest_path(costs, start, end, spacing)
     status = "ok"
     if not primary:
         status = "inspection_required" if not analysis["valid"][tuple(start)] or not analysis["valid"][tuple(end)] else "no_viable_route"
@@ -142,7 +144,7 @@ def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=24
         corridor = distance_transform_edt(~mask) * terrain.resolution <= corridor_m
         penalized = costs.copy()
         penalized[corridor & np.isfinite(penalized)] *= 100
-        candidate = shortest_path(penalized, start, end)
+        candidate = shortest_path(penalized, start, end, spacing)
         if candidate:
             stats = route_stats(terrain, analysis, candidate, primary, speed_m_min)
             corridor_fraction = sum(bool(corridor[cell]) for cell in candidate[1:-1]) / max(1, len(candidate) - 2)

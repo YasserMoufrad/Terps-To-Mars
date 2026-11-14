@@ -133,15 +133,36 @@ def _validate_lat_lon_objects(value):
 
 def validate_data(data_dir=DATA_DIR, require_overlays=False):
     data_dir = Path(data_dir)
+    collections = {}
     for name in COLLECTIONS:
         payload = json.loads((data_dir / name).read_text(encoding="utf-8"))
         validate_collection(payload, name)
+        collections[name] = payload
     mission = json.loads((data_dir / "mission.json").read_text(encoding="utf-8"))
     if mission.get("schema_version") != "1.0":
         raise ValueError("mission.json: expected schema_version 1.0")
     _validate_lat_lon_objects(mission)
     if mission.get("discovery", {}).get("evidence") != "simulated":
         raise ValueError("mission.json: rover discovery must be simulated")
+    discovery = mission["discovery"]
+    hazard_ids = {feature["properties"]["id"] for feature in collections["hazards.geojson"]["features"]}
+    route_ids = {feature["properties"]["id"] for feature in collections["routes.geojson"]["features"]}
+    if discovery.get("hazard_id") not in hazard_ids or any(discovery.get(key) not in route_ids for key in ("before_route_id", "after_route_id")):
+        raise ValueError("Discovery references missing hazard or route")
+    if require_overlays:
+        from pipeline.routing import mars_distance
+        for feature in collections["routes.geojson"]["features"]:
+            properties = feature["properties"]
+            coordinates = feature["geometry"]["coordinates"]
+            if properties["status"] != "ok":
+                continue
+            computed = sum(mars_distance(a, b) for a, b in zip(coordinates, coordinates[1:]))
+            stats = properties["stats"]
+            if not math.isclose(computed, stats["length_m"], rel_tol=1e-7, abs_tol=1e-5):
+                raise ValueError("Route length does not match Mars geometry")
+            multiplier = 2 if properties["agent"] == "crew" else 1
+            if not math.isclose(multiplier * computed, stats["round_trip_m"], rel_tol=1e-7, abs_tol=1e-5):
+                raise ValueError("Route round trip does not match geometry")
     if require_overlays:
         from PIL import Image
         for basename, extension in (("hirise", "jpg"), ("slope", "png")):

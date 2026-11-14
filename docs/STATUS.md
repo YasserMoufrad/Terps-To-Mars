@@ -14,10 +14,14 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
-- Nic: terrain PR #4 open; route planning on dependent `pipeline/route-planning`; merge protection requires repository admin
+- Nic: terrain PR #4 and routing PR #5 open; discovery/export on dependent `pipeline/rover-discovery`; merge protection requires repository admin
 
 ## Done
 
+- 2026-11-14 · Nic: Docker full suite passed 36 tests, including byte-identical eight-file exports, scikit-image reference comparison, Mars route statistics, exact boundaries, backup failures and discovery rerouting; frontend typecheck/test/build passed
+- 2026-11-14 · Nic: GitHub CI passed for terrain PR #4 and routing PR #5; discovery CI will additionally publish a clearly synthetic eight-file artifact for review
+- 2026-11-14 · Nic: downloaded RED_C orthoimage (30,838,707 bytes; SHA-256 `0e12a7c0863e503263314093856231a2f63a9b2115824574d869a80beda4ba59`); image and slope diagnostic exports have matching bounds; manual landmark alignment still pending
+- 2026-11-14 · Nic: routing PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/5 includes walkthrough and depends on #4
 - 2026-11-14 · Nic: terrain/hazard PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/4 includes a walkthrough; Docker terrain/contract tests (11) and frontend validation passed
 - 2026-11-14 · Nic: downloaded official DTM to ignored raw storage (380,863,440 bytes; SHA-256 `6543d410aabcdfed6d8c67117235c1dcaf0f67716dcf72c0ba13c6dd8d85c8f1`); verified Mars equirectangular CRS, declared no-data, 1 m pixels, and 128×128 center diagnostic crop; scarp/alignment validation still pending
 - 2026-11-14 · Nic: added merged-PR branch cleanup workflow; repository-level automatic deletion setting denied (admin required); workflow preserves default/base/fork branches and branches with newer commits
@@ -31,6 +35,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Blocked / waiting on
 
+- Nic: real mission export requires Geury-confirmed habitat/observation/perch coordinates, reviewed crop/artifact/edge/foot masks, measured scarp/apron and modeled sensor ranges; synthetic demo is fully runnable
 - Yasser: enable GitHub Pages (Settings → Pages → Build and deployment → GitHub Actions) and protect `main` (Settings → Branches → Add rule for `main`: require PR, require `full-suite`, require branches up to date, and do not allow bypass); Nic's connected account has push but no admin permission
 - Nic: real-data landmark alignment, scarp QC and edge/foot masks remain manual validation steps
 - Nic's routes → Geury's endpoints

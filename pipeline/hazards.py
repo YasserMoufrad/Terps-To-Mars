@@ -44,7 +44,7 @@ def hazard_masks(terrain, analysis, rules=None, edge_distance=None,
     if edge_distance is not None:
         masks["edge"] = edge_distance <= threshold(rules, "cliff_setback_m")
     if foot_distance is not None:
-        if scarp_height is None or apron_m is None or min(scarp_height, apron_m) < 0:
+        if scarp_height is None or apron_m is None or not np.isfinite([scarp_height, apron_m]).all() or min(scarp_height, apron_m) < 0:
             raise ValueError("Rockfall requires measured height and visible apron")
         buffer = max(apron_m, scarp_height * threshold(rules, "rockfall_height_factor"))
         masks["rockfall"] = foot_distance <= buffer

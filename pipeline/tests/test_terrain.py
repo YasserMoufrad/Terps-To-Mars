@@ -21,6 +21,15 @@ def test_flat_and_analytic_slope():
     np.testing.assert_allclose(analyze(terrain(z))["slope"], 18)
 
 
+def test_equirectangular_scale_corrected_at_high_latitude():
+    radius = 3_389_500
+    transform = from_origin(0, np.radians(54) * radius, 1, 1)
+    z = np.tile(np.arange(11, dtype=float), (11, 1))
+    t = Terrain(z, transform, CRS, "synthetic latitude test", "simulated")
+    expected = np.degrees(np.arctan(1 / np.cos(np.radians(54))))
+    assert analyze(t)["slope"][0, 0] == pytest.approx(expected, abs=1e-4)
+
+
 def test_no_data_and_artifact_never_filled():
     z = np.zeros((11, 11))
     z[4, 4] = np.nan

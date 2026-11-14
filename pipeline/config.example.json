@@ -1,0 +1,23 @@
+{
+  "dtm": "pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG",
+  "image": "pipeline/raw/ESP_071006_2345_RED_C_01_ORTHO.JP2",
+  "window": null,
+  "artifact_mask": "pipeline/raw/reviewed-artifacts.npy",
+  "edge_distance": "pipeline/raw/reviewed-edge-distance.npy",
+  "foot_distance": "pipeline/raw/reviewed-foot-distance.npy",
+  "scarp_height_m": null,
+  "apron_m": null,
+  "endpoints": {
+    "habitat": null,
+    "observation_primary": null,
+    "observation_backup": null
+  },
+  "discovery_location": null,
+  "drone_perch": null,
+  "sensor_radius_m": null,
+  "speed_m_min": 20,
+  "eva_minutes": 240,
+  "alignment_reviewed": false,
+  "qc_reviewed": false,
+  "approved": false
+}

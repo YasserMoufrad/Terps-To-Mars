@@ -39,6 +39,13 @@ jobs:
       - run: python -m pip install -r pipeline/requirements.txt
       - run: python -m pipeline.validate_contract
       - run: python -m pytest pipeline/tests
+      - name: Generate and validate synthetic handoff bundle
+        run: python -m pipeline.run --output pipeline/output/ci-synthetic
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-contract-data
+          path: pipeline/output/ci-synthetic/
+          retention-days: 7
 
   full-suite:
     name: full-suite

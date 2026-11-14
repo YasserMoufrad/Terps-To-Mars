@@ -36,3 +36,23 @@ Costs model slope, roughness, rockfall proximity, unscouted terrain and length. 
 Backup search penalizes the primary corridor 100-fold and rejects candidates exceeding 50% shared edges or corridor cells (excluding endpoints). The default corridor is 2 m. These are configurable independence assumptions; common regional hazards can still affect both routes. Identical paths produce `backup_unavailable` with empty geometry.
 
 Successful routes must fit the strict <5 km round-trip budget, the 10 km hard excursion cap, and a modeled EVA duration with at least 30% reserve. Default walking speed is 20 m/min and EVA duration is 240 min; both are configurable modeling inputs, not physiology predictions. Travel time includes the round trip. All reported lengths use a 3,389,500 m Mars sphere. Failure records remain in the GeoJSON with zero stats and an explicit status. Real endpoints must come from Geury.
+
+## End-to-end demonstration and export
+
+From PowerShell, build the image above, then generate the eight contract files without modifying `public/data`:
+
+```powershell
+docker run --rm --name terps-demo --mount "type=bind,source=$PWD,target=/app" terps-pipeline:test python -m pipeline.run --output pipeline/output/demo
+```
+
+The output directory must be empty. With no config this is an explicitly synthetic flat-grid scenario, not terrain at Milankovič. Images carry a visible SYNTHETIC label; hazard evidence is `simulated`. The command exports `hirise.jpg`, `hirise.bounds.json`, `slope.png`, `slope.bounds.json`, `hazards.geojson`, `routes.geojson`, `coverage.geojson`, and `mission.json`. PNG no-data is transparent. JPEG no-data is black. Bounds describe the geographically reprojected display grid; hazard and route geometry retain full grid precision. The slope display uses a percentile stretch, not absolute color classes.
+
+`disc-001` inserts `hz-sim-001` into the preliminary route and preserves `rt-crew-main-v1` and `rt-crew-main-v2`. A request-input record remains unapproved (`chosen_option` empty) until an explicit human-approved configuration is supplied. The revised route is precomputed for review; it is not authorization to move. No viable post-discovery route remains an explicit failure record. Rover coverage uses a modeled circular sensor footprint on the traversable path prefix, not line-of-sight visibility; drone coverage is pending rather than invented. Unscouted and inspection-required areas remain visible.
+
+For real processing, copy `config.example.json` outside `public/data`, fill every pending field, and add `--config <path>` to the command. Null fields deliberately prevent execution. The input requires a crop window, artifact mask, edge/foot distance grids, measured scarp/apron values, Geury-confirmed endpoints and perch, a scenario discovery point, sensor range, and explicit QC/alignment review. All NumPy masks use the exact crop shape; distances and elevations are metres. Artifact labels require human review because no automatic seam detector is claimed. The discovery point must be inside a viable preliminary route. Do not use the diagnostic center crop as the final scarp selection.
+
+Geographic conversion uses a Mars spherical CRS; equirectangular east-west scale is corrected by latitude for slope and route search. Route lengths are independently recomputed from exported geometry. End-to-end tests compare every byte of two synthetic bundles, check failure states and detect tampered route statistics. Outputs are reproducible with the pinned dependency lock; binary image encoder output can change if dependencies change.
+
+## Real-data progress and remaining handoff
+
+The official DTM and `ESP_071006_2345_RED_C_01_ORTHO.JP2` were downloaded locally and checksummed. A 128×128 diagnostic center crop passed metadata checks, image reprojection and slope export. This is not a manual landmark alignment check. Full source files are ignored and are not distributed by GitHub Pages. Scarp selection, landmark alignment, artifact review, cliff-foot/edge masks, final endpoints and sensor ranges remain team inputs. No real crew route or validated public dataset has been published. Shadow modeling is deferred behind these required checks.
