@@ -15,6 +15,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 ## In progress
 
 - Nic: terrain/hazard processing on `pipeline/terrain-hazards`; scaffold PR #3 merged with CI passing; merge protection requires repository admin
+- 2026-11-14 · Nic: logging policy PR #7 merged with all checks passing; open pipeline PRs being corrected and instrumented before merge; frontend logging gaps handed to Yasser
 
 ## Done
 
