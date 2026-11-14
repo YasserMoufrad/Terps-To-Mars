@@ -4,14 +4,14 @@
   "rules": {
     "crew_caution_deg": {"value": 15, "comparison": ">=", "classification": "assumption", "source": "IMPLEMENTATION section 5: suited crew in Mars gravity"},
     "crew_exclude_deg": {"value": 20, "comparison": ">=", "classification": "planning_reference", "source": "NASA exploration EVA testing 2021, NTRS 20210000827; planning figure"},
-    "rover_exclude_deg": {"value": 24, "comparison": ">=", "classification": "unverified_reference", "source": "Reported Perseverance limit; primary NASA verification pending"},
+    "rover_exclude_deg": {"value": 24, "comparison": ">=", "classification": "provisional_scenario_assumption", "source": "Reported Perseverance figure, not a certified limit for Brianna's conceptual JPL Open Source Rover; replace from team CAD/sensor specifications when supplied"},
     "cliff_setback_m": {"value": 20, "comparison": "<=", "classification": "assumption", "source": "IMPLEMENTATION section 5: edge collapse"},
     "rockfall_height_factor": {"value": 1.0, "classification": "provisional_scenario_assumption", "source": "Team second-pass guidance: max(visible apron distance, one measured scarp height) from foot; not NASA-certified; reviewed edge/foot geometry required"},
     "roughness_m": {"value": 0.5, "comparison": ">", "classification": "provisional_assumption", "source": "Local elevation range; vertical uncertainty unavailable, so interpretation is uncertain; nearest odd pixel window approximates 3 m"},
     "roughness_window_m": {"value": 3, "classification": "assumption", "source": "IMPLEMENTATION section 5"},
     "wheel_slip_pct": {"value": 35, "comparison": ">", "classification": "simulated", "source": "disc-001 scenario; stop and request human input"},
-    "wheel_drop_m": {"value": 0.35, "classification": "unverified_reference", "source": "Perseverance AutoNav example; sensor only, below DTM resolution"},
-    "belly_clearance_m": {"value": 0.2, "classification": "unverified_reference", "source": "Reported Perseverance value; primary verification pending; sensor only"},
+    "wheel_drop_m": {"value": 0.35, "classification": "provisional_reference_not_team_limit", "source": "Perseverance example; sensor only, below DTM resolution; not evaluated by orbital algorithms; Brianna's CAD dimensions pending"},
+    "belly_clearance_m": {"value": 0.2, "classification": "provisional_reference_not_team_limit", "source": "Reported Perseverance value; not a specification for Brianna's rover; sensor/CAD input only, never DTM-derived; team dimensions pending"},
     "round_trip_limit_m": {"value": 5000, "comparison": "<", "classification": "planning_reference", "source": "IMPLEMENTATION section 5; modeled excursion budget"},
     "hard_excursion_cap_m": {"value": 10000, "comparison": "<=", "classification": "assumption", "source": "NASA Walkback NTRS 20080013604; distance from habitat"},
     "eva_reserve_fraction": {"value": 0.3, "comparison": ">=", "classification": "assumption", "source": "IMPLEMENTATION section 5; no physiology or oxygen model"}

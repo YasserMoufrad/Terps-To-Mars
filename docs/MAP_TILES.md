@@ -5,7 +5,7 @@ Tested 2026-11-14 at the Milankovic site (54.144°N, −147.894). All three laye
 | Layer | URL template (`{z}/{y}/{x}` = zoom / row / column) | Format | Max native zoom at the site | Use |
 | --- | --- | --- | --- | --- |
 | MOLA color hillshade (463 m) | `https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg` | jpg | 7 | Regional context, elevation feel |
-| THEMIS day IR (100 m) | `https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png` | png | 9 | Thermal layer (soft ground context) |
+| THEMIS day IR (100 m) | `https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png` | png | 9 | Regional infrared context; not local bearing-strength evidence |
 | CTX global mosaic, uncontrolled (5 m, Caltech) | `https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}` | png | 10 | Main basemap |
 
 Sources: [Mars Trek API layer list](https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars) and each layer's `WMTSCapabilities.xml`. The CTX layer's capabilities point to the Esri OnMars service above.
@@ -32,3 +32,9 @@ Sources: [Mars Trek API layer list](https://trek.nasa.gov/tiles/apidoc/trekAPI.h
 
 - The CTX tiles come from a different server than the Trek layers; check visually that CTX, MOLA and the HiRISE overlay line up at the scarp.
 - Confirm the attribution text each provider asks for.
+
+## Infrared imagery is not a thermal-inertia measurement
+
+THEMIS infrared sampling is approximately 100 m/pixel ([ASU fact sheet](https://themis.mars.asu.edu/factsheet)). A day/night infrared basemap is a regional display product, not automatically a quantitative thermal-inertia map or a rover-scale soft-ground classification. Quantitative thermal inertia requires an identified processed product and a defensible thermal model with its assumptions and uncertainties ([USGS THEMIS-derived thermal-inertia product](https://astrogeology.usgs.gov/search/map/mars-themis-derived-global-thermal-inertia-mosaic)). No rover-scale exclusion polygon is generated from tile brightness.
+
+A single simulated thermal-camera reading does not establish thermal inertia. The demo's primary rover observation is simulated 38% wheel slip; loose/soft ground remains a suspected interpretation. Rover dimensions and obstacle limits must come from Brianna's CAD/sensor model. Day/night context can inform human review without certifying traversability. Color-altimetry previews help locate a scarp, but numeric height must be measured from a validated DTM, not from display colors.

@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   delete-branch:
@@ -19,21 +20,31 @@ jobs:
             const pr = context.payload.pull_request;
             const repository = context.payload.repository;
             const branch = pr.head.ref;
+            const log = (event, fields = {}) => {
+              // event identifies the cleanup outcome; fields contains safe branch/PR context.
+              core.info(JSON.stringify({ timestamp: new Date().toISOString(), run_id: String(context.runId),
+                stage: 'branch_cleanup', event, pr_number: pr.number, branch, ...fields }));
+            };
             if (pr.head.repo?.full_name !== repository.full_name ||
                 branch === repository.default_branch || branch === pr.base.ref) {
-              core.info('Keeping default, base, or fork branch.');
+              log('branch_preserved', { reason: 'default_base_or_fork' });
+              return;
+            }
+            const dependents = await github.rest.pulls.list({ ...context.repo, state: 'open', base: branch, per_page: 1 });
+            if (dependents.data.length) {
+              log('branch_preserved', { reason: 'base_of_open_pull_request' });
               return;
             }
             const ref = `heads/${branch}`;
             try {
               const current = await github.rest.git.getRef({ ...context.repo, ref });
               if (current.data.object.sha !== pr.head.sha) {
-                core.info('Keeping branch because it contains newer commits.');
+                log('branch_preserved', { reason: 'newer_commits' });
                 return;
               }
               await github.rest.git.deleteRef({ ...context.repo, ref });
-              core.info(`Deleted merged branch ${branch}`);
+              log('branch_deleted');
             } catch (error) {
               if (error.status !== 404) throw error;
-              core.info('Branch already deleted.');
+              log('branch_missing');
             }
