@@ -16,6 +16,18 @@ from pipeline.terrain import MARS_RADIUS_M, load_rules, threshold
 from pipeline.logging_config import event, traced, operation
 
 STAT_KEYS = ("length_m", "round_trip_m", "est_time_min", "elevation_gain_m", "max_slope_deg", "shared_with_main_m")
+# Cost added where roughness could not be measured on otherwise valid terrain. Same weight as
+# unscouted terrain: unknown is never cheaper than measured-smooth. A modeling choice, not physics.
+UNRESOLVED_ROUGHNESS_PENALTY = 2.0
+
+
+class InfeasibleMission(ValueError):
+    """Raised when modeled terrain and budgets leave no viable route; a valid finding, not a crash."""
+
+
+def unresolved_roughness(analysis):
+    """Boolean grid of valid cells whose roughness is NaN (window too coarse or unmeasured)."""
+    return analysis["valid"] & ~np.isfinite(analysis["roughness"])
 
 
 def mars_distance(first, second):
@@ -28,7 +40,11 @@ def mars_distance(first, second):
 
 @traced("cost_grid")
 def cost_grid(terrain, analysis, masks, agent="crew", unscouted=None, rules=None):
-    """Build agent-specific costs; masks are hard exclusions and unscouted adds a penalty."""
+    """Build agent-specific costs; masks are hard exclusions and unscouted adds a penalty.
+
+    Unresolved roughness on valid cells costs UNRESOLVED_ROUGHNESS_PENALTY instead of the
+    zero a NaN-to-zero conversion would give, so unmeasured terrain never looks smooth.
+    """
     if agent not in {"crew", "rover"}:
         raise ValueError("Unknown route agent")
     blocked = (~analysis["valid"] | masks["no_data"] | masks["artifact"]
@@ -40,13 +56,19 @@ def cost_grid(terrain, analysis, masks, agent="crew", unscouted=None, rules=None
     if np.shape(unscouted) != blocked.shape:
         raise ValueError("Unscouted mask shape mismatch")
     # Weights are modeling choices; hard exclusions stay infinite.
-    costs = 1 + np.nan_to_num(analysis["slope"]) / 15 + np.nan_to_num(analysis["roughness"]) + np.asarray(unscouted) * 2
+    unresolved = unresolved_roughness(analysis)
+    roughness_cost = np.where(unresolved, UNRESOLVED_ROUGHNESS_PENALTY, np.nan_to_num(analysis["roughness"]))
+    costs = 1 + np.nan_to_num(analysis["slope"]) / 15 + roughness_cost + np.asarray(unscouted) * 2
     if masks["rockfall"].any():
         distance = distance_transform_edt(~masks["rockfall"]) * terrain.resolution
         costs += 10 / (1 + distance)
     costs[blocked] = np.inf
+    if unresolved.any():
+        event("unresolved_roughness_penalized", logging.WARNING, agent=agent, cells=int(unresolved.sum()),
+              penalty=UNRESOLVED_ROUGHNESS_PENALTY, classification="modeling_choice", evidence=terrain.evidence)
     event("cost_grid_built", agent=agent, evidence=terrain.evidence, excluded_cells=int(blocked.sum()),
-          unresolved_scarp_cells=int(masks["inspection_required"].sum()), slope_threshold_deg=threshold(rules or load_rules(), f"{agent}_exclude_deg"))
+          unresolved_scarp_cells=int(masks["inspection_required"].sum()), unresolved_roughness_cells=int(unresolved.sum()),
+          slope_threshold_deg=threshold(rules or load_rules(), f"{agent}_exclude_deg"))
     return costs
 
 
@@ -132,9 +154,15 @@ def route_feature(terrain, analysis, path, route_id, kind="main", version="befor
     return feature
 
 
-@traced("mission_budget")
-def mission_budget(outbound, returning, rules, eva_minutes, speed_m_min, observation_minutes=0):
-    """Budget outbound/returning lengths plus observation_minutes without changing travel-only stats."""
+def itinerary_budget(leg_lengths_m, rules, eva_minutes, speed_m_min, observation_minutes=0,
+                     max_excursion_m=None, label="itinerary"):
+    """Budget a complete multi-leg EVA (e.g. habitat -> primary -> backup -> habitat).
+
+    leg_lengths_m: every leg in metres, including any primary-to-backup leg, so nothing is omitted.
+    observation_minutes: total site work across all stops (minutes).
+    max_excursion_m: farthest distance from the habitat; defaults to the longest leg.
+    Applies the round-trip distance limit, the hard excursion cap and EVA time with reserve.
+    """
     for name, value, allow_zero in (("EVA duration", eva_minutes, False), ("walking speed", speed_m_min, False),
                                      ("observation duration", observation_minutes, True)):
         if not math.isfinite(value) or value < 0 or (not allow_zero and value == 0):
@@ -142,25 +170,33 @@ def mission_budget(outbound, returning, rules, eva_minutes, speed_m_min, observa
     reserve = threshold(rules, "eva_reserve_fraction")
     if not 0 <= reserve < 1:
         raise ValueError("Reserve fraction must be in [0,1)")
-    lengths = [outbound["length_m"], returning["length_m"]]
-    if any(not math.isfinite(value) or value < 0 for value in lengths):
+    lengths = [float(value) for value in leg_lengths_m]
+    if not lengths or any(not math.isfinite(value) or value < 0 for value in lengths):
         raise ValueError("Route lengths must be finite and nonnegative")
+    excursion = max(lengths) if max_excursion_m is None else float(max_excursion_m)
     distance = sum(lengths)
     travel_minutes = distance / speed_m_min
     available = eva_minutes * (1 - reserve)
     reasons = []
     if distance >= threshold(rules, "round_trip_limit_m"):
         reasons.append("round_trip_distance_limit")
-    if max(lengths) > threshold(rules, "hard_excursion_cap_m"):
+    if excursion > threshold(rules, "hard_excursion_cap_m"):
         reasons.append("hard_excursion_cap")
     if travel_minutes + observation_minutes > available + 1e-9:
         reasons.append("eva_time_limit")
-    result = {"accepted": not reasons, "reasons": reasons, "distance_m": distance,
-              "travel_min": travel_minutes, "observation_min": observation_minutes,
+    result = {"accepted": not reasons, "reasons": reasons, "distance_m": distance, "legs_m": lengths,
+              "max_excursion_m": excursion, "travel_min": travel_minutes, "observation_min": observation_minutes,
               "total_min": travel_minutes + observation_minutes, "available_min": available,
               "reserve_fraction": reserve, "speed_m_min": speed_m_min}
-    event("mission_budget_evaluated", logging.INFO if not reasons else logging.WARNING, **result)
+    event("mission_budget_evaluated", logging.INFO if not reasons else logging.WARNING, itinerary=label, **result)
     return result
+
+
+@traced("mission_budget")
+def mission_budget(outbound, returning, rules, eva_minutes, speed_m_min, observation_minutes=0):
+    """Budget outbound/returning lengths plus observation_minutes without changing travel-only stats."""
+    return itinerary_budget([outbound["length_m"], returning["length_m"]], rules, eva_minutes,
+                            speed_m_min, observation_minutes, label="out_and_back")
 
 
 def within_budget(stats, rules, eva_minutes, speed_m_min, observation_minutes=0):
@@ -168,10 +204,25 @@ def within_budget(stats, rules, eva_minutes, speed_m_min, observation_minutes=0)
     return mission_budget(stats, stats, rules, eva_minutes, speed_m_min, observation_minutes)["accepted"]
 
 
+def straight_line_m(terrain, start, end):
+    """Great-circle metres between cell centres start/end on the Mars sphere: a lower bound on any route."""
+    return mars_distance(terrain.lonlat(*start), terrain.lonlat(*end))
+
+
+def unit_costs(costs):
+    """Same exclusions as costs but every passable cell costs 1, so search minimizes distance only."""
+    return np.where(np.isfinite(costs), 1.0, np.inf)
+
+
 @traced("route_planning")
 def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=240,
                 speed_m_min=20, backup_max_shared=0.5, corridor_m=2, observation_minutes=0, unscouted=None, version="before"):
     """Plan start/end candidates; observation_minutes budgets work, unscouted limits interpretation.
+
+    Budget checks run in order: great-circle lower bound (proves infeasibility without search),
+    least-cost path, then the shortest-distance path over the same exclusions when the
+    least-cost path is too long. Only when that also fails is the result no_viable_route.
+    Unscouted or unresolved-roughness cells on a route make it inspection_required.
 
     Backup independence is modeled: penalize a corridor around the primary,
     then require both shared-edge and corridor-overlap fractions <= threshold.
@@ -188,20 +239,48 @@ def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=24
     unscouted = np.ones(terrain.elevation.shape, bool) if unscouted is None else np.asarray(unscouted, dtype=bool)
     costs = cost_grid(terrain, analysis, masks, unscouted=unscouted, rules=rules)
     spacing = (terrain.resolution, terrain.column_spacing)
-    with operation("primary_route_search", route_id=main_id, evidence=terrain.evidence):
-        primary = shortest_path(costs, start, end, spacing)
     status = "ok"
-    if not primary:
+    # Lower bound: no route on Mars is shorter than the great circle, so failing here proves infeasibility.
+    lower_bound = straight_line_m(terrain, start, end)
+    bound = itinerary_budget([lower_bound, lower_bound], rules, eva_minutes, speed_m_min,
+                             observation_minutes, label="straight_line_lower_bound")
+    primary = []
+    if bound["accepted"]:
+        with operation("primary_route_search", route_id=main_id, evidence=terrain.evidence):
+            primary = shortest_path(costs, start, end, spacing)
+    if not bound["accepted"]:
+        status = "no_viable_route"
+        event("route_rejected", logging.WARNING, route_id=main_id, status=status, reason="straight_line_lower_bound",
+              lower_bound_m=lower_bound, budget_reasons=bound["reasons"], evidence=terrain.evidence, search_skipped=True)
+    elif not primary:
         status = "inspection_required" if not analysis["valid"][tuple(start)] or not analysis["valid"][tuple(end)] or masks["inspection_required"].any() else "no_viable_route"
         event("route_rejected", logging.WARNING, route_id=main_id, status=status,
               reason="unresolved_scarp_or_invalid_terrain" if status == "inspection_required" else "hard_exclusions_or_disconnected", evidence=terrain.evidence,
               threshold_deg=threshold(rules, "crew_exclude_deg"), excluded_cells=int((~np.isfinite(costs)).sum()))
     elif not within_budget(route_stats(terrain, analysis, primary, speed_m_min=speed_m_min), rules, eva_minutes, speed_m_min, observation_minutes):
-        primary, status = [], "no_viable_route"
-        event("route_rejected", logging.WARNING, route_id=main_id, status=status, reason="mission_budget", evidence=terrain.evidence)
-    elif any(unscouted[cell] for cell in primary):
+        # The least-cost path minimizes weighted cost, not length. Before declaring the mission
+        # infeasible, test the shortest-distance path over the same hard exclusions.
+        cost_length = route_stats(terrain, analysis, primary, speed_m_min=speed_m_min)["length_m"]
+        with operation("budget_fallback_search", route_id=main_id, evidence=terrain.evidence):
+            shortest = shortest_path(unit_costs(costs), start, end, spacing)
+        shortest_length = route_stats(terrain, analysis, shortest, speed_m_min=speed_m_min)["length_m"]
+        if shortest and within_budget(route_stats(terrain, analysis, shortest, speed_m_min=speed_m_min), rules, eva_minutes, speed_m_min, observation_minutes):
+            primary = shortest
+            event("budget_fallback_shortest_distance", logging.WARNING, route_id=main_id, least_cost_length_m=cost_length,
+                  shortest_length_m=shortest_length, reason="least_cost_path_exceeded_budget", evidence=terrain.evidence)
+        else:
+            primary, status = [], "no_viable_route"
+            event("route_rejected", logging.WARNING, route_id=main_id, status=status, reason="mission_budget",
+                  least_cost_length_m=cost_length, shortest_length_m=shortest_length,
+                  proof="shortest_distance_path_over_same_exclusions_exceeds_budget", evidence=terrain.evidence)
+    if primary and any(unscouted[cell] for cell in primary):
         status = "inspection_required"
         event("unscouted_corridor", logging.WARNING, route_id=main_id, status=status, evidence=terrain.evidence, reason="geometric_candidate_only")
+    rough_unknown = unresolved_roughness(analysis)
+    if primary and any(rough_unknown[cell] for cell in primary):
+        status = "inspection_required"
+        event("unresolved_roughness_on_route", logging.WARNING, route_id=main_id, status=status,
+              cells=sum(bool(rough_unknown[cell]) for cell in primary), evidence=terrain.evidence)
     main = route_feature(terrain, analysis, primary, main_id, kind="orbital_guess" if primary and status == "inspection_required" else "main", status=status, speed_m_min=speed_m_min, version=version)
     backup = []
     if primary:
@@ -224,7 +303,8 @@ def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=24
                   regional_independence="not_assessed")
             if max(corridor_fraction, edge_fraction) <= backup_max_shared and combined["accepted"]:
                 backup = candidate
-    backup_status = "inspection_required" if backup and any(unscouted[cell] for cell in backup) else "ok" if backup else "backup_unavailable"
+    backup_status = ("inspection_required" if backup and any(unscouted[cell] or rough_unknown[cell] for cell in backup)
+                     else "ok" if backup else "backup_unavailable")
     if not backup:
         event("backup_unavailable", logging.WARNING, route_id=backup_id, reason="no_independent_budgeted_candidate", status=backup_status, evidence=terrain.evidence)
     fallback = route_feature(terrain, analysis, backup, backup_id, kind="backup",
