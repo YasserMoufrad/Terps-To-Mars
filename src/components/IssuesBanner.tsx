@@ -5,6 +5,7 @@
 import type { LoadIssue } from '../data/loadMissionData';
 
 export function ErrorBanner({ issues }: { issues: LoadIssue[] }) {
+  // Purpose: full-width red banner listing every error-level data issue; hidden if none.
   const errors = issues.filter((i) => i.severity === 'error');
   if (errors.length === 0) return null;
   return (
@@ -17,6 +18,8 @@ export function ErrorBanner({ issues }: { issues: LoadIssue[] }) {
 }
 
 export function DataBadge({ issues, placeholderFiles }: { issues: LoadIssue[]; placeholderFiles: string[] }) {
+  // Purpose: small header pill ("Demo data") that expands to list placeholder files
+  // and warning-level issues, so they stay visible without dominating the screen.
   const warnings = issues.filter((i) => i.severity === 'warning');
   if (warnings.length === 0 && placeholderFiles.length === 0) return null;
   return (

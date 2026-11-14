@@ -17,6 +17,8 @@ interface EvidenceCardProps {
 }
 
 export function EvidenceCard({ hazard, onClose }: EvidenceCardProps) {
+  // Purpose: explain one clicked `hazard`: type, severity, who it affects, evidence
+  // class in plain words, source and note. `onClose` hides the card.
   return (
     <section className="card evidence-card" style={{ borderColor: HAZARD_COLORS[hazard.type] }}>
       <div className="card-head">

@@ -12,7 +12,7 @@ const STAGE_NAMES: Record<StageId, string> = {
 
 // What to look for on the map at each step.
 const LOOK_FOR: Record<StageId, string> = {
-  orbital: 'The dashed white line is the first route planned from orbit. Colored areas are hazards NASA data can show.',
+  orbital: 'The amber dashed line is the first route planned from orbit: unverified, it crosses terrain too steep for a suited astronaut. Colored areas are hazards NASA data can show.',
   rover: 'The rover (dotted line) stopped at the red marker: soft ground. The gray dashed line is the old route; green is the new one.',
   drone: 'The drone images the cliff face the rover cannot see. Green lines are the confirmed main route and backup.',
   eva: 'The crew walks the solid green route to the observation point. The blue drone watches the cliff for rockfall.',
@@ -24,6 +24,8 @@ interface StageNavProps {
 }
 
 export function StageNav({ stage, onChange }: StageNavProps) {
+  // Purpose: Back/Next plus the four numbered steps and the current step's caption.
+  // `stage` is the current step; `onChange` moves to another one.
   const index = STAGE_IDS.indexOf(stage);
   const previous = index > 0 ? STAGE_IDS.at(index - 1) : undefined;
   const next = index < STAGE_IDS.length - 1 ? STAGE_IDS.at(index + 1) : undefined;

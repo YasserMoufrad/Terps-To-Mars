@@ -92,6 +92,7 @@ button { font: inherit; }
 .line-main { border-top: 5px solid var(--good); }
 .line-backup { border-top: 4px dashed var(--good); }
 .line-rover { border-top: 4px dotted #ffffff; }
+.line-unverified { border-top: 4px dashed var(--warn); }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-left: 6px; }
 .swatch:first-child { margin-left: 0; }
 

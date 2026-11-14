@@ -8,6 +8,8 @@ interface MissionBriefProps {
 }
 
 export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProps) {
+  // Purpose: intro dialog explaining the mission and how to use the map.
+  // `isDemoData` adds the placeholder-data note; `onStart` closes it and begins step 1.
   return (
     <div className="brief-backdrop" role="dialog" aria-modal="true" aria-labelledby="brief-title">
       <div className="brief">

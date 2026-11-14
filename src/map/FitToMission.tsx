@@ -5,8 +5,9 @@ import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import type { LatLon } from '../data/types';
 
-// Every [lon, lat] position in the data, however deeply nested in the geometry.
 function collectPositions(value: unknown, out: [number, number][]): void {
+  // Purpose: walk any GeoJSON coordinates array (point, line or polygon) and push every
+  // [lon, lat] position into `out` as Leaflet's [lat, lon].
   if (Array.isArray(value) && value.length === 2 && typeof value[0] === 'number' && typeof value[1] === 'number') {
     out.push([value[1], value[0]]); // GeoJSON [lon, lat] -> Leaflet [lat, lon]
   } else if (Array.isArray(value)) {
@@ -20,6 +21,8 @@ interface FitToMissionProps {
 }
 
 export function FitToMission({ geometries, points }: FitToMissionProps) {
+  // Purpose: once, on load, zoom the map so every route, hazard and endpoint fits.
+  // `geometries`: GeoJSON coordinate arrays; `points`: habitat and observation point.
   const map = useMap();
 
   useEffect(() => {

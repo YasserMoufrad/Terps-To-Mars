@@ -9,7 +9,7 @@ import type {
   StageId, Mission, HazardCollection, RouteCollection, CoverageCollection,
   HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds,
 } from '../data/types';
-import { hazardsFor, routesFor, coverageFor } from './stageFilters';
+import { hazardsFor, routesFor, coverageFor, hasLine } from './stageFilters';
 import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
 import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
@@ -39,29 +39,41 @@ interface MarsMapProps {
   onSelectHazard: (hazard: HazardProperties) => void;
 }
 
-// react-leaflet wants positions as [lat, lon].
-const toLatLng = (p: LatLon): [number, number] => [p.lat, p.lon];
+function toLatLng(p: LatLon): [number, number] {
+  // Purpose: convert our {lat, lon} object into the [lat, lon] pair react-leaflet wants.
+  return [p.lat, p.lon];
+}
 
-// Image overlays are placed by their south-west and north-east corners.
-const toCorners = (b: OverlayBounds): [[number, number], [number, number]] => [[b.south, b.west], [b.north, b.east]];
+function toCorners(b: OverlayBounds): [[number, number], [number, number]] {
+  // Purpose: image overlay corners from a bounds file, as [[south, west], [north, east]].
+  return [[b.south, b.west], [b.north, b.east]];
+}
 
-// Our collections have the right shape for GeoJSON; this tells TypeScript so.
-const asGeoJson = (data: unknown) => data as GeoJsonObject;
+function asGeoJson(data: unknown): GeoJsonObject {
+  // Purpose: our collections already have GeoJSON's shape; this tells TypeScript so.
+  return data as GeoJsonObject;
+}
 
-// Overlay images live next to the JSON files; BASE_URL is "/Terps-To-Mars/" on GitHub Pages.
-const dataUrl = (file: string) => `${import.meta.env.BASE_URL}data/${file}`;
+function dataUrl(file: string): string {
+  // Purpose: URL of a file in public/data/; BASE_URL is "/Terps-To-Mars/" on GitHub Pages.
+  return `${import.meta.env.BASE_URL}data/${file}`;
+}
 
 export function MarsMap({
   stage, mission, hazards, routes, coverage, hiriseBounds, slopeBounds, layers, onSelectHazard,
 }: MarsMapProps) {
+  // Purpose: draw the basemap and every data layer for the current `stage`.
+  // `layers` holds the user's toggles; `onSelectHazard` opens a hazard's evidence card.
+  // `imageryLoaded` hides the loading message once the first CTX tiles arrive.
   const [imageryLoaded, setImageryLoaded] = useState(false);
 
   const visibleHazards = hazardsFor(stage, hazards);
   const visibleCoverage = coverageFor(stage, coverage, mission);
   const stageRoutes = routesFor(stage, routes, mission);
-  // Failed routes (no_viable_route, backup_unavailable...) have no line to draw;
-  // the side panel reports them instead.
-  const drawnRoutes = { ...stageRoutes, features: stageRoutes.features.filter((f) => f.properties.status === 'ok') };
+  // Routes with no line (failed searches) are reported in the side panel instead.
+  // A non-"ok" route that still has a line (e.g. the unverified orbital guess) is drawn,
+  // styled amber so it never looks like a cleared route.
+  const drawnRoutes = { ...stageRoutes, features: stageRoutes.features.filter((f) => hasLine(f.geometry.coordinates)) };
   // During the rover stage the old crew route is shown faded next to the new one.
   const supersededId = stage === 'rover' ? mission.discovery.before_route_id : null;
 
@@ -145,7 +157,10 @@ export function MarsMap({
           style={(f) => routeStyle(f?.properties as RouteProperties, supersededId)}
           onEachFeature={(f, layer) => {
             const p = f.properties as RouteProperties;
-            const label = p.id === supersededId ? 'Old route (replaced)' : `${p.agent} ${p.kind.replace('_', ' ')}`;
+            const label =
+              p.id === supersededId
+                ? 'Old route (replaced)'
+                : `${p.agent} ${p.kind.replace('_', ' ')}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')})` : ''}`;
             layer.bindTooltip(`${label}: ${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip, steepest ${p.stats.max_slope_deg}°`);
           }}
         />

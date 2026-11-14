@@ -1,0 +1,8 @@
+.git
+.venv
+node_modules
+dist
+pipeline/raw
+pipeline/output
+**/__pycache__
+.pytest_cache

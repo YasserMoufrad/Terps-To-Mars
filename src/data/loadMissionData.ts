@@ -32,13 +32,15 @@ export interface MissionData {
 
 // ---------- small helpers ----------
 
-// Fetch one JSON file. Returns null (and records an issue) instead of throwing.
 async function fetchJson(
   baseUrl: string,
   file: string,
   issues: LoadIssue[],
   missingSeverity: LoadIssue['severity'],
 ): Promise<unknown | null> {
+  // Purpose: fetch and parse one file from public/data/. Never throws: on failure it
+  // records an issue in `issues` at `missingSeverity` ("error" for core files,
+  // "warning" for optional pipeline overlays) and returns null.
   try {
     const response = await fetch(`${baseUrl}data/${file}`);
     if (!response.ok) {
@@ -57,7 +59,6 @@ async function fetchJson(
   }
 }
 
-// Check that a value is one of the allowed strings, recording an issue if not.
 function checkAllowed(
   value: unknown,
   allowed: readonly string[],
@@ -65,12 +66,15 @@ function checkAllowed(
   file: string,
   issues: LoadIssue[],
 ): void {
+  // Purpose: record an error if `value` is not one of the `allowed` contract values.
+  // `label` names the property in the message (e.g. "hazard hz-1 evidence").
   if (typeof value !== 'string' || !allowed.includes(value)) {
     issues.push({ file, severity: 'error', message: `${label} is "${String(value)}"; expected one of ${allowed.join(', ')}.` });
   }
 }
 
 function checkSchemaVersion(data: { schema_version?: unknown }, file: string, issues: LoadIssue[]): void {
+  // Purpose: record an error when a file's schema_version differs from SCHEMA_VERSION.
   if (data.schema_version !== SCHEMA_VERSION) {
     issues.push({
       file,
@@ -83,6 +87,8 @@ function checkSchemaVersion(data: { schema_version?: unknown }, file: string, is
 // ---------- per-file checks ----------
 
 function checkHazards(data: HazardCollection, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: validate every hazard's enum properties; adds each hazard id to `ids`
+  // so mission.json references can be checked afterwards.
   const file = 'hazards.geojson';
   checkSchemaVersion(data, file, issues);
   for (const f of data.features) {
@@ -99,6 +105,8 @@ function checkHazards(data: HazardCollection, issues: LoadIssue[], ids: Set<stri
 }
 
 function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: validate every route's enum properties, add its id to `ids`, and warn
+  // about any route whose status is not "ok" so failures are never silent.
   const file = 'routes.geojson';
   checkSchemaVersion(data, file, issues);
   for (const f of data.features) {
@@ -118,6 +126,8 @@ function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string
 }
 
 function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: validate coverage zones and enforce the honesty rule that robot
+  // coverage (rover_checked / drone_checked) is always marked simulated.
   const file = 'coverage.geojson';
   checkSchemaVersion(data, file, issues);
   for (const f of data.features) {
@@ -134,6 +144,8 @@ function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<s
 }
 
 function checkMission(data: Mission, issues: LoadIssue[], ids: Set<string>): void {
+  // Purpose: check stage order, that every id mission.json references exists in `ids`
+  // (filled by the GeoJSON checks), and that chosen_option is empty or a real option.
   const file = 'mission.json';
   checkSchemaVersion(data, file, issues);
 
@@ -165,10 +177,10 @@ function checkMission(data: Mission, issues: LoadIssue[], ids: Set<string>): voi
 
 // ---------- main entry point ----------
 
-// baseUrl: where the site is served from. In the app, pass import.meta.env.BASE_URL
-// (Vite sets it, e.g. "/Terps-To-Mars/" on GitHub Pages). It must end with "/".
-// logger: where load events go; tests pass a capturing logger, the app passes appLogger.
 export async function loadMissionData(baseUrl: string, logger: Logger = silentLogger): Promise<MissionData> {
+  // Purpose: load and check every data file, returning what loaded plus `issues`.
+  // baseUrl: where the site is served from (import.meta.env.BASE_URL, ends with "/").
+  // logger: receives load.start, one event per issue, and a load.complete summary.
   const started = performance.now();
   logger.info('data', 'load.start', { base_url: baseUrl, schema_version: SCHEMA_VERSION });
   const issues: LoadIssue[] = [];

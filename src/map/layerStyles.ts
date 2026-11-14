@@ -27,6 +27,8 @@ export const COVERAGE_COLORS: Record<CoverageState, string> = {
 };
 
 export function hazardStyle(p: HazardProperties): PathOptions {
+  // Purpose: Leaflet style for one hazard. Color = p.type (U/O/S), outline pattern =
+  // p.evidence, fill strength = p.severity (exclude is stronger than caution).
   return {
     color: HAZARD_COLORS[p.type],
     weight: 2,
@@ -37,6 +39,8 @@ export function hazardStyle(p: HazardProperties): PathOptions {
 }
 
 export function coverageStyle(p: CoverageProperties): PathOptions {
+  // Purpose: Leaflet style for one coverage zone; dotted outline when p.simulated,
+  // stronger fill for unscouted / inspection-required ground.
   return {
     color: COVERAGE_COLORS[p.state],
     weight: 1,
@@ -46,9 +50,12 @@ export function coverageStyle(p: CoverageProperties): PathOptions {
   };
 }
 
-// `supersededId` is the crew route replaced by the discovery; it is drawn faded.
 export function routeStyle(p: RouteProperties, supersededId: string | null): PathOptions {
+  // Purpose: Leaflet style for one route by p.kind. `supersededId` is the crew route
+  // replaced by the discovery (drawn faded gray); a route that is not "ok" but still
+  // has a line (e.g. the unverified orbital guess) is drawn amber and dashed.
   if (p.id === supersededId) return { color: '#b4b9c2', weight: 4, dashArray: '8 8', opacity: 0.8 };
+  if (p.status !== 'ok') return { color: '#f5a524', weight: 5, dashArray: '12 8', opacity: 1 };
   switch (p.kind) {
     case 'main':
       return { color: '#3ddc97', weight: 6, opacity: 1 };
@@ -61,8 +68,9 @@ export function routeStyle(p: RouteProperties, supersededId: string | null): Pat
   }
 }
 
-// A dark outline drawn under every route so it stands out on gray terrain.
 export function routeCasingStyle(p: RouteProperties, supersededId: string | null): PathOptions {
+  // Purpose: dark outline drawn under a route, 4 px wider than the route itself,
+  // so the line stands out on gray terrain.
   const width = routeStyle(p, supersededId).weight ?? 4;
   return { color: '#0b0d10', weight: width + 4, opacity: 0.75, lineCap: 'round' };
 }

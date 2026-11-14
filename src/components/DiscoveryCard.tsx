@@ -3,6 +3,8 @@
 import type { Discovery } from '../data/types';
 
 export function DiscoveryCard({ discovery }: { discovery: Discovery }) {
+  // Purpose: show the rover's request for input: sensor evidence, uncertainty and options.
+  // `decided` is false while chosen_option is empty (crew has not chosen yet).
   const decided = discovery.chosen_option !== '';
   return (
     <section className="card discovery">

@@ -10,6 +10,8 @@ interface LayerTogglesProps {
 }
 
 export function LayerToggles({ layers, available, onChange }: LayerTogglesProps) {
+  // Purpose: one checkbox per optional layer. `available` disables layers whose data
+  // does not exist yet; `onChange` receives the whole new visibility object.
   const keys = Object.keys(LAYER_LABELS) as (keyof LayerVisibility)[];
   return (
     <section className="card toggles">

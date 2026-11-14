@@ -9,16 +9,16 @@ import { loadMissionData } from '../src/data/loadMissionData.ts';
 
 const dataDir = new URL('../public/data/', import.meta.url);
 
-// A logger that keeps every event in an array so tests can inspect them.
 function capturingLogger(options = {}) {
+  // Purpose: a logger with fixed run_id "test-run" whose events land in `events`.
   const events = [];
   const logger = createLogger({ runId: 'test-run', sink: (e) => events.push(e), ...options });
   return { logger, events };
 }
 
-// fetch stub serving public/data from disk, with optional per-file overrides
-// (null = respond 404).
 function stubFetch(overrides = {}) {
+  // Purpose: replace global fetch with one that serves public/data from disk.
+  // `overrides` maps a file name to replacement JSON, or null to answer 404.
   globalThis.fetch = async (url) => {
     const file = String(url).split('/data/')[1];
     if (file in overrides) {
@@ -36,7 +36,10 @@ function stubFetch(overrides = {}) {
   };
 }
 
-const readData = (file) => JSON.parse(readFileSync(new URL(file, dataDir), 'utf8'));
+function readData(file) {
+  // Purpose: parsed copy of one committed file in public/data/, for tests to modify.
+  return JSON.parse(readFileSync(new URL(file, dataDir), 'utf8'));
+}
 
 test('events are structured and share one run_id', () => {
   const { logger, events } = capturingLogger();

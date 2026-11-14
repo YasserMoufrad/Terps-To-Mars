@@ -17,6 +17,8 @@ interface StagePanelProps {
 }
 
 export function StagePanel({ stage, mission, selectedHazard, onCloseHazard, routeNotices, toggles }: StagePanelProps) {
+  // Purpose: side panel for `stage`: evidence card (if `selectedHazard`), stage stats,
+  // honest route failures (`routeNotices`), alerts, the rover card, and layer toggles.
   const current = mission.stages.find((s) => s.id === stage);
   const alerts = mission.alerts[stage] ?? [];
   if (!current) return null;

@@ -21,6 +21,8 @@ const ROUTE_STATUS_TEXT = {
 } as const;
 
 export function App() {
+  // Purpose: top-level screen. State: `data` (loaded files + issues), `stage` (current
+  // mission step), `layers` (toggles), `selectedHazard` (evidence card), `showBrief` (intro).
   const [data, setData] = useState<MissionData | null>(null);
   const [stage, setStage] = useState<StageId>('orbital');
   const [layers, setLayers] = useState<LayerVisibility>(DEFAULT_LAYERS);
@@ -75,6 +77,7 @@ export function App() {
       : [];
 
   const changeStage = (next: StageId) => {
+    // Purpose: move to step `next` and close any open evidence card.
     setStage(next);
     setSelectedHazard(null); // the clicked hazard may not exist in the new stage
   };
