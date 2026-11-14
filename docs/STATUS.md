@@ -14,6 +14,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
+- 2026-11-14 · Nic: repository-wide logging policy proposed in `docs/mandatory-logging-pr-policy`; open pipeline PRs being audited and instrumented before merge; frontend logging gaps handed to Yasser
 - Nic: scaffold and CI in PR #3 (`pipeline/nic-scaffold-ci-v2`); merge protection requires repository admin
 
 ## Done
