@@ -70,6 +70,11 @@ All files live in `public/data/`. Every file carries `"schema_version": "1.0"` (
   "source": "HiRISE ESP_071006_2345", "processing": "cropped, reprojected to Mars lat/lon, downsampled" }
 ```
 
+**Proposed optional additions (not yet agreed or implemented; require both owners' agreement and a `schema_version` decision, see STATUS Open questions):**
+
+- `relief.png` + `relief.bounds.json`: DTM shaded relief, same format and alignment rules as `slope.png`; derived from the DTM (`nasa_derived`).
+- `mission.json` optional `labels`: list of `{"text", "lat", "lon"}` for map names (for example "Ice scarp", "Debris apron"). Labels name features; they must not assert evidence beyond the hazard/coverage records (no "Exposed ice" label without cited evidence for that point).
+
 ### `hazards.geojson` (Polygon or Point features)
 
 | Property | Values |
@@ -291,7 +296,9 @@ Route search: cost grid from step 6, `skimage.graph.route_through_array` on the 
 - Software: [NumPy](https://numpy.org/doc/), [Rasterio](https://rasterio.readthedocs.io/), [SciPy ndimage](https://docs.scipy.org/doc/scipy/reference/ndimage.html), [scikit-image](https://scikit-image.org/docs/stable/), [pytest](https://docs.pytest.org/); versions in `pyproject.toml` / `uv.lock`.
 - [Challenge statement](https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/)
 - [HiRISE DTM: Scarps in Milankovic Crater](https://hirise.lpl.arizona.edu/dtm/ESP_071085_2345) · [ESP_071006_2345](https://hirise.lpl.arizona.edu/ESP_071006_2345) (NASA/JPL-Caltech/UArizona)
-- Dundas et al. (2018), *Exposed subsurface ice sheets in the Martian mid-latitudes*, Science
+- Dundas et al. (2018), *Exposed subsurface ice sheets in the Martian mid-latitudes*, Science: ice beginning 1-2 m below the surface and deposits over 100 m thick at some studied scarps; not a measured depth at our route points. Also a 2021 USGS study reporting some ice under 1 m with large depth variability.
+- THEMIS Night IR Controlled Mosaic (Mars Trek, 100 m/pixel; sent by Geury): qualitative regional imagery with about 200 m average absolute location accuracy; not in the app yet, tile URL untested. See `docs/MAP_TILES.md`.
+- [Mars Climate Database](https://www-mars.lmd.jussieu.fr/) (LMD/CNRS with ESA/CNES): modeled climatology only, not observed weather at the site.
 - [LPSC abstract on ice scarps (DLR)](https://elib.dlr.de/217131/1/2071.pdf)
 - [JPL Mars Trek](https://trek.nasa.gov/mars/) · [USGS-NASA geologic maps](https://astrogeology-usgs.hub.arcgis.com/pages/interactive-maps-mars)
 - [NASA exploration EVA testing and analogs (NTRS)](https://ntrs.nasa.gov/api/citations/20210000827/downloads/Exporation%20EVA%20Testing%20and%20Analogs%2020210000827.pdf)
