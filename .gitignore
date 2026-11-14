@@ -150,6 +150,8 @@ vite.config.ts.timestamp-*
 
 # Terps To Mars: raw NASA data and Python
 pipeline/raw/
+pipeline/output/
+pipeline/logs/
 *.IMG
 *.img
 *.JP2

@@ -1,6 +1,8 @@
 """Validate the JSON handoff between the Python pipeline and React app."""
 
 import json
+import math
+from pipeline.logging_config import traced, event
 from pathlib import Path
 
 
@@ -10,7 +12,34 @@ ROUTE_STATUSES = {"ok", "no_viable_route", "backup_unavailable", "inspection_req
 EVIDENCE = {"nasa_derived", "inferred", "simulated"}
 
 
+def _enum(properties, field, values):
+    """Require properties[field] to belong to the contract's allowed values."""
+    if properties.get(field) not in values:
+        raise ValueError(f"Invalid or missing {field}")
+
+
+def _geometry(geometry):
+    """Check coordinate nesting and minimum point/ring counts for geometry."""
+    coordinates = geometry["coordinates"]
+    if geometry["type"] == "Point":
+        _position(coordinates)
+    elif geometry["type"] == "LineString":
+        if len(coordinates) < 2:
+            raise ValueError("LineString requires at least two positions")
+        for point in coordinates:
+            _position(point)
+    else:
+        if not coordinates:
+            raise ValueError("Polygon requires rings")
+        for ring in coordinates:
+            if len(ring) < 4 or ring[0] != ring[-1]:
+                raise ValueError("Polygon requires closed rings")
+            for point in ring:
+                _position(point)
+
+
 def _position(value):
+    """Validate value as finite signed [longitude, latitude] in degrees."""
     if not isinstance(value, list) or len(value) != 2:
         raise ValueError("GeoJSON position must be [longitude, latitude]")
     lon, lat = value
@@ -21,6 +50,7 @@ def _position(value):
 
 
 def _coordinates(value):
+    """Recursively validate the nested coordinate arrays in value."""
     if not isinstance(value, list) or not value:
         raise ValueError("GeoJSON coordinates must be nonempty")
     if isinstance(value[0], (int, float)):
@@ -30,7 +60,9 @@ def _coordinates(value):
             _coordinates(child)
 
 
+@traced("schema_validation")
 def validate_collection(payload, name):
+    """Validate schema 1.0 payload using name to choose hazard/route/coverage rules."""
     if payload.get("schema_version") != "1.0":
         raise ValueError(f"{name}: expected schema_version 1.0")
     if payload.get("type") != "FeatureCollection" or not isinstance(payload.get("features"), list):
@@ -58,17 +90,41 @@ def validate_collection(payload, name):
             pass
         else:
             _coordinates(coordinates)
+            _geometry(geometry)
 
         if name == "hazards.geojson" and properties.get("evidence") not in EVIDENCE:
             raise ValueError(f"{name}: missing hazard evidence label")
+        if name == "hazards.geojson":
+            _enum(properties, "type", {"U", "O", "S"})
+            _enum(properties, "category", {"slope", "roughness", "rockfall", "edge", "soft_ground", "void", "shadow", "no_data", "artifact"})
+            _enum(properties, "severity", {"exclude", "caution"})
+            _enum(properties, "agent", {"crew", "rover", "both"})
+            _enum(properties, "stage", {"orbital", "rover", "drone", "eva"})
+            if not all(isinstance(properties.get(key), str) and properties[key] for key in ("source", "note")):
+                raise ValueError("Hazard source and note required")
         if name == "routes.geojson" and properties.get("status") not in ROUTE_STATUSES:
             raise ValueError(f"{name}: invalid route status")
+        if name == "routes.geojson":
+            _enum(properties, "kind", {"orbital_guess", "main", "backup", "rover_path"})
+            _enum(properties, "agent", {"crew", "rover"})
+            _enum(properties, "version", {"before", "after"})
+            stats = properties.get("stats", {})
+            for key in ("length_m", "round_trip_m", "est_time_min", "elevation_gain_m", "max_slope_deg", "shared_with_main_m"):
+                value = stats.get(key)
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                    raise ValueError(f"Invalid route statistic {key}")
+        if name == "coverage.geojson":
+            _enum(properties, "state", {"orbit_only", "rover_checked", "drone_checked", "unscouted", "inspection_required"})
+            _enum(properties, "sensor", {"stereo_cam", "hazard_cam", "thermal", "drone_cam", "none"})
+            if not isinstance(properties.get("simulated"), bool):
+                raise ValueError("Coverage simulated flag must be boolean")
         if name == "coverage.geojson" and properties.get("state") in {"rover_checked", "drone_checked"}:
             if properties.get("simulated") is not True:
                 raise ValueError(f"{name}: robot coverage must be simulated")
 
 
 def _validate_lat_lon_objects(value):
+    """Inspect nested JSON value for valid coordinate objects using lat/lon keys."""
     if isinstance(value, dict):
         if "lat" in value or "lon" in value:
             lat, lon = value.get("lat"), value.get("lon")
@@ -83,7 +139,10 @@ def _validate_lat_lon_objects(value):
             _validate_lat_lon_objects(child)
 
 
-def validate_data(data_dir=DATA_DIR):
+@traced("bundle_validation")
+def validate_data(data_dir=DATA_DIR, require_overlays=False):
+    """Validate data_dir's handoff; require_overlays also checks images and sidecars."""
+    data_dir = Path(data_dir)
     for name in COLLECTIONS:
         payload = json.loads((data_dir / name).read_text(encoding="utf-8"))
         validate_collection(payload, name)
@@ -93,6 +152,19 @@ def validate_data(data_dir=DATA_DIR):
     _validate_lat_lon_objects(mission)
     if mission.get("discovery", {}).get("evidence") != "simulated":
         raise ValueError("mission.json: rover discovery must be simulated")
+    if require_overlays:
+        from PIL import Image
+        for basename, extension in (("hirise", "jpg"), ("slope", "png")):
+            with Image.open(data_dir / f"{basename}.{extension}") as image:
+                image.verify()
+            bounds = json.loads((data_dir / f"{basename}.bounds.json").read_text())
+            if bounds.get("schema_version") != "1.0":
+                raise ValueError("Overlay schema version mismatch")
+            if not (-180 <= bounds["west"] < bounds["east"] <= 180 and -90 <= bounds["south"] < bounds["north"] <= 90):
+                raise ValueError("Invalid overlay bounds")
+            if not bounds.get("source") or not bounds.get("processing"):
+                raise ValueError("Overlay provenance required")
+    event("data_contract_validated", schema_version="1.0", directory=str(data_dir), require_overlays=require_overlays)
 
 
 if __name__ == "__main__":

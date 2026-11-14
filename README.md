@@ -52,9 +52,9 @@ npm run build
 The Python contract checks use Python 3.11 or newer:
 
 ```bash
-python -m pip install -r pipeline/requirements.txt
-python -m pipeline.validate_contract
-python -m pytest pipeline/tests
+uv sync --locked --python 3.11
+uv run --no-sync python -m pipeline.validate_contract
+uv run --no-sync pytest
 ```
 
 The app builds for the `/Terps-To-Mars/` GitHub Pages path. The `CI` workflow runs frontend and pipeline checks on pull requests to `main`; `full-suite` succeeds only after both pass. The Pages workflow runs only from `main` and validates before deployment. Yasser must enable GitHub Pages with **GitHub Actions** as its source and protect `main` with `full-suite` required before merging.

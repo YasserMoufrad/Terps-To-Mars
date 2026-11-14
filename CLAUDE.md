@@ -65,6 +65,10 @@ The data contract (section 4 of `IMPLEMENTATION.md`) belongs to both. Change it 
 
 Use the priority tiers and cut lines in `IMPLEMENTATION.md` (sections 10 and 11). Do not add ROS, Gazebo, trained vision models, live LLM features or 3D terrain unless every acceptance criterion is already met and `STATUS.md` records the team's go-ahead.
 
+## Function documentation for every PR
+
+Every new or modified function must begin with a brief docstring (Python) or a brief comment at the top of its body (TypeScript/JavaScript) explaining its purpose and only its most important parameters or state variables. Name the variables and explain their meaning, units or shape when relevant. Avoid listing every local variable or narrating obvious code. Keep this documentation adjacent to the implementation and update it when behavior changes. Apply this requirement to every code PR, alongside Section 16's logging and tests.
+
 ## Commands
 
 App (once scaffolded):
@@ -93,10 +97,18 @@ Every operational code PR must test applicable logging behavior: structured even
 
 Every code PR description must contain `## Logging and observability` documenting each item below; mark N/A with a reason where inapplicable:
 
-- Meaningful new/modified operations have appropriate logging; errors and expected failures are observable.
-- Safety decisions are traceable; correlation IDs propagate; evidence classification is preserved.
-- Logging tests were added/updated; no secrets, sensitive values or unnecessary high-volume logs are emitted.
-- Logging preserves deterministic outputs; the complete suite and latest CI checks were executed.
+- [ ] New or modified functionality has appropriate logging.
+- [ ] Errors and expected failure conditions are observable.
+- [ ] Significant safety decisions are traceable.
+- [ ] Execution correlation IDs are propagated where applicable.
+- [ ] Evidence classification is preserved where applicable.
+- [ ] Logging tests were added or updated where needed.
+- [ ] Logging does not expose secrets or sensitive information.
+- [ ] Logging does not change deterministic processing outcomes.
+- [ ] No unnecessary high-volume logging was introduced.
+- [ ] Full test suite and CI checks were executed.
+
+Implement related validation, I/O, state/decision tracing, error handling, timing and observability tests alongside the behavior in the same PR. Do not defer these adjacent requirements to a later cleanup or substitute a checklist for working instrumentation. Every PR description ends with a runnable walkthrough.
 
 An applicable incomplete item blocks readiness for review/merge. All code PRs must pass `frontend`, `pipeline`, and `full-suite` on their latest commit. The merge policy requires `full-suite`; do not claim GitHub enforcement unless branch protection/rulesets are actually configured. Never bypass test or logging failures.
 

@@ -10,6 +10,7 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "public" / "data"
 
 
 def test_placeholder_data_contract():
+    """Validate committed DATA_DIR fixtures, including schema and stable IDs."""
     validate_data(DATA_DIR)
     for name in ("hazards.geojson", "routes.geojson", "coverage.geojson", "mission.json"):
         payload = json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
@@ -22,6 +23,7 @@ def test_placeholder_data_contract():
 
 
 def test_hazard_evidence_labels():
+    """Check fixture hazards explicitly classify their evidence source."""
     payload = json.loads((DATA_DIR / "hazards.geojson").read_text(encoding="utf-8"))
     for feature in payload["features"]:
         assert feature["properties"]["evidence"] in {
@@ -30,6 +32,7 @@ def test_hazard_evidence_labels():
 
 
 def test_rejects_unsigned_longitude():
+    """Reject an east-positive 212° coordinate in signed GeoJSON."""
     payload = json.loads((DATA_DIR / "routes.geojson").read_text(encoding="utf-8"))
     payload["features"][0]["geometry"]["coordinates"][0][0] = 212.106
     with pytest.raises(ValueError, match="signed longitude"):
@@ -37,6 +40,7 @@ def test_rejects_unsigned_longitude():
 
 
 def test_rejects_missing_hazard_evidence():
+    """Ensure deleting a fixture evidence label fails validation."""
     payload = json.loads((DATA_DIR / "hazards.geojson").read_text(encoding="utf-8"))
     del payload["features"][0]["properties"]["evidence"]
     with pytest.raises(ValueError, match="evidence"):
@@ -44,6 +48,7 @@ def test_rejects_missing_hazard_evidence():
 
 
 def test_rejects_schema_version_mismatch():
+    """Reject a fixture payload claiming an incompatible schema version."""
     payload = json.loads((DATA_DIR / "coverage.geojson").read_text(encoding="utf-8"))
     payload["schema_version"] = "2.0"
     with pytest.raises(ValueError, match="schema_version"):
