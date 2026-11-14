@@ -6,7 +6,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 | Person | Working on | Next |
 | --- | --- | --- |
-| Nic | Scaffold merged; terrain, routing and discovery/export PRs ready for review | Manual scarp/alignment QC, reviewed masks and confirmed endpoints for real exports |
+| Nic | Project scaffold: Vite + React + TypeScript + react-leaflet, GitHub Pages deploy | Download and validate the Milankovic DTM + RED_C image; crop to the scarp |
 | Yasser | Managing; placeholder data and tile URLs done (branch `ui/placeholder-data`) | Mars map centered on Milankovic once the scaffold lands |
 | Geury | Exact endpoints: scarp foot, habitat, primary and backup observation points (inside the color strip) | Ice evidence specific to this scarp; evidence panel text |
 | Samar / Yasser's agent | Hazard rules v1 done (in IMPLEMENTATION.md section 5) | Sensor ranges for coverage; decision states; discovery scenario |
@@ -14,17 +14,20 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
-- Nic: PRs #4 → #5 → #6 are stacked for review; retarget downstream PRs after dependencies merge; merge protection requires repository admin
+- Nic: corrected PR #4 merged; routing PR #5 fixes validated locally and merge held at Nic's request; discovery PR #6 will be updated without merging dependent work
+- 2026-11-14 · Nic: logging policy PR #7 merged with all checks passing; open pipeline PRs being corrected and instrumented before merge; frontend logging gaps handed to Yasser
 
 ## Done
 
-- 2026-11-14 · Nic: discovery/export PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/6 includes walkthrough; synthetic bundle generated at `pipeline/output/synthetic-demo`; all new PRs left unmerged
-- 2026-11-14 · Nic: Docker full suite passed 36 tests, including byte-identical eight-file exports, scikit-image reference comparison, Mars route statistics, exact boundaries, backup failures and discovery rerouting; frontend typecheck/test/build passed
-- 2026-11-14 · Nic: GitHub CI passed for terrain PR #4 and routing PR #5; discovery CI will additionally publish a clearly synthetic eight-file artifact for review
-- 2026-11-14 · Nic: downloaded RED_C orthoimage (30,838,707 bytes; SHA-256 `0e12a7c0863e503263314093856231a2f63a9b2115824574d869a80beda4ba59`); image and slope diagnostic exports have matching bounds; manual landmark alignment still pending
-- 2026-11-14 · Nic: routing PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/5 includes walkthrough and depends on #4
-- 2026-11-14 · Nic: terrain/hazard PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/4 includes a walkthrough; Docker terrain/contract tests (11) and frontend validation passed
+- 2026-11-14 · Nic: PR #5 corrected suite passed 57 Docker Python tests and npm ci/typecheck/test (4)/build; both crew and rover block unresolved scarp cells; observation work and actual backup-return budgets are tested; PR converted to draft for explicit merge hold
+- 2026-11-14 · Nic: Yasser UI/scientific-wording handoff posted at https://github.com/YasserMoufrad/Terps-To-Mars/pull/8#issuecomment-6883539861; loader logging/pending-option support already exists there; no UI/placeholder files changed
+- 2026-11-14 · Nic: PR #4 merged after 30 Docker Python tests, full frontend validation and latest frontend/pipeline/full-suite checks; PR #5 reopened against main after parent deletion closed it; cleanup guard added for stacked PR bases
+- 2026-11-14 · Nic: PR #4 corrections passed 30 Python tests in Docker and npm ci/typecheck/test/build; added AGENTS.md and a PR template mirroring Section 16's mandatory logging/checklist/walkthrough requirements; Yasser loader/placeholder findings documented without modifying his code
+- 2026-11-14 · Nic: PR #4 review corrections add nearest-odd roughness windows, uncertainty warnings, one-height provisional rockfall buffer and explicit unresolved scarp-risk exclusions; uv project/lock replaces requirements files; all implemented terrain/acquisition/export/validation stages have correlated structured logs
 - 2026-11-14 · Nic: downloaded official DTM to ignored raw storage (380,863,440 bytes; SHA-256 `6543d410aabcdfed6d8c67117235c1dcaf0f67716dcf72c0ba13c6dd8d85c8f1`); verified Mars equirectangular CRS, declared no-data, 1 m pixels, and 128×128 center diagnostic crop; scarp/alignment validation still pending
+- 2026-11-14 · Yasser's agent: `src/data/types.ts` (contract types) and `src/data/loadMissionData.ts` (loads all data files, reports issues instead of crashing); strict typecheck passes; tested against the placeholders and deliberately broken data
+- 2026-11-14 · Yasser's agent: sensor coverage model v1 added to IMPLEMENTATION.md section 6 (for Nic's `coverage.geojson`)
+- 2026-11-14 · Yasser: GitHub Pages enabled with GitHub Actions as the source
 - 2026-11-14 · Nic: added merged-PR branch cleanup workflow; repository-level automatic deletion setting denied (admin required); workflow preserves default/base/fork branches and branches with newer commits
 - 2026-11-14 · Nic: added minimal Vite/React/TypeScript bootstrap, Pages path, Python contract tests, CI and Pages workflows; preserved Yasser's placeholder data
 - 2026-11-14 · Nic: local typecheck, frontend test (1), production build, contract validator, and Python contract tests (5) passed; PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/3 opened; initial CI run passed
@@ -36,9 +39,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Blocked / waiting on
 
-- Nic: real mission export requires Geury-confirmed habitat/observation/perch coordinates, reviewed crop/artifact/edge/foot masks, measured scarp/apron and modeled sensor ranges; synthetic demo is fully runnable
-- Yasser: enable GitHub Pages (Settings → Pages → Build and deployment → GitHub Actions) and protect `main` (Settings → Branches → Add rule for `main`: require PR, require `full-suite`, require branches up to date, and do not allow bypass); Nic's connected account has push but no admin permission
 - Nic: real-data landmark alignment, scarp QC and edge/foot masks remain manual validation steps
+- Yasser: protect `main` (Pages is now enabled) (Settings → Branches → Add rule for `main`: require PR, require `full-suite`, require branches up to date, and do not allow bypass); Nic's connected account has push but no admin permission
 - Nic's routes → Geury's endpoints
 - Brianna's instrument rack → team confirmation of "observation only"
 
@@ -54,6 +56,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Decision log
 
+- 2026-11-14 · Nic: team second-pass request adopts provisional one-height rockfall buffer, nearest odd roughness window with uncertainty disclosure, and uv dependency management; schema remains 1.0
 - 2026-11-14 · Site: Scarps in Milankovic Crater (only northern-hemisphere site of Dundas et al. 2018)
 - 2026-11-14 · Stack: Vite + React + TypeScript + react-leaflet on GitHub Pages; Python pipeline
 - 2026-11-14 · Demo format: 30-second video; depth on the project page and README
@@ -63,6 +66,10 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Open questions
 
+- Yasser / PR #8: use proposed/candidate route wording, explicitly label placeholder boundaries, and distinguish inspection-required geometry from a failed route with no geometry; simulated reconnaissance is not astronaut clearance. Loader logging and pending-option support already exist in #8; review newer code rather than duplicating them.
+- Brianna / Samar: supply actual rover CAD clearances/traversability and sensor model; current 24°/35 cm/20 cm figures remain provisional references, not team hardware limits; no orbital wheel-slip/clearance measurement is generated.
+- Yasser: placeholder `rt-orbital-guess-v1` has 24° max slope with `status: ok`; hypothetical geometry/stats are not crew clearance. Loader correctly returns `placeholderFiles` for `placeholder: true`. Present it explicitly as unverified/simulated and review its status; Nic left placeholder data/UI unchanged.
+- Yasser: new Section 16 requires browser logging for loader failures/schema mismatches and meaningful mission-stage changes; current loader returns issues but has no shared operational logger. Ownership handoff only; no UI edits made.
 - Confirm mission objective: observation only, no sampling or drilling (proposed)
 - Final project name (placeholder: IceScout)
 - Nic registered at the same Local Event as the team?

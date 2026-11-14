@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import json
 import math
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -11,20 +12,27 @@ from rasterio.crs import CRS
 from rasterio.windows import Window
 from rasterio.warp import transform as transform_coordinates
 from scipy.ndimage import maximum_filter, minimum_filter
+from pipeline.logging_config import event, operation, traced, fingerprint
 
 MARS_RADIUS_M = 3_389_500.0
 MARS_GEOGRAPHIC = CRS.from_string(f"+proj=longlat +R={MARS_RADIUS_M} +no_defs")
 
 
+@traced("hazard_rules")
 def load_rules():
-    return json.loads(Path(__file__).with_name("hazard_rules.json").read_text())
+    """Load the versioned rules; rules maps threshold names to values and sources."""
+    rules = json.loads(Path(__file__).with_name("hazard_rules.json").read_text())
+    event("rules_loaded", schema_version=rules["schema_version"], config_fingerprint=fingerprint(rules), rules=rules["rules"])
+    return rules
 
 
 def threshold(rules, name):
+    """Return the numeric value for name from the versioned rules mapping."""
     return rules["rules"][name]["value"]
 
 
 def signed_longitude(value):
+    """Normalize finite value in degrees east into signed longitude degrees."""
     if not math.isfinite(value):
         raise ValueError("Longitude must be finite")
     return (value + 180) % 360 - 180
@@ -38,8 +46,11 @@ class Terrain:
     source: str
     evidence: str
     artifact: np.ndarray | None = None
+    vertical_uncertainty_m: float | None = None
 
+    @traced("raster_validation")
     def __post_init__(self):
+        """Validate elevation (metres), its Mars grid transform/CRS and artifact mask."""
         self.elevation = np.asarray(self.elevation, dtype=float)
         if self.elevation.ndim != 2 or min(self.elevation.shape) < 3:
             raise ValueError("Terrain must be a 2D grid at least 3 x 3")
@@ -60,17 +71,25 @@ class Terrain:
         self.artifact = np.asarray(self.artifact, dtype=bool)
         if self.artifact.shape != self.elevation.shape:
             raise ValueError("Artifact mask must match terrain")
+        if self.vertical_uncertainty_m is not None and (not math.isfinite(self.vertical_uncertainty_m) or self.vertical_uncertainty_m < 0):
+            raise ValueError("Vertical uncertainty must be nonnegative and finite")
+        event("raster_validated", dataset_id=self.source, evidence=self.evidence, crs=str(self.crs),
+              radius_m=float(radius), resolution_m=self.resolution, dimensions=list(self.elevation.shape),
+              invalid_cells=int((~self.valid).sum()), artifact_cells=int(self.artifact.sum()))
 
     @property
     def resolution(self):
+        """Return transform.a, the projected square-pixel width in metres."""
         return self.transform.a
 
     @property
     def valid(self):
+        """Identify finite elevation cells outside the boolean artifact mask."""
         return np.isfinite(self.elevation) & ~self.artifact
 
     @property
     def column_spacing(self):
+        """Return per-row east-west ground spacing, correcting the CRS standard parallel."""
         # Equirectangular x scale is true only at its standard parallel.
         rows = np.arange(self.elevation.shape[0]) + 0.5
         xs = np.full(rows.shape, self.transform.c + 0.5 * self.resolution)
@@ -80,14 +99,16 @@ class Terrain:
         return self.resolution * np.cos(np.radians(latitudes)) / math.cos(math.radians(standard_parallel))
 
     def lonlat(self, row, col, center=True):
+        """Convert row/col to signed Mars [longitude, latitude]; center selects pixel centres."""
         offset = 0.5 if center else 0
         x, y = self.transform * (col + offset, row + offset)
         lon, lat = transform_coordinates(self.crs, MARS_GEOGRAPHIC, [x], [y])
         return [signed_longitude(lon[0]), lat[0]]
 
 
+@traced("raster_loading")
 def read_terrain(path, window=None, artifact=None, evidence="nasa_derived"):
-    """Crop by integer (column, row, width, height); never interpolate missing cells."""
+    """Read path using window=(column,row,width,height); artifact is crop-aligned QC."""
     with rasterio.open(path) as dataset:
         if dataset.nodata is None:
             raise ValueError("Raster must declare its no-data value")
@@ -101,24 +122,54 @@ def read_terrain(path, window=None, artifact=None, evidence="nasa_derived"):
         if col + width > dataset.width or row + height > dataset.height:
             raise ValueError("Crop exceeds raster coverage")
         crop = Window(*window)
+        manifest = Path(path).with_suffix(Path(path).suffix + ".json")
+        checksum = json.loads(manifest.read_text()).get("sha256") if manifest.exists() else None
+        event("raster_crop", dataset_id=Path(path).name, crop=list(window), nodata=dataset.nodata,
+              checksum=checksum, source=str(path), evidence=evidence)
         elevation = dataset.read(1, window=crop, masked=True).astype(float).filled(np.nan)
         return Terrain(elevation, dataset.window_transform(crop), dataset.crs,
                        Path(path).name, evidence, artifact)
 
 
+def roughness_window(width_m, resolution_m):
+    """Choose the odd pixel count nearest width_m at projected resolution_m."""
+    if not math.isfinite(width_m) or width_m <= 0 or not math.isfinite(resolution_m) or resolution_m <= 0:
+        raise ValueError("Roughness width and resolution must be positive and finite")
+    ratio = width_m / resolution_m
+    lower = max(1, 2 * math.floor((ratio - 1) / 2) + 1)
+    return min((lower, lower + 2), key=lambda size: (abs(size * resolution_m - width_m), size))
+
+
+@traced("terrain_analysis")
 def analyze(terrain, rules=None):
+    """Measure terrain slope/range; rules controls thresholds and the physical window."""
     rules = rules or load_rules()
     z = np.where(terrain.valid, terrain.elevation, np.nan)
-    dy, dx = np.gradient(z, terrain.resolution)
-    dx *= terrain.resolution / terrain.column_spacing[:, None]
-    slope = np.degrees(np.arctan(np.hypot(dx, dy)))
-    window = max(1, math.ceil(threshold(rules, "roughness_window_m") / terrain.resolution))
-    if window % 2 == 0:
-        window += 1
-    roughness = (maximum_filter(np.where(terrain.valid, z, -np.inf), size=window, mode="nearest")
-                 - minimum_filter(np.where(terrain.valid, z, np.inf), size=window, mode="nearest"))
-    complete = minimum_filter(terrain.valid.astype(np.uint8), size=window, mode="nearest").astype(bool)
+    with operation("slope_computation", dataset_id=terrain.source):
+        dy, dx = np.gradient(z, terrain.resolution)
+        dx *= terrain.resolution / terrain.column_spacing[:, None]
+        slope = np.degrees(np.arctan(np.hypot(dx, dy)))
+    window = roughness_window(threshold(rules, "roughness_window_m"), terrain.resolution)
+    with operation("roughness_computation", dataset_id=terrain.source):
+        roughness = (maximum_filter(np.where(terrain.valid, z, -np.inf), size=window, mode="nearest")
+                     - minimum_filter(np.where(terrain.valid, z, np.inf), size=window, mode="nearest"))
+        complete = minimum_filter(terrain.valid.astype(np.uint8), size=window, mode="nearest").astype(bool)
     valid = terrain.valid & complete & np.isfinite(slope)
     slope[~valid] = np.nan
     roughness[~valid] = np.nan
-    return {"slope": slope, "roughness": roughness, "valid": valid}
+    if window < 3:
+        roughness[:] = np.nan
+        event("roughness_unresolved", logging.WARNING, reason="sampling_too_coarse", resolution_m=terrain.resolution)
+    if terrain.vertical_uncertainty_m is None:
+        event("roughness_uncertainty", logging.WARNING, reason="vertical_uncertainty_unavailable", threshold_m=threshold(rules, "roughness_m"), classification="provisional_assumption")
+    elif terrain.vertical_uncertainty_m >= threshold(rules, "roughness_m"):
+        event("roughness_uncertainty", logging.WARNING, reason="uncertainty_at_or_above_threshold", uncertainty_m=terrain.vertical_uncertainty_m)
+    event("terrain_summary", dataset_id=terrain.source, evidence=terrain.evidence,
+          window_pixels=window, effective_window_m=window * terrain.resolution,
+          effective_east_west_m=[float(window * terrain.column_spacing.min()), float(window * terrain.column_spacing.max())],
+          valid_cells=int(valid.sum()), invalid_cells=int((~valid).sum()),
+          slope_max_deg=float(np.nanmax(slope)) if np.isfinite(slope).any() else None,
+          roughness_max_m=float(np.nanmax(roughness)) if np.isfinite(roughness).any() else None)
+    return {"slope": slope, "roughness": roughness, "valid": valid,
+            "roughness_window_pixels": window, "roughness_window_m": window * terrain.resolution,
+            "roughness_uncertain": terrain.vertical_uncertainty_m is None or window < 3 or terrain.vertical_uncertainty_m >= threshold(rules, "roughness_m")}
