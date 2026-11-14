@@ -6,7 +6,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 | Person | Working on | Next |
 | --- | --- | --- |
-| Nic | Project scaffold: Vite + React + TypeScript + react-leaflet, GitHub Pages deploy | Download and validate the Milankovic DTM + RED_C image; crop to the scarp |
+| Nic | Scaffold merged; terrain, routing and discovery/export PRs ready for review | Manual scarp/alignment QC, reviewed masks and confirmed endpoints for real exports |
 | Yasser | Managing; placeholder data and tile URLs done (branch `ui/placeholder-data`) | Mars map centered on Milankovic once the scaffold lands |
 | Geury | Exact endpoints: scarp foot, habitat, primary and backup observation points (inside the color strip) | Ice evidence specific to this scarp; evidence panel text |
 | Samar / Yasser's agent | Hazard rules v1 done (in IMPLEMENTATION.md section 5) | Sensor ranges for coverage; decision states; discovery scenario |
@@ -14,10 +14,11 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
-- Nic: terrain PR #4 and routing PR #5 open; discovery/export on dependent `pipeline/rover-discovery`; merge protection requires repository admin
+- Nic: PRs #4 → #5 → #6 are stacked for review; retarget downstream PRs after dependencies merge; merge protection requires repository admin
 
 ## Done
 
+- 2026-11-14 · Nic: discovery/export PR https://github.com/YasserMoufrad/Terps-To-Mars/pull/6 includes walkthrough; synthetic bundle generated at `pipeline/output/synthetic-demo`; all new PRs left unmerged
 - 2026-11-14 · Nic: Docker full suite passed 36 tests, including byte-identical eight-file exports, scikit-image reference comparison, Mars route statistics, exact boundaries, backup failures and discovery rerouting; frontend typecheck/test/build passed
 - 2026-11-14 · Nic: GitHub CI passed for terrain PR #4 and routing PR #5; discovery CI will additionally publish a clearly synthetic eight-file artifact for review
 - 2026-11-14 · Nic: downloaded RED_C orthoimage (30,838,707 bytes; SHA-256 `0e12a7c0863e503263314093856231a2f63a9b2115824574d869a80beda4ba59`); image and slope diagnostic exports have matching bounds; manual landmark alignment still pending
