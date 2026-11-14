@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { Mission, StageId, HazardProperties } from '../data/types';
 import { DiscoveryCard } from './DiscoveryCard';
 import { EvidenceCard } from './EvidenceCard';
+import { GroundViewCard } from './GroundViewCard';
 
 interface StagePanelProps {
   stage: StageId;
@@ -24,6 +25,9 @@ export function StagePanel({
   // honest route failures (`routeNotices`), alerts, the rover card, and layer toggles.
   const current = mission.stages.find((s) => s.id === stage);
   const alerts = mission.alerts[stage] ?? [];
+  // Several routes can share one notice (e.g. main and backup both need inspection):
+  // show each distinct sentence once. This also keeps React's list keys unique.
+  const notices = [...new Set(routeNotices)];
   if (!current) return null;
 
   return (
@@ -45,9 +49,9 @@ export function StagePanel({
         </dl>
       </section>
 
-      {routeNotices.length > 0 && (
+      {notices.length > 0 && (
         <section className="card notices">
-          {routeNotices.map((n) => (
+          {notices.map((n) => (
             <div key={n}>{n}</div>
           ))}
         </section>
@@ -62,6 +66,8 @@ export function StagePanel({
       )}
 
       {stage === 'rover' && <DiscoveryCard discovery={mission.discovery} />}
+
+      <GroundViewCard stage={stage} />
 
       {toggles}
     </aside>

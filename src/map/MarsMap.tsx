@@ -227,7 +227,8 @@ export function MarsMap({
 
         {stage === 'eva' && (
           <CircleMarker center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="right" className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
+            {/* "top": the perch is only ~50 m from the observation point, whose label sits to the right. */}
+            <Tooltip permanent direction="top" offset={[0, -8]} className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
           </CircleMarker>
         )}
       </MapContainer>

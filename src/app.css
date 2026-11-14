@@ -162,3 +162,14 @@ button { font: inherit; }
   .panel { border-left: none; border-top: 1px solid var(--line); }
   .subtitle { display: none; }
 }
+
+/* ---------- ground-view photos (example terrain, not this site) ---------- */
+.ground-view h3 { margin: 0 0 8px; font-size: 15px; }
+.ground-view figure { margin: 0; position: relative; }
+.ground-view img { display: block; width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); }
+.ground-view figcaption { font-size: 13px; line-height: 1.45; margin-top: 8px; }
+.example-tag {
+  position: absolute; top: 8px; left: 8px; z-index: 1; pointer-events: none;
+  background: rgba(16, 19, 24, 0.85); color: #fac775; border: 1px solid var(--warn);
+  border-radius: 4px; padding: 2px 6px; font-size: 12px; font-weight: 600;
+}

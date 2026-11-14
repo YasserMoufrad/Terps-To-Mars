@@ -5,33 +5,251 @@
   "features": [
     {
       "type": "Feature",
-      "properties": { "id": "cov-orbit-001", "state": "orbit_only", "simulated": false, "sensor": "none" },
-      "geometry": { "type": "Polygon", "coordinates": [[[-147.935, 54.124], [-147.855, 54.124], [-147.855, 54.150], [-147.935, 54.150], [-147.935, 54.124]]] }
+      "properties": {
+        "id": "cov-orbit-001",
+        "state": "orbit_only",
+        "simulated": false,
+        "sensor": "none"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.925,
+              54.125
+            ],
+            [
+              -147.885,
+              54.125
+            ],
+            [
+              -147.885,
+              54.168
+            ],
+            [
+              -147.925,
+              54.168
+            ],
+            [
+              -147.925,
+              54.125
+            ]
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "id": "cov-rover-001", "state": "rover_checked", "simulated": true, "sensor": "stereo_cam" },
-      "geometry": { "type": "Polygon", "coordinates": [[[-147.910, 54.127], [-147.882, 54.127], [-147.882, 54.142], [-147.910, 54.142], [-147.910, 54.127]]] }
+      "properties": {
+        "id": "cov-rover-001",
+        "state": "rover_checked",
+        "simulated": true,
+        "sensor": "stereo_cam"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.906,
+              54.127
+            ],
+            [
+              -147.892,
+              54.127
+            ],
+            [
+              -147.892,
+              54.156
+            ],
+            [
+              -147.906,
+              54.156
+            ],
+            [
+              -147.906,
+              54.127
+            ]
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "id": "cov-drone-001", "state": "drone_checked", "simulated": true, "sensor": "drone_cam" },
-      "geometry": { "type": "Polygon", "coordinates": [[[-147.905, 54.140], [-147.875, 54.140], [-147.875, 54.149], [-147.905, 54.149], [-147.905, 54.140]]] }
+      "properties": {
+        "id": "cov-rover-002",
+        "state": "rover_checked",
+        "simulated": true,
+        "sensor": "stereo_cam"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.92,
+              54.144
+            ],
+            [
+              -147.904,
+              54.144
+            ],
+            [
+              -147.904,
+              54.163
+            ],
+            [
+              -147.92,
+              54.163
+            ],
+            [
+              -147.92,
+              54.144
+            ]
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "id": "cov-drone-perch", "state": "drone_checked", "simulated": true, "sensor": "drone_cam" },
-      "geometry": { "type": "Polygon", "coordinates": [[[-147.890, 54.151], [-147.902, 54.143], [-147.878, 54.143], [-147.890, 54.151]]] }
+      "properties": {
+        "id": "cov-drone-001",
+        "state": "drone_checked",
+        "simulated": true,
+        "sensor": "drone_cam"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.917,
+              54.1598
+            ],
+            [
+              -147.892,
+              54.1598
+            ],
+            [
+              -147.892,
+              54.164
+            ],
+            [
+              -147.917,
+              54.164
+            ],
+            [
+              -147.917,
+              54.1598
+            ]
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "id": "cov-unscouted-001", "state": "unscouted", "simulated": false, "sensor": "none" },
-      "geometry": { "type": "Polygon", "coordinates": [[[-147.875, 54.124], [-147.855, 54.124], [-147.855, 54.140], [-147.875, 54.140], [-147.875, 54.124]]] }
+      "properties": {
+        "id": "cov-drone-perch",
+        "state": "drone_checked",
+        "simulated": true,
+        "sensor": "drone_cam"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.90287,
+              54.16334
+            ],
+            [
+              -147.91,
+              54.1606
+            ],
+            [
+              -147.896,
+              54.1606
+            ],
+            [
+              -147.90287,
+              54.16334
+            ]
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
-      "properties": { "id": "cov-inspect-001", "state": "inspection_required", "simulated": false, "sensor": "none" },
-      "geometry": { "type": "Polygon", "coordinates": [[[-147.925, 54.130], [-147.917, 54.130], [-147.917, 54.135], [-147.925, 54.135], [-147.925, 54.130]]] }
+      "properties": {
+        "id": "cov-unscouted-001",
+        "state": "unscouted",
+        "simulated": false,
+        "sensor": "none"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.89,
+              54.125
+            ],
+            [
+              -147.885,
+              54.125
+            ],
+            [
+              -147.885,
+              54.164
+            ],
+            [
+              -147.89,
+              54.164
+            ],
+            [
+              -147.89,
+              54.125
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "cov-inspect-001",
+        "state": "inspection_required",
+        "simulated": false,
+        "sensor": "none"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -147.916,
+              54.148
+            ],
+            [
+              -147.91,
+              54.148
+            ],
+            [
+              -147.91,
+              54.152
+            ],
+            [
+              -147.916,
+              54.152
+            ],
+            [
+              -147.916,
+              54.148
+            ]
+          ]
+        ]
+      }
     }
   ]
 }

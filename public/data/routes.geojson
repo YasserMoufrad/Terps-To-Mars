@@ -11,9 +11,32 @@
         "agent": "crew",
         "version": "before",
         "status": "inspection_required",
-        "stats": { "length_m": 1000, "round_trip_m": 2000, "est_time_min": 40, "elevation_gain_m": 30, "max_slope_deg": 24, "shared_with_main_m": 0 }
+        "stats": {
+          "length_m": 2062,
+          "round_trip_m": 4123,
+          "est_time_min": 206,
+          "elevation_gain_m": 30,
+          "max_slope_deg": 38,
+          "shared_with_main_m": 0
+        }
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.137], [-147.893, 54.145]] }
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -147.90287,
+            54.12819
+          ],
+          [
+            -147.904,
+            54.16
+          ],
+          [
+            -147.90546,
+            54.16291
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
@@ -22,10 +45,41 @@
         "kind": "main",
         "agent": "crew",
         "version": "before",
-        "status": "ok",
-        "stats": { "length_m": 820, "round_trip_m": 1640, "est_time_min": 35, "elevation_gain_m": 18, "max_slope_deg": 12, "shared_with_main_m": 0 }
+        "status": "inspection_required",
+        "stats": {
+          "length_m": 2532,
+          "round_trip_m": 5063,
+          "est_time_min": 253,
+          "elevation_gain_m": 30,
+          "max_slope_deg": 14,
+          "shared_with_main_m": 0
+        }
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.892, 54.137], [-147.890, 54.141]] }
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -147.90287,
+            54.12819
+          ],
+          [
+            -147.8965,
+            54.15
+          ],
+          [
+            -147.8935,
+            54.16
+          ],
+          [
+            -147.893,
+            54.1632
+          ],
+          [
+            -147.90546,
+            54.16291
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
@@ -34,22 +88,96 @@
         "kind": "main",
         "agent": "crew",
         "version": "after",
-        "status": "ok",
-        "stats": { "length_m": 940, "round_trip_m": 1880, "est_time_min": 41, "elevation_gain_m": 21, "max_slope_deg": 13, "shared_with_main_m": 0 }
+        "status": "inspection_required",
+        "stats": {
+          "length_m": 2645,
+          "round_trip_m": 5291,
+          "est_time_min": 265,
+          "elevation_gain_m": 30,
+          "max_slope_deg": 15,
+          "shared_with_main_m": 0
+        }
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.888, 54.131], [-147.884, 54.136], [-147.890, 54.141]] }
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -147.90287,
+            54.12819
+          ],
+          [
+            -147.9005,
+            54.147
+          ],
+          [
+            -147.903,
+            54.1525
+          ],
+          [
+            -147.896,
+            54.156
+          ],
+          [
+            -147.8935,
+            54.16
+          ],
+          [
+            -147.893,
+            54.1632
+          ],
+          [
+            -147.90546,
+            54.16291
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
       "properties": {
-        "id": "rt-crew-backup-v1",
+        "id": "rt-crew-backup-v2",
         "kind": "backup",
         "agent": "crew",
-        "version": "before",
-        "status": "ok",
-        "stats": { "length_m": 990, "round_trip_m": 1980, "est_time_min": 44, "elevation_gain_m": 15, "max_slope_deg": 11, "shared_with_main_m": 40 }
+        "version": "after",
+        "status": "inspection_required",
+        "stats": {
+          "length_m": 2848,
+          "round_trip_m": 5494,
+          "est_time_min": 275,
+          "elevation_gain_m": 30,
+          "max_slope_deg": 16,
+          "shared_with_main_m": 0
+        }
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.890, 54.141], [-147.903, 54.138], [-147.908, 54.133], [-147.900, 54.128]] }
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -147.90546,
+            54.16291
+          ],
+          [
+            -147.912,
+            54.1632
+          ],
+          [
+            -147.9185,
+            54.163
+          ],
+          [
+            -147.9185,
+            54.147
+          ],
+          [
+            -147.906,
+            54.145
+          ],
+          [
+            -147.90287,
+            54.12819
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
@@ -59,9 +187,28 @@
         "agent": "rover",
         "version": "before",
         "status": "ok",
-        "stats": { "length_m": 1810, "round_trip_m": 1810, "est_time_min": 120, "elevation_gain_m": 18, "max_slope_deg": 12, "shared_with_main_m": 820 }
+        "stats": {
+          "length_m": 1309,
+          "round_trip_m": 1309,
+          "est_time_min": 524,
+          "elevation_gain_m": 30,
+          "max_slope_deg": 15,
+          "shared_with_main_m": 1309
+        }
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.894, 54.135]] }
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -147.90287,
+            54.12819
+          ],
+          [
+            -147.8965,
+            54.15
+          ]
+        ]
+      }
     },
     {
       "type": "Feature",
@@ -71,9 +218,72 @@
         "agent": "rover",
         "version": "after",
         "status": "ok",
-        "stats": { "length_m": 1930, "round_trip_m": 1930, "est_time_min": 135, "elevation_gain_m": 21, "max_slope_deg": 13, "shared_with_main_m": 940 }
+        "stats": {
+          "length_m": 5912,
+          "round_trip_m": 5912,
+          "est_time_min": 2365,
+          "elevation_gain_m": 30,
+          "max_slope_deg": 15,
+          "shared_with_main_m": 2645
+        }
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.894, 54.135], [-147.888, 54.131], [-147.884, 54.136], [-147.890, 54.141], [-147.903, 54.138], [-147.908, 54.133], [-147.900, 54.128]] }
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -147.90287,
+            54.12819
+          ],
+          [
+            -147.8965,
+            54.15
+          ],
+          [
+            -147.9005,
+            54.147
+          ],
+          [
+            -147.903,
+            54.1525
+          ],
+          [
+            -147.896,
+            54.156
+          ],
+          [
+            -147.8935,
+            54.16
+          ],
+          [
+            -147.893,
+            54.1632
+          ],
+          [
+            -147.90546,
+            54.16291
+          ],
+          [
+            -147.912,
+            54.1632
+          ],
+          [
+            -147.9185,
+            54.163
+          ],
+          [
+            -147.9185,
+            54.147
+          ],
+          [
+            -147.906,
+            54.145
+          ],
+          [
+            -147.90287,
+            54.12819
+          ]
+        ]
+      }
     }
   ]
 }

@@ -20,6 +20,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 ## Done
 
 - 2026-11-14 · Nic: Patch A native-resolution HiRISE (branch `pipeline/high-resolution-hirise-overlay`): downloaded `ESP_071006_2345_RED_A_01_ORTHO.JP2` (390,402,430 bytes, SHA-256 `ab1d5f6c…1d12`, 0.249 m/pixel, 30081×50631, 8-bit); `export_hirise_hd` + `python -m pipeline.preview_hd`; real diagnostic preview at 54.144, −147.894 = 4091×4088 native pixels (~930 m × 1020 m ground; 0.227 m E-W / 0.249 m N-S ground sampling), no resampling or warp, JPEG q95 4.2 MB, 254 s decode; visibly sharper than the 1 m ORTHO on the same area. 96 Docker Python tests (20 new), 20 frontend tests. Not done: tile pyramid, map zoom > 15, `run.py` integration, landmark alignment (`not_verified`); preview centre is not the confirmed scarp
+- 2026-11-14 · Yasser's agent (branch `ui/real-site`): placeholder data moved onto Geury's first-pass endpoints (habitat, observation points, drone perch); hazards, routes, coverage and discovery redrawn around the traced ice band; route stats computed on the Mars sphere; post-discovery crew backup added; test `tests/placeholderData.test.mjs` checks replanned routes avoid exclude hazards and over-budget routes are never `ok`. Nic's `reviewPresentation` test adjusted to strip the new backup when testing the missing-backup notice. Ground-view panel with Geury's 4 NASA lander photos (one per stage, labeled example terrain), `tests/groundViews.test.mjs`. Duplicate route notices shown once
 - 2026-11-14 · Yasser: project deployed to Vercel at https://terps-to-mars.vercel.app (auto-deploys `main`, preview per PR; build command `npm run build -- --base=/` because Vercel serves from the root; GitHub Pages unchanged)
 - 2026-11-14 · Yasser's agent (PR #11): real Mars color on the basemap from the Viking MDIM 2.1 color mosaic, blended over CTX detail with CSS `mix-blend-mode: color` in its own pane (data layers unaffected), with a layer toggle; MGS MOC color atlas rejected (fully gray at this site); basemap tile failures logged once per layer (`map/tiles.error`) with 4 tests
 - 2026-11-14 · Nic: audit provenance fixes (branch `docs/audit-provenance-fixes`): CRISM claim qualified (3 of 8 scarps, none confirmed for our face); placeholder drone alert no longer says "confirmed"; placeholder `chosen_option` empty (pending); README no longer says confirmed/safe; MAP_TILES documents THEMIS Night IR, MCD weather and imagery-resolution caveats; edited Yasser's placeholder `mission.json` (wording/pending only). Night IR toggle and weather display not built
@@ -64,7 +65,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 | --- | --- | --- | --- |
 | Geury | Nic | Site files (links) | Done |
 | Yasser's agent | Nic | Hazard rules v1 | Done (in IMPLEMENTATION.md) |
-| Geury | Nic | Endpoint coordinates | Pending |
+| Geury | Nic | Endpoint coordinates | First pass received (in IMPLEMENTATION section 2); DTM QC and habitat distance pending |
 | Brianna | Samar | Rover mass properties | Pending |
 | Nic | Yasser | Real slope, hazards, routes | Pending (Saturday evening) |
 
@@ -89,7 +90,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 - Confirm mission objective: observation only, no sampling or drilling (proposed)
 - Final project name (placeholder: IceScout)
 - Nic registered at the same Local Event as the team?
-- Placeholder endpoints (habitat, observation points) are approximate; Geury to replace with real coordinates
+- ~~Placeholder endpoints are approximate~~ Geury's first-pass endpoints now in the placeholder data (`ui/real-site`).
+- Geury + Nic: the habitat is about 2 km south of the observation point; the walk around the ice band is about 2.6 km each way (265 min round trip at 20 m/min), over the 168 min travel budget (240 min EVA, 30% reserve). Move the habitat to about 1.2–1.6 km from the observation point, or change the budget?
 - CTX tiles come from the Esri OnMars server: check visually that they line up with MOLA and the HiRISE overlay
 
 ## Sync points
