@@ -6,7 +6,7 @@ import numpy as np
 from scipy.ndimage import distance_transform_edt
 
 from pipeline.hazards import collection, mask_features
-from pipeline.routing import cost_grid, plan_routes, route_feature
+from pipeline.routing import InfeasibleMission, cost_grid, plan_routes, route_feature
 from pipeline.terrain import load_rules, threshold
 from pipeline.logging_config import traced, event
 
@@ -69,6 +69,12 @@ def discovery_scenario(terrain, analysis, masks, start, end, discovery_cell,
     routes, before, _ = plan_routes(terrain, analysis, masks, start, end,
                                     eva_minutes=eva_minutes, speed_m_min=speed_m_min, observation_minutes=observation_minutes)
     discovery_cell = tuple(discovery_cell)
+    if not before:
+        # No viable preliminary route is a planning finding; the caller reports it instead of crashing.
+        status = routes["features"][0]["properties"]["status"]
+        event("simulation_skipped", logging.WARNING, scenario_id="disc-001", reason="no_viable_preliminary_route",
+              route_status=status, evidence="simulated")
+        raise InfeasibleMission(f"No viable preliminary route ({status}); discovery scenario not simulated")
     if discovery_cell not in before[1:-1]:
         raise ValueError("Discovery must lie inside a viable preliminary route")
     blocked = np.zeros(terrain.elevation.shape, bool)
