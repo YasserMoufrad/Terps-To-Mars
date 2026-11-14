@@ -20,6 +20,7 @@ STAGE = ContextVar("pipeline_stage", default="execution")
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
+        """Encode record context/fields; malformed diagnostics retain the original severity."""
         payload = {
             "timestamp": datetime.fromtimestamp(record.created, timezone.utc).isoformat().replace("+00:00", "Z"),
             "level": record.levelname, "run_id": getattr(record, "run_id", "unscoped"),
@@ -39,6 +40,7 @@ class JsonFormatter(logging.Formatter):
 
 
 def configure_logging(level=None, jsonl=None, human=False):
+    """Configure verbosity level, optional JSONL path and readable console selection."""
     level = (level or os.getenv("PIPELINE_LOG_LEVEL", "INFO")).upper()
     if level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
         raise ValueError("Invalid logging level")
@@ -64,6 +66,7 @@ def fingerprint(config):
 
 
 def event(name, level=logging.INFO, *, exc_info=None, **fields):
+    """Emit name at level with current correlation context and explicitly supplied fields."""
     if not LOGGER.handlers:
         configure_logging()
     try:
@@ -76,6 +79,7 @@ def event(name, level=logging.INFO, *, exc_info=None, **fields):
 
 @contextmanager
 def operation(stage, **context):
+    """Time stage and preserve one run ID across nested operations; context is safe metadata."""
     run_token = RUN_ID.set(str(uuid4())) if RUN_ID.get() is None else None
     stage_token = STAGE.set(stage)
     started = perf_counter()
@@ -95,9 +99,12 @@ def operation(stage, **context):
 
 
 def traced(stage):
+    """Decorate an operational function with the given stage's timing and failure trace."""
     def decorate(function):
+        """Wrap function without logging its unrestricted arguments or return payload."""
         @wraps(function)
         def wrapper(*args, **kwargs):
+            """Invoke the wrapped operation; args/kwargs remain private to the computation."""
             with operation(stage, operation=function.__name__):
                 return function(*args, **kwargs)
         return wrapper

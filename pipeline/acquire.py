@@ -16,6 +16,7 @@ SOURCES = {
 
 @traced("acquisition")
 def download(kind, directory=Path("pipeline/raw")):
+    """Fetch official kind (dtm/image) into directory and record bytes/source/SHA-256."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     destination = directory / SOURCES[kind]

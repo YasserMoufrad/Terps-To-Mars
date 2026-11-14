@@ -65,6 +65,10 @@ The data contract (section 4 of `IMPLEMENTATION.md`) belongs to both. Change it 
 
 Use the priority tiers and cut lines in `IMPLEMENTATION.md` (sections 10 and 11). Do not add ROS, Gazebo, trained vision models, live LLM features or 3D terrain unless every acceptance criterion is already met and `STATUS.md` records the team's go-ahead.
 
+## Function documentation for every PR
+
+Every new or modified function must begin with a brief docstring (Python) or a brief comment at the top of its body (TypeScript/JavaScript) explaining its purpose and only its most important parameters or state variables. Name the variables and explain their meaning, units or shape when relevant. Avoid listing every local variable or narrating obvious code. Keep this documentation adjacent to the implementation and update it when behavior changes. Apply this requirement to every code PR, alongside Section 16's logging and tests.
+
 ## Commands
 
 App (once scaffolded):

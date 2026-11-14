@@ -20,16 +20,19 @@ MARS_GEOGRAPHIC = CRS.from_string(f"+proj=longlat +R={MARS_RADIUS_M} +no_defs")
 
 @traced("hazard_rules")
 def load_rules():
+    """Load the versioned rules; rules maps threshold names to values and sources."""
     rules = json.loads(Path(__file__).with_name("hazard_rules.json").read_text())
     event("rules_loaded", schema_version=rules["schema_version"], config_fingerprint=fingerprint(rules), rules=rules["rules"])
     return rules
 
 
 def threshold(rules, name):
+    """Return the numeric value for name from the versioned rules mapping."""
     return rules["rules"][name]["value"]
 
 
 def signed_longitude(value):
+    """Normalize finite value in degrees east into signed longitude degrees."""
     if not math.isfinite(value):
         raise ValueError("Longitude must be finite")
     return (value + 180) % 360 - 180
@@ -47,6 +50,7 @@ class Terrain:
 
     @traced("raster_validation")
     def __post_init__(self):
+        """Validate elevation (metres), its Mars grid transform/CRS and artifact mask."""
         self.elevation = np.asarray(self.elevation, dtype=float)
         if self.elevation.ndim != 2 or min(self.elevation.shape) < 3:
             raise ValueError("Terrain must be a 2D grid at least 3 x 3")
@@ -75,14 +79,17 @@ class Terrain:
 
     @property
     def resolution(self):
+        """Return transform.a, the projected square-pixel width in metres."""
         return self.transform.a
 
     @property
     def valid(self):
+        """Identify finite elevation cells outside the boolean artifact mask."""
         return np.isfinite(self.elevation) & ~self.artifact
 
     @property
     def column_spacing(self):
+        """Return per-row east-west ground spacing, correcting the CRS standard parallel."""
         # Equirectangular x scale is true only at its standard parallel.
         rows = np.arange(self.elevation.shape[0]) + 0.5
         xs = np.full(rows.shape, self.transform.c + 0.5 * self.resolution)
@@ -92,6 +99,7 @@ class Terrain:
         return self.resolution * np.cos(np.radians(latitudes)) / math.cos(math.radians(standard_parallel))
 
     def lonlat(self, row, col, center=True):
+        """Convert row/col to signed Mars [longitude, latitude]; center selects pixel centres."""
         offset = 0.5 if center else 0
         x, y = self.transform * (col + offset, row + offset)
         lon, lat = transform_coordinates(self.crs, MARS_GEOGRAPHIC, [x], [y])
@@ -100,7 +108,7 @@ class Terrain:
 
 @traced("raster_loading")
 def read_terrain(path, window=None, artifact=None, evidence="nasa_derived"):
-    """Crop by integer (column, row, width, height); never interpolate missing cells."""
+    """Read path using window=(column,row,width,height); artifact is crop-aligned QC."""
     with rasterio.open(path) as dataset:
         if dataset.nodata is None:
             raise ValueError("Raster must declare its no-data value")
@@ -124,6 +132,7 @@ def read_terrain(path, window=None, artifact=None, evidence="nasa_derived"):
 
 
 def roughness_window(width_m, resolution_m):
+    """Choose the odd pixel count nearest width_m at projected resolution_m."""
     if not math.isfinite(width_m) or width_m <= 0 or not math.isfinite(resolution_m) or resolution_m <= 0:
         raise ValueError("Roughness width and resolution must be positive and finite")
     ratio = width_m / resolution_m
@@ -133,6 +142,7 @@ def roughness_window(width_m, resolution_m):
 
 @traced("terrain_analysis")
 def analyze(terrain, rules=None):
+    """Measure terrain slope/range; rules controls thresholds and the physical window."""
     rules = rules or load_rules()
     z = np.where(terrain.valid, terrain.elevation, np.nan)
     with operation("slope_computation", dataset_id=terrain.source):

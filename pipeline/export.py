@@ -16,12 +16,14 @@ from pipeline.logging_config import traced, event, operation
 
 @traced("json_export")
 def write_json(path, payload):
+    """Write finite JSON payload deterministically to path; never serialize NaN."""
     Path(path).write_text(json.dumps(payload, sort_keys=True, indent=2, allow_nan=False) + "\n", encoding="utf-8")
     event("json_exported", filename=Path(path).name, schema_version=payload.get("schema_version"), feature_count=len(payload.get("features", [])))
 
 
 @traced("raster_export")
 def export_overlay(terrain, data, destination, source, max_pixels=1024):
+    """Reproject terrain-aligned data; destination selects format, max_pixels limits display size."""
     if data.shape != terrain.elevation.shape or max_pixels < 1:
         raise ValueError("Overlay grid must match terrain and output size must be positive")
     height, width = data.shape
@@ -66,7 +68,7 @@ def export_overlay(terrain, data, destination, source, max_pixels=1024):
 
 @traced("image_reprojection")
 def aligned_image(path, terrain):
-    """Reproject orthoimage to the terrain crop. Human landmark QC is still needed."""
+    """Reproject image path to terrain's grid; matching extents do not prove landmark alignment."""
     with rasterio.open(path) as image:
         parameters = image.crs.to_dict() if image.crs else {}
         radius = float(parameters.get("R", parameters.get("a", 0)))

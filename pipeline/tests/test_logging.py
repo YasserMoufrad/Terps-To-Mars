@@ -15,10 +15,12 @@ from pipeline import acquire
 
 
 def records(caplog, name):
+    """Select captured structured events matching name."""
     return [r for r in caplog.records if getattr(r, "event", None) == name]
 
 
 def test_significant_stages_have_consistent_context(caplog):
+    """Use caplog to verify stage events share one UTC-stamped execution ID."""
     t = terrain()
     caplog.clear()
     with caplog.at_level(logging.DEBUG, logger=LOGGER.name):
@@ -35,6 +37,7 @@ def test_significant_stages_have_consistent_context(caplog):
 
 
 def test_missing_scarp_measurements_warn(caplog):
+    """Confirm unresolved risk masks emit warnings listing each missing measurement."""
     t = terrain()
     risk = np.zeros(t.elevation.shape, bool)
     risk[:, 5] = True
@@ -46,12 +49,14 @@ def test_missing_scarp_measurements_warn(caplog):
 
 
 def test_invalid_metadata_logs_error_and_propagates(caplog):
+    """Reject Earth metadata and retain an ERROR event with exception context."""
     with pytest.raises(ValueError, match="Mars"):
         Terrain(np.zeros((4, 4)), from_origin(0, 4, 1, 1), "EPSG:3857", "bad", "simulated")
     assert any(r.levelno == logging.ERROR and r.exc_info for r in records(caplog, "operation_failed"))
 
 
 def test_jsonl_and_deterministic_outputs(tmp_path):
+    """Write optional JSONL under tmp_path without changing generated hazards."""
     t = terrain()
     first = export_hazards(t, hazard_masks(t, analyze(t)))
     path = tmp_path / "events.jsonl"
@@ -68,6 +73,7 @@ def test_jsonl_and_deterministic_outputs(tmp_path):
 
 
 def test_format_failure_does_not_turn_validation_into_success():
+    """Malformed fields or a broken handler must preserve failed terrain validation."""
     record = logging.LogRecord(LOGGER.name, logging.ERROR, __file__, 1, "failure", (), None)
     record.event, record.run_id, record.stage = "validation_failed", "test", "validation"
     record.fields = {"invalid": float("nan")}
@@ -77,6 +83,7 @@ def test_format_failure_does_not_turn_validation_into_success():
 
     class BrokenHandler(logging.Handler):
         def emit(self, record):
+            """Simulate a handler failure for the current log record."""
             raise RuntimeError("broken handler")
     broken = BrokenHandler()
     LOGGER.addHandler(broken)
@@ -88,8 +95,10 @@ def test_format_failure_does_not_turn_validation_into_success():
 
 
 def test_unexpected_exception_not_suppressed(caplog):
+    """Observe an unexpected exception through caplog and its original caller."""
     @traced("example")
     def fail():
+        """Raise a deliberate unexpected operation failure for tracing verification."""
         raise RuntimeError("unexpected")
     with pytest.raises(RuntimeError, match="unexpected"):
         fail()
@@ -97,6 +106,7 @@ def test_unexpected_exception_not_suppressed(caplog):
 
 
 def test_config_fingerprint_does_not_expose_contents(caplog):
+    """Log only the config fingerprint, keeping a test token out of captured output."""
     secret = "example-private-test-value"
     with operation("execution"):
         event("configuration", config_fingerprint=fingerprint({"token": secret}))
@@ -104,6 +114,7 @@ def test_config_fingerprint_does_not_expose_contents(caplog):
 
 
 def test_acquisition_integrity_failure_is_observable(tmp_path, monkeypatch, caplog):
+    """Mock a truncated download; tmp_path must retain no incomplete source files."""
     response = BytesIO(b"partial")
     response.headers = {"Content-Length": "1000"}
     monkeypatch.setattr(acquire, "urlopen", lambda *args, **kwargs: response)

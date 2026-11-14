@@ -10,11 +10,13 @@ from pipeline.logging_config import event, traced
 
 
 def collection(features):
+    """Wrap the feature records in the shared schema 1.0 GeoJSON envelope."""
     return {"schema_version": "1.0", "type": "FeatureCollection", "features": features}
 
 
 @traced("geojson_export")
 def mask_features(mask, terrain, prefix, properties):
+    """Polygonize boolean mask on terrain's grid; prefix gives stable output IDs."""
     features = []
     for geometry, _ in shapes(mask.astype(np.uint8), mask=mask, transform=terrain.transform):
         geometry = transform_geom(terrain.crs, MARS_GEOGRAPHIC, geometry)
@@ -31,6 +33,7 @@ def mask_features(mask, terrain, prefix, properties):
 @traced("hazard_generation")
 def hazard_masks(terrain, analysis, rules=None, edge_distance=None,
                  foot_distance=None, scarp_height=None, apron_m=None, scarp_risk=None):
+    """Classify analysis; distances/heights are metres and scarp_risk bounds unresolved risk."""
     rules = rules or load_rules()
     slope = analysis["slope"]
     masks = {
@@ -75,6 +78,7 @@ def hazard_masks(terrain, analysis, rules=None, edge_distance=None,
 
 @traced("hazard_export")
 def export_hazards(terrain, masks):
+    """Export classified masks with terrain provenance and stable category IDs."""
     features = []
     specifications = [
         ("crew_exclude", "slope", "exclude", "crew"),

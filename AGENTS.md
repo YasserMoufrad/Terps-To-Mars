@@ -4,6 +4,10 @@ Try to be as helpful as you can be even if it means taking another step forward 
 
 Read all of `CLAUDE.md`, `docs/IMPLEMENTATION.md` and `docs/STATUS.md` before changing code. Follow their ownership boundaries, scientific honesty rules, schema 1.0 contract and Git workflow. Preserve teammates' work. No raw source rasters, generated logs, or secrets in git.
 
+## Function documentation for every PR
+
+At the top of every new or modified function, add a brief purpose description and explain only the most important named parameters or state variables, including units/shapes when relevant. Use a Python docstring or a short TypeScript/JavaScript comment at the beginning of the body. Do not enumerate all locals or explain obvious variables. Keep descriptions current as behavior changes. This is mandatory in every code PR, together with logging, observability and appropriate tests.
+
 ## Mandatory logging, observability, and execution traceability
 
 Section 16 of `CLAUDE.md` is mandatory for every agent and every current/future code PR, including Python, TypeScript/React and CI/deployment. Implement operational logging in the code, not only its PR description. Include adjacent validation, input/output tracing, safety/state decisions, error handling, aggregate timing and logging tests in the same PR. Small pure functions can be observed at the calling operation; documentation-only changes need no new runtime logging.
