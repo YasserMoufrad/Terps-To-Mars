@@ -46,3 +46,22 @@ All cells default to unscouted. A geometric path across them retains its geometr
 Backup search penalizes the main corridor 100-fold, then requires at most 50% shared edges and corridor cells (excluding endpoints); default corridor width is 2 m. These are tunable assumptions, not independence from shared regional hazards. The actual main/backup combination must fit the work-inclusive mission budget. Failures retain `backup_unavailable` and do not imply backup clearance. Route search, aggregate costs, both route-search durations, unscouted warnings, statistics, overlap, mission budgets and rejection reasons share the execution trace.
 
 Branch cleanup now preserves branches used as the base of an open stacked PR. Retarget downstream PRs to main before deleting their merged parent; deleting such a parent closes the dependent PR on GitHub. Cleanup decisions emit structured diagnostic output and are tested without contacting GitHub.
+
+## Discovery and complete export walkthrough
+
+Build the dedicated image, then use PowerShell to generate the eight contract files in a new ignored handoff directory:
+
+```powershell
+docker build -f pipeline/Dockerfile -t terps-pipeline:uv .
+docker run --rm --name terps-demo --mount "type=bind,source=$PWD,target=/app" terps-pipeline:uv uv run --no-sync python -m pipeline.run --output pipeline/output/demo
+```
+
+Without `--config`, this is a synthetic 1 m flat-grid fixture, not Milankovič terrain. Its images are visibly watermarked SYNTHETIC. It emits `hirise.jpg`, `hirise.bounds.json`, `slope.png`, `slope.bounds.json`, `hazards.geojson`, `routes.geojson`, `coverage.geojson` and `mission.json`. Outputs refuse overwrite and never write into `public/data`; JSON/images use temporary files plus atomic replacement. Bounds are geographically reprojected; slope display uses a percentile stretch rather than absolute color classes; no-data is transparent in PNG and black in JPEG.
+
+`disc-001` inserts `hz-sim-001` on the preliminary route and preserves both versioned crew routes. Simulated 38% wheel slip triggers `request_input`; loose/soft ground is suspected, not measured thermal inertia. `chosen_option` remains empty until an explicit boolean human approval is configured. Precomputed alternatives are not authorization to move. The rover follows only a traversable prefix and stops before the discovery. No new hardware or thermal-inertia simulation is introduced.
+
+Coverage is a modeled circular sensor footprint, not verified line of sight; unresolved scarp regions override checked coverage. No drone flight/view cone is invented. The required `cov-drone-perch` reference identifies a single proposed-perch grid cell with `inspection_required` and sensor `none`, not a measured field of view or checked region. UI #8 supports pending choices; its separate follow-up will label candidate geometry and the proposed perch accordingly.
+
+For real inputs copy `pipeline/config.example.json` and fill the deliberately null measurements, masks, sensor range, observation work and confirmed coordinates. All four review flags must be explicitly true: alignment, artifact QC, endpoints and scarp measurements. Supply crop-aligned artifact/risk/edge/foot arrays and measured height/apron. Every endpoint/perch/discovery must lie inside the crop. A discovery point must lie inside a viable preliminary route. These flags are caller declarations, not automated scientific verification. Real routes remain pending Geury/Brianna/Samar inputs and manual scarp/landmark review.
+
+Use `--log-level DEBUG --log-file pipeline/logs/run.jsonl` (or environment variables), optionally `--human-log`, to inspect one execution's correlated trace. The CLI wraps config loading through validation/export in a shared run ID. Scenario logs include the simulated evidence, wheel-slip threshold/state, hazard insertion, actual before/after route IDs and stats, coverage, budget decisions and approval state. Tests compare bundle bytes across INFO/DEBUG+JSONL and validate lengths even for inspection-required candidate geometry. Logs/generated bundles remain ignored.

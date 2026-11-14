@@ -116,12 +116,17 @@ def route_stats(terrain, analysis, path, primary=(), speed_m_min=20):
 
 @traced("route_export")
 def route_feature(terrain, analysis, path, route_id, kind="main", version="before",
-                  status="ok", primary=(), speed_m_min=20):
+                  status="ok", primary=(), speed_m_min=20, agent="crew"):
     """Build the schema 1.0 record for route_id; status describes planning, not crew clearance."""
+    if agent not in {"crew", "rover"}:
+        raise ValueError("Unknown route agent")
     feature = {"type": "Feature", "properties": {"id": route_id, "kind": kind,
-            "agent": "crew", "version": version, "status": status,
+            "agent": agent, "version": version, "status": status,
             "stats": route_stats(terrain, analysis, path, primary, speed_m_min)},
             "geometry": {"type": "LineString", "coordinates": [terrain.lonlat(*cell) for cell in path]}}
+    if agent == "rover":
+        feature["properties"]["stats"]["round_trip_m"] = feature["properties"]["stats"]["length_m"]
+        feature["properties"]["stats"]["est_time_min"] = feature["properties"]["stats"]["length_m"] / speed_m_min
     event("route_result", route_id=route_id, status=status, geometric_feasibility=bool(path),
           evidence=terrain.evidence, statistics=feature["properties"]["stats"], crew_clearance="not_established")
     return feature
@@ -165,7 +170,7 @@ def within_budget(stats, rules, eva_minutes, speed_m_min, observation_minutes=0)
 
 @traced("route_planning")
 def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=240,
-                speed_m_min=20, backup_max_shared=0.5, corridor_m=2, observation_minutes=0, unscouted=None):
+                speed_m_min=20, backup_max_shared=0.5, corridor_m=2, observation_minutes=0, unscouted=None, version="before"):
     """Plan start/end candidates; observation_minutes budgets work, unscouted limits interpretation.
 
     Backup independence is modeled: penalize a corridor around the primary,
@@ -174,26 +179,30 @@ def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=24
     """
     if not 0 <= backup_max_shared < 1 or not math.isfinite(corridor_m) or corridor_m < 0:
         raise ValueError("Invalid backup independence settings")
+    if version not in {"before", "after"}:
+        raise ValueError("Invalid route version")
+    main_id = "rt-crew-main-v1" if version == "before" else "rt-crew-main-v2"
+    backup_id = "rt-crew-backup-v1" if version == "before" else "rt-crew-backup-v2"
     rules = rules or load_rules()
     mission_budget({"length_m": 0}, {"length_m": 0}, rules, eva_minutes, speed_m_min, observation_minutes)
     unscouted = np.ones(terrain.elevation.shape, bool) if unscouted is None else np.asarray(unscouted, dtype=bool)
     costs = cost_grid(terrain, analysis, masks, unscouted=unscouted, rules=rules)
     spacing = (terrain.resolution, terrain.column_spacing)
-    with operation("primary_route_search", route_id="rt-crew-main-v1", evidence=terrain.evidence):
+    with operation("primary_route_search", route_id=main_id, evidence=terrain.evidence):
         primary = shortest_path(costs, start, end, spacing)
     status = "ok"
     if not primary:
         status = "inspection_required" if not analysis["valid"][tuple(start)] or not analysis["valid"][tuple(end)] or masks["inspection_required"].any() else "no_viable_route"
-        event("route_rejected", logging.WARNING, route_id="rt-crew-main-v1", status=status,
+        event("route_rejected", logging.WARNING, route_id=main_id, status=status,
               reason="unresolved_scarp_or_invalid_terrain" if status == "inspection_required" else "hard_exclusions_or_disconnected", evidence=terrain.evidence,
               threshold_deg=threshold(rules, "crew_exclude_deg"), excluded_cells=int((~np.isfinite(costs)).sum()))
     elif not within_budget(route_stats(terrain, analysis, primary, speed_m_min=speed_m_min), rules, eva_minutes, speed_m_min, observation_minutes):
         primary, status = [], "no_viable_route"
-        event("route_rejected", logging.WARNING, route_id="rt-crew-main-v1", status=status, reason="mission_budget", evidence=terrain.evidence)
+        event("route_rejected", logging.WARNING, route_id=main_id, status=status, reason="mission_budget", evidence=terrain.evidence)
     elif any(unscouted[cell] for cell in primary):
         status = "inspection_required"
-        event("unscouted_corridor", logging.WARNING, route_id="rt-crew-main-v1", status=status, evidence=terrain.evidence, reason="geometric_candidate_only")
-    main = route_feature(terrain, analysis, primary, "rt-crew-main-v1", kind="orbital_guess" if primary and status == "inspection_required" else "main", status=status, speed_m_min=speed_m_min)
+        event("unscouted_corridor", logging.WARNING, route_id=main_id, status=status, evidence=terrain.evidence, reason="geometric_candidate_only")
+    main = route_feature(terrain, analysis, primary, main_id, kind="orbital_guess" if primary and status == "inspection_required" else "main", status=status, speed_m_min=speed_m_min, version=version)
     backup = []
     if primary:
         mask = np.zeros(costs.shape, bool)
@@ -202,7 +211,7 @@ def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=24
         corridor = distance_transform_edt(~mask) * terrain.resolution <= corridor_m
         penalized = costs.copy()
         penalized[corridor & np.isfinite(penalized)] *= 100
-        with operation("backup_route_search", route_id="rt-crew-backup-v1", evidence=terrain.evidence):
+        with operation("backup_route_search", route_id=backup_id, evidence=terrain.evidence):
             candidate = shortest_path(penalized, start, end, spacing)
         if candidate:
             stats = route_stats(terrain, analysis, candidate, primary, speed_m_min)
@@ -210,14 +219,14 @@ def plan_routes(terrain, analysis, masks, start, end, rules=None, eva_minutes=24
             edge_fraction = stats["shared_with_main_m"] / max(stats["length_m"], 1e-12)
             combined = mission_budget(route_stats(terrain, analysis, primary, speed_m_min=speed_m_min), stats,
                                       rules, eva_minutes, speed_m_min, observation_minutes)
-            event("backup_evaluated", route_id="rt-crew-backup-v1", corridor_fraction=corridor_fraction,
+            event("backup_evaluated", route_id=backup_id, corridor_fraction=corridor_fraction,
                   shared_edge_fraction=edge_fraction, allowed_fraction=backup_max_shared, combined_budget=combined,
                   regional_independence="not_assessed")
             if max(corridor_fraction, edge_fraction) <= backup_max_shared and combined["accepted"]:
                 backup = candidate
     backup_status = "inspection_required" if backup and any(unscouted[cell] for cell in backup) else "ok" if backup else "backup_unavailable"
     if not backup:
-        event("backup_unavailable", logging.WARNING, route_id="rt-crew-backup-v1", reason="no_independent_budgeted_candidate", status=backup_status, evidence=terrain.evidence)
-    fallback = route_feature(terrain, analysis, backup, "rt-crew-backup-v1", kind="backup",
-                             status=backup_status, primary=primary, speed_m_min=speed_m_min)
+        event("backup_unavailable", logging.WARNING, route_id=backup_id, reason="no_independent_budgeted_candidate", status=backup_status, evidence=terrain.evidence)
+    fallback = route_feature(terrain, analysis, backup, backup_id, kind="backup",
+                             status=backup_status, primary=primary, speed_m_min=speed_m_min, version=version)
     return collection([main, fallback]), primary, backup

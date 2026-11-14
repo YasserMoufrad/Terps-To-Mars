@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import pytest
+from skimage.graph import route_through_array
 
 from pipeline.terrain import analyze, load_rules
 from pipeline.hazards import hazard_masks
@@ -77,6 +78,15 @@ def test_no_independent_backup_and_alternative():
 def test_diagonal_corner_cannot_cross():
     """Ensure diagonal contact cannot connect two hard-excluded corridors."""
     assert shortest_path(np.array([[1, np.inf], [np.inf, 1]]), (0, 0), (1, 1)) == []
+
+
+def test_dijkstra_matches_reference_grid_search():
+    """Compare the deterministic path cost with scikit-image's four-neighbour reference search."""
+    costs = np.array([[1, 5, 1, 1], [1, np.inf, 9, 1], [1, 1, 1, 1]], dtype=float)
+    path = shortest_path(costs, (0, 0), (0, 3))
+    _, expected_cost = route_through_array(costs, (0, 0), (0, 3), fully_connected=False, geometric=True)
+    actual_cost = sum((costs[a] + costs[b]) / 2 for a, b in zip(path, path[1:]))
+    assert actual_cost == pytest.approx(expected_cost)
 
 
 def test_budget_boundaries():
