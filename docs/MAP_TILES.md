@@ -6,6 +6,7 @@ Tested 2026-11-14 at the Milankovic site (54.144°N, −147.894). All three laye
 | --- | --- | --- | --- | --- |
 | MOLA color hillshade (463 m) | `https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg` | jpg | 7 | Regional context, elevation feel |
 | THEMIS day IR (100 m) | `https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png` | png | 9 | Regional infrared context; not local bearing-strength evidence |
+| Viking MDIM 2.1 color mosaic (232 m) | `https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg` | jpg | 7 | Real Mars color, blended over CTX with CSS `mix-blend-mode: color` (tested 2026-11-14; the MGS MOC color atlas `msss_atlas_simp_clon` is fully gray at this site) |
 | CTX global mosaic, uncontrolled (5 m, Caltech) | `https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}` | png | 10 | Main basemap |
 
 Sources: [Mars Trek API layer list](https://trek.nasa.gov/tiles/apidoc/trekAPI.html?body=mars) and each layer's `WMTSCapabilities.xml`. The CTX layer's capabilities point to the Esri OnMars service above.
