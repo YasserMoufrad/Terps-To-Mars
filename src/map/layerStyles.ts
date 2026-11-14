@@ -58,6 +58,8 @@ export function routeStyle(p: RouteProperties & { leg_mode?: 'drive' | 'walk' },
   // has a line (e.g. the unverified orbital guess) is drawn amber and dashed.
   // `p.leg_mode` is set on split routes: a crew-rover drive leg is drawn light blue.
   if (p.id === supersededId) return { color: '#b4b9c2', weight: 4, dashArray: '8 8', opacity: 0.8 };
+  // Not "ok": amber. A drive leg is short amber dots so drive and walk stay distinguishable.
+  if (p.status !== 'ok' && p.leg_mode === 'drive') return { color: '#f5a524', weight: 5, dashArray: '1 9', opacity: 1, lineCap: 'round' };
   if (p.status !== 'ok') return { color: '#f5a524', weight: 5, dashArray: '12 8', opacity: 1 };
   if (p.leg_mode === 'drive' && p.agent === 'crew') {
     return { color: DRIVE_COLOR, weight: p.kind === 'backup' ? 4 : 6, dashArray: p.kind === 'backup' ? '12 8' : undefined, opacity: 1 };

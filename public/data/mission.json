@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "placeholder": true,
   "site": {
     "name": "Scarps in Milankovic Crater",
@@ -68,7 +68,8 @@
         "Walk": "681 m each way at 20 m/min",
         "Travel time": "116 min round trip + 20 min at the site",
         "Budget": "Within modeled budget (136 of 168 min)",
-        "Walkback": "99 min on foot if the crew rover fails; 211 of 240 min EVA"
+        "Walkback": "99 min on foot if the crew rover fails; 211 of 240 min EVA",
+        "Route status": "Needs inspection: budgets fit, but the crew-rover drive is not yet modeled"
       }
     }
   ],

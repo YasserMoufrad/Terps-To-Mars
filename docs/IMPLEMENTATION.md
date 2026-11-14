@@ -61,7 +61,7 @@ Terps-To-Mars/
 
 ## 4. Data contract
 
-All files live in `public/data/`. Every file carries `"schema_version": "1.0"` (as a top-level member in GeoJSON). Every hazard, route and coverage zone has a stable `id`.
+All files live in `public/data/`. Every file carries `"schema_version"`: `"1.1"` (current) or `"1.0"` (still valid; no route legs), as a top-level member in GeoJSON. Overlay `*.bounds.json` files stay `"1.0"`. Every hazard, route and coverage zone has a stable `id`.
 
 > **Coordinate order:** GeoJSON is `[longitude, latitude]`. JSON objects outside GeoJSON use `{"lat": …, "lon": …}`. All longitudes are −180..180.
 
@@ -104,14 +104,21 @@ All files live in `public/data/`. Every file carries `"schema_version": "1.0"` (
 
 A route with a non-`ok` status may have empty geometry. The app must show the status, never hide it.
 
-**Proposed, optional (Yasser, 2026-11-14; needs Nic's agreement before `schema_version` changes): drive-then-walk crew routes.** The crew drives an unpressurized crew rover most of the way and walks the last part, as on Apollo 15–17 and in Artemis surface plans. Two optional properties on crew routes:
+**Schema 1.1 (agreed by Nic and Yasser, 2026-11-14): optional drive-then-walk crew routes.** The crew drives an unpressurized crew rover most of the way and walks the last part, as on Apollo 15–17 and in Artemis surface plans. Two optional properties on crew routes:
 
 | Property | Values |
 | --- | --- |
 | `legs` | ordered list of `{ "mode": "drive" \| "walk", "from", "to", "length_m", "est_time_min" }`. `from`/`to` are indexes into the route's coordinates; legs run end to end over the whole line. Lengths and times are one way. |
 | `walkback_min` | minutes to walk home along the drive legs if the crew rover fails (NASA walkback constraint) |
 
-With legs, `est_time_min` is the round trip at each leg's own speed; `length_m`/`round_trip_m` are unchanged (geometry, ×2 for crew). Placeholder assumptions: walk 20 m/min, drive 5 km/h (cautious; the Apollo LRV's top speed was about 13 km/h). A route without `legs` is walked end to end, so existing pipeline outputs remain valid. The app splits routes by leg (drive drawn light blue) and warns, without hiding the route, when legs are malformed. Budget rule for a route with legs: travel within 168 min (240 min EVA, 30% reserve) **and** drive out + site walk + walkback within the full 240 min EVA.
+With legs, `est_time_min` is the round trip at each leg's own speed; `length_m`/`round_trip_m` are unchanged (geometry, ×2 for crew). Legs require `schema_version` 1.1; a 1.0 file has no legs and every route is walked end to end, so 1.0 files stay valid (the app and `pipeline/validate_contract.py` accept both). Speeds: walk 20 m/min; drive 5 km/h, a cautious, configurable modeled assumption (the Apollo LRV averaged roughly 7–10 km/h on traverses), to live in `hazard_rules.json` next to walking speed. The app splits routes by leg and warns, without hiding the route, when legs are malformed.
+
+Two budget checks for a route with legs (both must pass):
+
+1. **30% reserve:** drive + walk round trip + observation/site work ≤ 168 min (240 min EVA × 0.7).
+2. **Walkback:** drive out + site walk (round trip) + observation/site work + walking home along the drive legs (`walkback_min`) ≤ the full 240 min EVA.
+
+Until a real crew-rover traversability model exists, routes with a drive leg are `inspection_required` even when both checks pass. Routing (Nic, pipeline PR on top of #13): habitat → parking on a rover cost grid (provisional 24° rover slope limit), parking → observation on the crew grid, then emit `legs`, `walkback_min` and both checks.
 
 ### `coverage.geojson` (Polygon features)
 
@@ -177,7 +184,7 @@ Stored in `pipeline/hazard_rules.json` (versioned). Values marked *assumption* a
 | Cliff-top setback | 20 m from the edge | crew | DTM | *Assumption*: edge collapse |
 | Roughness | elevation range > 0.5 m within the closest odd-pixel approximation to 3 × 3 m → caution | both | DTM | *Provisional assumption*: DTM vertical uncertainty not established; log effective dimensions; coarse sampling cannot establish roughness |
 | No-data / artifact cells | exclude → `inspection_required` | both | DTM QC | Missing or suspect data is never safe |
-| Max excursion | round trip under 5 km; hard cap 10 km from habitat | crew | route stats | NASA Walkback test (10 km assumption from Apollo) |
+| Max excursion | walking distance under 5 km round trip (drive legs not counted); hard cap 10 km from the habitat, so the crew can always walk back (walkback) | crew | route stats | NASA Walkback test (10 km assumption from Apollo) |
 | Time reserve | ≥ 30% of planned EVA time kept for return | crew | route stats | *Assumption*; no oxygen modeling |
 | Wheel slip → stop and request input | > 35% | rover | rover sensors (scenario) | Scenario value, `simulated` |
 

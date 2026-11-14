@@ -11,7 +11,8 @@ export function MapLegend() {
         <span className="line line-main" /> Crew walk
         <span className="line line-backup" /> Backup
         <span className="line line-rover" /> Rover
-        <span className="line line-unverified" /> Unverified
+        <span className="line line-unverified" /> Needs inspection
+        <span className="line line-unverified-drive" /> (drive)
       </div>
       <div className="legend-row">
         <span className="swatch" style={{ background: HAZARD_COLORS.U }} /> Under feet
