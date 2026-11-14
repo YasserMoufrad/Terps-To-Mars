@@ -18,6 +18,22 @@ Inputs for Nic's pipeline and for the placeholder map. The app does not load the
 - The drone perch is on the pit floor facing the tallest face (131 m from the foot), the part the crew cannot reach.
 - Budget for the placeholder trip: 83 min travel + 20 min site work = 103 of 168 min; walkback (rover fails at parking) 189 of 240 min EVA.
 
+## Nic's feasibility audit with these scarp inputs
+
+`tools/site/make_scarp_inputs.py <config> <out_dir>` turns the traced lines and measurements into the pipeline's scarp inputs (`edge_distance.npy`, `foot_distance.npy`, `scarp_risk.npy`, `scarp_height_m` 72.6 = tallest profile, `apron_m` 55.3 = median) on exactly the crop the config resolves to, and writes `config.json` next to them under git-ignored `pipeline/output/`. Results on the real DTM (2026-11-14, after #13 merged):
+
+| Config | Verdict | Detail |
+| --- | --- | --- |
+| `feasibility_audit.json` (walk all the way) | `infeasible` | straight-line lower bound 249–272 min |
+| `feasibility_audit_from_parking.json` (walking part) | `candidate_requires_inspection` | routed 56–81 min per itinerary; remaining reason `unscouted_terrain`; every point `no_mapped_exclusion` |
+
+```bash
+uv run python tools/site/make_scarp_inputs.py data/site/feasibility_audit_from_parking.json pipeline/output/si/park
+uv run python -m pipeline.feasibility --config pipeline/output/si/park/config.json --output pipeline/output/audit-park
+```
+
+The scarp inputs are Yasser's agent's measurements, not yet reviewed by Nic.
+
 Re-run (needs the DTM in `pipeline/raw/`, see `pipeline/README.md`; set `PYTHONPATH` to the repo root):
 
 ```bash
