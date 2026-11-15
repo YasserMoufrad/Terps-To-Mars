@@ -144,7 +144,7 @@ function eva({ mission, routes, hazards, readiness }: SummaryData): StageSummary
   const rows: SummaryRow[] = [];
   const isGo = (r: RouteFeature | undefined) => Boolean(r && readiness?.[r.properties.id]?.state === 'go');
   if (main && isGo(main)) {
-    rows.push({ label: 'Main route', value: `Scouted end to end by the rover: go for EVA (${km(legLength(main, 'drive'))} drive + ${Math.round(legLength(main, 'walk'))} m walk; simulated scouting)`, tone: 'go' });
+    rows.push({ label: 'Main route', value: `Conditional planning go after simulated rover scouting (${km(legLength(main, 'drive'))} drive + ${Math.round(legLength(main, 'walk'))} m walk); crew clearance not established`, tone: 'go' });
   } else if (main) {
     const drive = legLength(main, 'drive');
     const reason = drive > 0 && main.properties.status === 'inspection_required' ? ': the crew-rover drive is not yet modeled' : '';
@@ -153,7 +153,7 @@ function eva({ mission, routes, hazards, readiness }: SummaryData): StageSummary
     rows.push({ label: 'Main route', value: 'No post-discovery route supplied', tone: 'stop' });
   }
   if (backup && isGo(backup)) {
-    rows.push({ label: 'Backup', value: `Scouted by the rover on its way back: go (${Math.round(legLength(backup, 'walk'))} m walk to the backup viewpoint, separate drive)`, tone: 'go' });
+    rows.push({ label: 'Backup', value: `Conditional planning go after simulated return scouting (${Math.round(legLength(backup, 'walk'))} m walk to the backup viewpoint, separate drive); crew clearance not established`, tone: 'go' });
   } else if (backup) {
     const walk = legLength(backup, 'walk');
     const shared = backup.properties.stats.shared_with_main_m;

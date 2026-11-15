@@ -19,7 +19,7 @@ export const DEFAULT_SCIENCE_TARGETS: ScienceTargets = {
       source: 'scarp_lines.geojson (HiRISE trace)', evidence: 'inferred' },
     { id: 'upper-scarp', name: 'Second / upper scarp', edge_id: 'upper-scarp-edge', foot_id: 'upper-scarp-foot',
       objective: 'Inspect the separately traced upper scarp if published; blue color alone is not ice confirmation.',
-      source: 'scarp_lines.geojson; proposed on draft PR #17', evidence: 'inferred' },
+      source: 'scarp_lines.geojson (HiRISE trace; team review pending)', evidence: 'inferred' },
   ],
 };
 

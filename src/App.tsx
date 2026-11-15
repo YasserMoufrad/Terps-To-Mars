@@ -17,7 +17,7 @@ import { StageNav } from './components/StageNav';
 import { MissionBrief } from './components/MissionBrief';
 import { appLogger } from './lib/appLogger';
 import { IMAGERY_STATUS_TEXT, type ImageryLoadState } from './map/imageryState';
-import { logRouteReview, reviewNotices, missingBackupAssessment } from './map/reviewPresentation';
+import { logRouteReview, reviewNotices, missingBackupAssessment, conservativeFeasibilityNotice, logConservativeFeasibility } from './map/reviewPresentation';
 
 export function App() {
   // Purpose: top-level screen. State: `data` (loaded files + issues), `stage` (current
@@ -45,6 +45,8 @@ export function App() {
     for (const f of routesFor(stage, routes, mission).features) {
       logRouteReview(appLogger, f, stage, data.routeAudit);
     }
+    logConservativeFeasibility(appLogger, stage, data.analysis.reports['feasibility_report.json'],
+      data.analysis.reportStates?.['feasibility_report.json'] === 'current');
     if (missingBackupAssessment(stage, routes)) {
       appLogger.warn('safety', 'backup.assessment_missing', { mission_stage: stage, required_version: 'after' });
     }
@@ -73,15 +75,18 @@ export function App() {
   };
 
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
-  // A route the robots have scouted end to end (routeReadiness) gets a "go" notice instead of "requires inspection".
+  // A route scouted end to end in the simulation gets a conditional planning notice; the independent feasibility audit remains visible.
   const readiness = ready ? readinessFor(stage, routes, data.routeAudit, coverage, hazards) : {};
   const routeNotices =
     ready
       ? reviewNotices(stage, routes, mission, data.routeAudit).map((n) => {
         const id = n.split(':')[0];
-        return readiness[id]?.state === 'go' ? `${id}: scouted end to end by the rover: go for EVA (simulated scouting; not a real-world certification).` : n;
+        return readiness[id]?.state === 'go' ? `${id}: conditional planning go after simulated rover scouting; crew clearance is not established.` : n;
       })
       : [];
+  const feasibilityNotice = conservativeFeasibilityNotice(data.analysis.reports['feasibility_report.json'],
+    data.analysis.reportStates?.['feasibility_report.json'] === 'current');
+  if (feasibilityNotice) routeNotices.push(feasibilityNotice);
 
   const changeStage = (next: StageId) => {
     // Purpose: move to step `next` and close any open evidence card.

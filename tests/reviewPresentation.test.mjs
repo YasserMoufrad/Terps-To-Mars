@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createLogger } from '../src/lib/logger.ts';
-import { dronePerchLabel, logRouteReview, missingBackupAssessment, reviewNotices, routeReviewNotice } from '../src/map/reviewPresentation.ts';
+import { conservativeFeasibilityNotice, dronePerchLabel, logConservativeFeasibility, logRouteReview, missingBackupAssessment, reviewNotices, routeReviewNotice } from '../src/map/reviewPresentation.ts';
 import { routesFor } from '../src/map/stageFilters.ts';
 
 const read = (f) => JSON.parse(readFileSync(new URL(`../public/data/${f}`, import.meta.url), 'utf8'));
@@ -56,6 +56,27 @@ test('route notices never claim clearance', () => {
   assert.match(rejected, /over the 5 km round-trip rule/);
   assert.match(rejected, /rejected candidate/);
   assert.equal(routeReviewNotice(route({})), null);
+});
+
+test('current conservative no-route verdict is separate from provisional route assessments', () => {
+  const report = read('feasibility_report.json');
+  const notice = conservativeFeasibilityNotice(report, true);
+  assert.match(notice, /all-unscouted assessment: no route found/);
+  assert.match(notice, /provisional planning candidates/);
+  assert.match(notice, /neither assessment grants crew clearance/);
+  assert.equal(conservativeFeasibilityNotice(report, false), null);
+  assert.equal(conservativeFeasibilityNotice({ verdict: 'feasible' }, true), null);
+  assert.equal(conservativeFeasibilityNotice(null, true), null);
+  const { logger, events } = capture();
+  logConservativeFeasibility(logger, 'eva', report, true);
+  logConservativeFeasibility(logger, 'eva', report, false);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].event, 'feasibility.conservative_no_route');
+  assert.equal(events[0].run_id, 'test-run');
+  assert.equal(events[0].assessment, 'all_unscouted');
+  assert.equal(events[0].crew_clearance, 'not_established');
+  const broken = createLogger({ runId: 'x', sink: () => { throw new Error('sink down'); } });
+  assert.doesNotThrow(() => logConservativeFeasibility(broken, 'eva', report, true));
 });
 
 test('drone perch label separates a proposed marker from simulated coverage', () => {
