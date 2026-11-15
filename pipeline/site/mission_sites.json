@@ -9,11 +9,11 @@
   "dtm_id": "DTEEC_071085_2345_071006_2345_A01",
   "points": {
     "habitat": {
-      "lat": 54.12777,
-      "lon": -147.901301,
+      "lat": 54.150243,
+      "lon": -147.906865,
       "role": "mission start and end",
-      "source": "PR #15 data/site/site_points_dtm.geojson (DTM-checked by Yasser's agent)",
-      "note": "Geury's habitat moved 59 m to flat ground (his spot had 24 cells >= 20 deg within 15 m)"
+      "source": "Yasser, 2026-11-14: picked on the map (coordinate readout) on the plain beside the crew's drive; DTM-checked by Yasser's agent",
+      "note": "Moved about 2.5 km north of the first habitat (54.12777, -147.901301) so the whole drive + walk trip fits the 5,000 m round-trip rule even if driving counts. Agent check: steepest cell within 15 m 17.7 deg (none >= 20), roughness 0.3 m, outside the scarp no-go zones, rover-drivable"
     },
     "parking": {
       "lat": 54.16256,

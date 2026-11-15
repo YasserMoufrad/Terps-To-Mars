@@ -20,10 +20,19 @@ test('every stage has its own summary and no row is ever "ok"/green', () => {
   }
 });
 
-test('orbital: the straight-line guess is reported as crossing no-go zones', () => {
-  const row = stageSummary('orbital', data).rows.find((r) => r.label === 'First guess');
-  assert.equal(row.tone, 'stop');
-  assert.match(row.value, /crosses \d+ no-go zone/);
+test('orbital: the orbit-only plan reports its legs and whether it crosses a mapped no-go zone', () => {
+  const row = stageSummary('orbital', data).rows.find((r) => r.label === 'Orbit-only plan');
+  assert.match(row.value, /^Drive \d\.\d\d km, walk \d+ m; /);
+  assert.match(row.value, /routed around every mapped no-go zone\. Needs inspection$/); // published DTM route
+  assert.equal(row.tone, 'caution');
+  // A candidate that crosses a hazard (e.g. a straight line through the scarp) is a STOP with the zones named.
+  const face = data.hazards.features.find((h) => h.properties.stage === 'orbital' && h.properties.severity === 'exclude');
+  const [lon, lat] = face.geometry.type === 'Polygon' ? face.geometry.coordinates[0][0] : face.geometry.coordinates[0][0][0];
+  const guess = data.routes.features.find((r) => r.properties.kind === 'orbital_guess');
+  const through = { ...guess, properties: { ...guess.properties, legs: undefined }, geometry: { type: 'LineString', coordinates: [[lon - 0.01, lat - 0.01], [lon + 0.01, lat + 0.01]] } };
+  const crossing = stageSummary('orbital', { ...data, routes: { ...data.routes, features: [through] } }).rows.find((r) => r.label === 'Orbit-only plan');
+  assert.equal(crossing.tone, 'stop');
+  assert.match(crossing.value, /crosses \d+ mapped no-go zone/);
 });
 
 test('rover: old route runs through the simulated soft ground; decision follows chosen_option', () => {

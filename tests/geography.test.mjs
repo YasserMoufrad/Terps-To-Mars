@@ -66,9 +66,11 @@ test('the crew-rover parking point is where the drive leg ends, and matches the 
     'feasibility_audit_from_parking.json "habitat" must be the parking point (partial walking audit only)');
 });
 
-test('documented expectation: habitat ~2 km south; #16\'s native crop covers the scarp points, not the habitat', () => {
+test('documented expectation: habitat ~1.4 km south; #16\'s native crop covers the scarp points, not the habitat', () => {
+  // The habitat moved north on 2026-11-14 (Yasser) so the whole drive + walk trip is under the 5,000 m round-trip
+  // limit either way it is counted: ~1.4 km straight line to the viewpoint (it was ~5 km before).
   const habitatToScarp = marsDistance(at('habitat'), at('observation_primary'));
-  assert.ok(habitatToScarp > 1900 && habitatToScarp < 4500, `${habitatToScarp.toFixed(0)} m`);
+  assert.ok(habitatToScarp > 1200 && habitatToScarp < 4500, `${habitatToScarp.toFixed(0)} m`);
   const crop = { s: 54.1548789, n: 54.1721222, w: -147.917929, e: -147.8910703 };
   const inCrop = ([lon, lat]) => lat >= crop.s && lat <= crop.n && lon >= crop.w && lon <= crop.e;
   for (const id of ['drone_perch', 'parking', 'observation_backup']) assert.ok(inCrop(at(id)), id);

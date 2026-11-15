@@ -12,7 +12,7 @@ const STAGE_NAMES: Record<StageId, string> = {
 
 // What to look for on the map at each step.
 const LOOK_FOR: Record<StageId, string> = {
-  orbital: 'Review preliminary orbital candidates and modeled hazards. Dashed candidate lines require inspection; later discoveries are not yet included.',
+  orbital: 'Review the orbit-only plan (gray: a line to scout) and the modeled hazards. It avoids every cliff and slope visible from orbit, but no robot has checked it yet.',
   rover: 'The simulated rover stopped at the red marker: suspected soft ground. Compare the previous route with the proposed alternative and its reported status.',
   drone: 'Review the drone concept, available coverage evidence, and inspection limits. A proposed perch does not establish a flight or checked field of view.',
   eva: 'Review the proposed route, the post-discovery backup assessment, and the evidence behind each hazard. Route geometry is not crew clearance.',

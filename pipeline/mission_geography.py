@@ -429,8 +429,10 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
     # The rover drives drive1 up to the last crossed cell before the soft ground, then detours.
     k = dense1.index(discovery_cell)
     stop_cell = dense1[max(i for i in range(k) if not blocked[dense1[i]])]
-    vertex_at = {cell: dense1.index(cell) for cell in drive1}
-    scouted = [c for c in drive1 if vertex_at[c] < dense1.index(stop_cell)] + [stop_cell]
+    # Cut drive1's dense cell trace (every cell it crosses) at the stop and re-straighten it with the same
+    # passability test as every other leg: joining drive1's last kept vertex straight to stop_cell could cut
+    # a corner across a cell the rover may not enter (seen after the habitat move: one 26 deg cell).
+    scouted = shortcut(dense1[:dense1.index(stop_cell) + 1], np.isfinite(rover_costs), grid)
     scout_detour = search(rover_costs2, stop_cell, cells["parking"], grid, "rt-rover-v2:detour")
     # Backup: separate drive and descent where the terrain allows (main corridor penalized, not forbidden).
     corridor_main = np.zeros(blocked.shape, bool)
