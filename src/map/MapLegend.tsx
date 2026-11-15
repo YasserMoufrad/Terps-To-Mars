@@ -2,13 +2,13 @@
 // stage actually draws (legendKeys), so every entry can be found on the map.
 
 import type { HazardType, CoverageState } from '../data/types';
-import { HAZARD_COLORS, COVERAGE_COLORS } from './layerStyles';
+import { HAZARD_COLORS, COVERAGE_COLORS, SOFT_GROUND_FILL, SOFT_GROUND_OUTLINE } from './layerStyles';
 
 export type LineKey = 'drive' | 'walk' | 'backup' | 'rover' | 'candidate' | 'candidate-drive' | 'to-scout' | 'replaced' | 'rejected';
 
 export interface LegendKeys {
   lines: Set<LineKey>; // route line styles currently drawn
-  hazards: Set<HazardType>; // hazard types currently drawn (U/O/S)
+  hazards: Set<HazardType | 'soft'>; // hazard types currently drawn (U/O/S), plus 'soft' for soft-ground zones
   coverage: Set<CoverageState>; // coverage states currently drawn
 }
 
@@ -44,6 +44,9 @@ export function MapLegend({ keys }: { keys: LegendKeys }) {
       {(hazards.length > 0 || coverage.length > 0) && (
         <div className="legend-row">
           {hazards.map(([k, text]) => <span key={k}><span className="swatch" style={{ background: HAZARD_COLORS[k] }} /> {text}</span>)}
+          {keys.hazards.has('soft') && (
+            <span><span className="swatch" style={{ background: SOFT_GROUND_FILL, outline: `2px dotted ${SOFT_GROUND_OUTLINE}`, outlineOffset: -1 }} /> Loose ground (simulated find)</span>
+          )}
           {coverage.map(([k, text]) => <span key={k}><span className="swatch" style={{ background: COVERAGE_COLORS[k] }} /> {text}</span>)}
         </div>
       )}
