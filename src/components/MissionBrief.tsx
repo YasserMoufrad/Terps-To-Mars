@@ -2,6 +2,7 @@
 // Reopened any time from the "About this mission" button in the header.
 
 import { useEffect, useRef } from 'react';
+import { MAP_CREDITS, OTHER_CREDITS_NOTE } from '../content/credits';
 
 interface MissionBriefProps {
   siteName: string;
@@ -52,6 +53,20 @@ export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProp
             processes the NASA HiRISE terrain. Robot observations are always simulated.
           </p>
         )}
+
+        {/* The map's credit bar is hidden, so every source it draws is credited here. */}
+        <details className="brief-credits">
+          <summary>Data credits</summary>
+          <ul>
+            {MAP_CREDITS.map((c) => (
+              <li key={c.what}>
+                <span className="muted">{c.what}:</span>{' '}
+                <a href={c.url} target="_blank" rel="noreferrer">{c.credit}</a>
+              </li>
+            ))}
+          </ul>
+          <p className="muted">{OTHER_CREDITS_NOTE}</p>
+        </details>
 
         <button className="primary" onClick={onStart} ref={startRef}>
           Start the walkthrough

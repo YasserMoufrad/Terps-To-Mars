@@ -2,6 +2,7 @@
 // Kept free of React/Leaflet so the Node test runner can check it.
 
 import type { HiriseMeta } from '../data/types.ts';
+import { HIRISE_CREDIT } from '../content/credits.ts';
 
 // Zoom 18 is ~0.18 m per screen pixel at Milankovič (54 N) in Leaflet's EPSG:4326 grid,
 // just finer than the image's ~0.23-0.25 m sampling, so every source pixel can be seen.
@@ -17,7 +18,7 @@ const ALIGNMENT_TEXT: Record<string, string> = {
 
 export function imageryAttribution(meta: HiriseMeta | null): string {
   // Purpose: short credit line for the map corner; the full caption lives on the zoom button.
-  const credit = 'HiRISE ESP_071006_2345: NASA/JPL-Caltech/UArizona';
+  const credit = HIRISE_CREDIT;
   if (!meta) return credit;
   const [ew, ns] = meta.ground_sampling_m_ew_ns;
   return `${credit} (${Math.min(ew, ns).toFixed(2)}–${Math.max(ew, ns).toFixed(2)} m sampling)`;
