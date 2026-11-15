@@ -3,7 +3,10 @@
 // If the contract changes, change it there first, then here, and bump SCHEMA_VERSION.
 // This file has no imports, so the Node test runner can load it directly.
 
-export const SCHEMA_VERSION = '1.0';
+export const SCHEMA_VERSION = '1.1';
+// 1.1 adds optional crew-route `legs` and `walkback_min`. 1.0 files (no legs) stay
+// valid and mean "walk the whole line" (agreed by Nic and Yasser, 2026-11-14).
+export const SUPPORTED_SCHEMA_VERSIONS = ['1.0', '1.1'] as const;
 
 // ---------- Allowed values ----------
 // Each list is the single source of truth for one property. The `as const`
@@ -98,6 +101,19 @@ export interface RouteStats {
   shared_with_main_m: number;
 }
 
+// Optional (proposed, pending Nic): a crew route can be split into a crew-rover
+// drive and a walk. `from` / `to` are indexes into the route's coordinates.
+export const LEG_MODES = ['drive', 'walk'] as const;
+export type LegMode = (typeof LEG_MODES)[number];
+
+export interface RouteLeg {
+  mode: LegMode;
+  from: number;
+  to: number;
+  length_m: number; // one way
+  est_time_min: number; // one way, at this leg's speed
+}
+
 export interface RouteProperties {
   id: string;
   kind: RouteKind;
@@ -105,6 +121,10 @@ export interface RouteProperties {
   version: RouteVersion;
   status: RouteStatus;
   stats: RouteStats;
+  legs?: RouteLeg[];
+  // Minutes to walk home from the farthest drive point if the crew rover fails
+  // (NASA "walkback" rule). Only on routes with a drive leg.
+  walkback_min?: number;
 }
 
 export type RouteFeature = Feature<LineStringGeometry, RouteProperties>;

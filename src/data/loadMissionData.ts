@@ -4,10 +4,10 @@
 
 // Imports use the .ts extension so the Node test runner can load this file directly.
 import {
-  SCHEMA_VERSION,
+  SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSIONS,
   HAZARD_TYPES, HAZARD_CATEGORIES, SEVERITIES, EVIDENCE, HAZARD_AGENTS, STAGE_IDS,
-  ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES,
-  COVERAGE_STATES, SENSORS,
+  ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES, LEG_MODES,
+  COVERAGE_STATES, SENSORS, type RouteLeg,
   type HazardCollection, type RouteCollection, type CoverageCollection,
   type Mission, type OverlayBounds, type HiriseMeta, type HiriseTiles,
   type SlopeMeta, type ScarpLines, type RouteAudit,
@@ -80,12 +80,13 @@ function checkAllowed(
 }
 
 function checkSchemaVersion(data: { schema_version?: unknown }, file: string, issues: LoadIssue[]): void {
-  // Purpose: record an error when a file's schema_version differs from SCHEMA_VERSION.
-  if (data.schema_version !== SCHEMA_VERSION) {
+  // Purpose: record an error when a file's schema_version is not one the app supports
+  // (SUPPORTED_SCHEMA_VERSIONS: 1.0 and 1.1; the current version is SCHEMA_VERSION).
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(data.schema_version)) {
     issues.push({
       file,
       severity: 'error',
-      message: `schema_version is "${String(data.schema_version)}" but the app expects "${SCHEMA_VERSION}".`,
+      message: `schema_version is "${String(data.schema_version)}" but the app expects one of ${SUPPORTED_SCHEMA_VERSIONS.join(', ')}.`,
     });
   }
 }
@@ -181,7 +182,32 @@ function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string
     if (p.status !== 'ok') {
       issues.push({ file, severity: 'warning', message: `${label} status is ${p.status}.` });
     }
+    if (p.legs !== undefined && data.schema_version === '1.0') {
+      issues.push({ file, severity: 'warning', message: `${label} has legs, which need schema_version 1.1.` });
+    }
+    checkLegs(p.legs, f.geometry.coordinates.length, label, issues);
   }
+}
+
+export function checkLegs(legs: unknown, pointCount: number, label: string, issues: LoadIssue[]): void {
+  // Purpose: validate the optional drive/walk `legs` of one route. `pointCount` is the
+  // number of coordinates in its line. Bad legs are a warning, not an error: the route
+  // is still drawn as one walking line, so nothing is hidden.
+  if (legs === undefined) return;
+  const file = 'routes.geojson';
+  const warn = (message: string): void => {
+    issues.push({ file, severity: 'warning', message: `${label} legs: ${message}` });
+  };
+  if (!Array.isArray(legs)) return warn('expected a list.');
+  let expectedFrom = 0;
+  for (const leg of legs as RouteLeg[]) {
+    if (!(LEG_MODES as readonly string[]).includes(String(leg?.mode))) return warn(`mode "${String(leg?.mode)}" is not drive or walk.`);
+    if (!Number.isInteger(leg.from) || !Number.isInteger(leg.to) || leg.from !== expectedFrom || leg.to <= leg.from || leg.to >= pointCount) {
+      return warn('indexes must run along the line without gaps or overlaps.');
+    }
+    expectedFrom = leg.to;
+  }
+  if (expectedFrom !== pointCount - 1) warn('do not cover the whole line.');
 }
 
 function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<string>): void {
@@ -249,8 +275,9 @@ export function checkOverlayBounds(raw: unknown, file: string, issues: LoadIssue
     issues.push({ file, severity: 'error', message: 'Bounds must be signed degrees with south < north and west < east (longitude -180..180).' });
     return null;
   }
-  if (b.schema_version !== SCHEMA_VERSION) {
-    // A different contract version may mean different corner semantics: never draw it.
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(b.schema_version)) {
+    // An unknown contract version may mean different corner semantics: never draw it.
+    // 1.1 changed only route legs, so overlay bounds written as "1.0" stay valid.
     checkSchemaVersion(b, file, issues);
     return null;
   }
@@ -319,7 +346,10 @@ export function checkSlopeMeta(raw: unknown, bounds: OverlayBounds | null, file:
   if (raw === null) return null;
   const m = raw as Partial<SlopeMeta>;
   const reasons: string[] = [];
-  if (m.schema_version !== SCHEMA_VERSION) reasons.push(`schema_version ${String(m.schema_version)} is not ${SCHEMA_VERSION}`);
+  // 1.1 changed only route legs, so slope metadata written as "1.0" stays valid.
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(m.schema_version)) {
+    reasons.push(`schema_version ${String(m.schema_version)} is not one of ${SUPPORTED_SCHEMA_VERSIONS.join(', ')}`);
+  }
   if (m.evidence !== 'nasa_derived') reasons.push('evidence must be nasa_derived (no synthetic slope maps)');
   const px = m.grid?.pixels;
   if (!Array.isArray(px) || px.length !== 2 || !px.every((v) => Number.isInteger(v) && v > 0 && v <= 16384)) {

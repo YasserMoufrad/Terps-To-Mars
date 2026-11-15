@@ -16,8 +16,8 @@ export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProp
         <p className="brief-kicker">NASA Space Apps 2026 · Interplanetary Survival Guide: Martian Map</p>
         <h1 id="brief-title">Plan and evaluate a Marswalk to an ice-scarp candidate</h1>
         <p>
-          In 2018, NASA's Mars Reconnaissance Orbiter found cliffs of nearly pure water ice on Mars. No rover or
-          human has ever visited one. This map plans a spacewalk to the <strong>{siteName}</strong> and shows how
+          In 2018, scientists using NASA's Mars Reconnaissance Orbiter reported cliffs on Mars that expose thick
+          sheets of buried ice (Dundas et al., <em>Science</em>). No rover or human has ever visited one. This map plans a spacewalk to the <strong>{siteName}</strong> and shows how
           (simulated) robot scouting adds evidence about hazards astronauts can't see before the crew walks out.
         </p>
 

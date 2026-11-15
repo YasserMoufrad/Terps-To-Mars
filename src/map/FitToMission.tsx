@@ -28,7 +28,8 @@ export function FitToMission({ geometries, points }: FitToMissionProps) {
   useEffect(() => {
     const positions: [number, number][] = points.map((p) => [p.lat, p.lon]);
     for (const g of geometries) collectPositions(g, positions);
-    if (positions.length > 1) map.fitBounds(positions, { padding: [40, 40] });
+    // Extra bottom padding keeps the habitat clear of the on-map legend.
+    if (positions.length > 1) map.fitBounds(positions, { paddingTopLeft: [40, 40], paddingBottomRight: [40, 110] });
     // Depends only on `map`, so it runs once on load: re-fitting on every
     // stage change would make the view jump while the viewer is reading.
   }, [map]);

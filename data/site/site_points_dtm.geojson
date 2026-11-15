@@ -1,0 +1,92 @@
+{
+ "type": "FeatureCollection",
+ "name": "site_points_dtm",
+ "description": "DTM-checked candidate points (replace Geury's first pass). Candidates only; nothing here is crew clearance.",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "habitat",
+    "name": "Habitat",
+    "where": "Geury's habitat moved 59 m to flat ground (his spot had 24 cells >= 20 deg within 15 m)",
+    "elevation_m": -3920.6,
+    "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -147.901301,
+     54.12777
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "parking",
+    "name": "Crew-rover parking",
+    "where": "High plain just SE of the scarp's east end; reachable by rover (< 24 deg, roughness <= 0.5 m)",
+    "elevation_m": -4034.1,
+    "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -147.89445,
+     54.16256
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "observation_primary",
+    "name": "Viewpoint",
+    "where": "Faces the second (upper) scarp, bluish in HiRISE color (Geury ice_upper_band): face 44 m tall here, viewpoint 229 m from its foot (rockfall zone 85 m). Moved from the east-end bench: that spot faced the non-bluish east end and sat 20 m from the second scarp's edge",
+    "elevation_m": -4058.7,
+    "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -147.894109,
+     54.172784
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "observation_backup",
+    "name": "Backup viewpoint",
+    "where": "Faces the same bluish second scarp; 112 m from the primary (independent), 629 m walk from parking",
+    "elevation_m": -4065.3,
+    "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -147.89250737253616,
+     54.17111413463595
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "id": "drone_perch",
+    "name": "Drone perch",
+    "where": "Pit floor facing the tallest part of the face (70 m), 131 m from the foot; drone access only",
+    "elevation_m": -4083.9,
+    "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
+   },
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -147.901878,
+     54.166913
+    ]
+   }
+  }
+ ]
+}

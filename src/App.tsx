@@ -6,6 +6,7 @@ import { loadMissionData, type MissionData } from './data/loadMissionData';
 import type { StageId, HazardProperties } from './data/types';
 import { MarsMap } from './map/MarsMap';
 import { routesFor } from './map/stageFilters';
+import { stageSummary } from './map/stageSummary';
 import { DEFAULT_LAYERS, type LayerVisibility } from './map/layers';
 import { StagePanel } from './components/StagePanel';
 import { ErrorBanner, DataBadge } from './components/IssuesBanner';
@@ -124,6 +125,7 @@ export function App() {
               hazardsArePlaceholder={data.placeholderFiles.includes('hazards.geojson')}
               onCloseHazard={() => setSelectedHazard(null)}
               routeNotices={routeNotices}
+              summary={stageSummary(stage, { mission, hazards, routes, coverage })}
               toggles={(
                 <LayerToggles
                   layers={layers}

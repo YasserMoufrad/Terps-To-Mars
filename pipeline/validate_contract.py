@@ -10,6 +10,37 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "public" / "data"
 COLLECTIONS = ("hazards.geojson", "routes.geojson", "coverage.geojson")
 ROUTE_STATUSES = {"ok", "no_viable_route", "backup_unavailable", "inspection_required"}
 EVIDENCE = {"nasa_derived", "inferred", "simulated"}
+# 1.1 adds optional crew-route `legs` and `walkback_min` (drive-then-walk). A 1.0 file
+# without legs is still valid and means "walk the whole line".
+SCHEMA_VERSIONS = {"1.0", "1.1"}
+LEG_MODES = {"drive", "walk"}
+
+
+def _legs(properties, point_count, schema_version):
+    """Validate optional drive/walk legs: 1.1 only, end to end over all point_count positions."""
+    legs = properties.get("legs")
+    if legs is None:
+        return
+    if schema_version != "1.1":
+        raise ValueError("Route legs require schema_version 1.1")
+    if not isinstance(legs, list) or not legs:
+        raise ValueError("Route legs must be a nonempty list")
+    expected_from = 0
+    for leg in legs:
+        _enum(leg, "mode", LEG_MODES)
+        start, end = leg.get("from"), leg.get("to")
+        if any(isinstance(v, bool) or not isinstance(v, int) for v in (start, end)) or start != expected_from or not start < end < point_count:
+            raise ValueError("Route legs must run end to end along the line")
+        for key in ("length_m", "est_time_min"):
+            value = leg.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                raise ValueError(f"Invalid leg statistic {key}")
+        expected_from = end
+    if expected_from != point_count - 1:
+        raise ValueError("Route legs must cover the whole line")
+    walkback = properties.get("walkback_min")
+    if walkback is not None and (isinstance(walkback, bool) or not isinstance(walkback, (int, float)) or walkback < 0):
+        raise ValueError("Invalid walkback_min")
 
 
 def _enum(properties, field, values):
@@ -62,9 +93,9 @@ def _coordinates(value):
 
 @traced("schema_validation")
 def validate_collection(payload, name):
-    """Validate schema 1.0 payload using name to choose hazard/route/coverage rules."""
-    if payload.get("schema_version") != "1.0":
-        raise ValueError(f"{name}: expected schema_version 1.0")
+    """Validate a schema 1.0/1.1 payload using name to choose hazard/route/coverage rules."""
+    if payload.get("schema_version") not in SCHEMA_VERSIONS:
+        raise ValueError(f"{name}: expected schema_version 1.0 or 1.1")
     if payload.get("type") != "FeatureCollection" or not isinstance(payload.get("features"), list):
         raise ValueError(f"{name}: expected FeatureCollection")
 
@@ -113,6 +144,7 @@ def validate_collection(payload, name):
                 value = stats.get(key)
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
                     raise ValueError(f"Invalid route statistic {key}")
+            _legs(properties, len(coordinates or []), payload.get("schema_version"))
         if name == "coverage.geojson":
             _enum(properties, "state", {"orbit_only", "rover_checked", "drone_checked", "unscouted", "inspection_required"})
             _enum(properties, "sensor", {"stereo_cam", "hazard_cam", "thermal", "drone_cam", "none"})
@@ -149,8 +181,8 @@ def validate_data(data_dir=DATA_DIR, require_overlays=False):
         validate_collection(payload, name)
         collections[name] = payload
     mission = json.loads((data_dir / "mission.json").read_text(encoding="utf-8"))
-    if mission.get("schema_version") != "1.0":
-        raise ValueError("mission.json: expected schema_version 1.0")
+    if mission.get("schema_version") not in SCHEMA_VERSIONS:
+        raise ValueError("mission.json: expected schema_version 1.0 or 1.1")
     _validate_lat_lon_objects(mission)
     if mission.get("discovery", {}).get("evidence") != "simulated":
         raise ValueError("mission.json: rover discovery must be simulated")
@@ -191,7 +223,7 @@ def validate_data(data_dir=DATA_DIR, require_overlays=False):
                 raise ValueError("Invalid overlay bounds")
             if not bounds.get("source") or not bounds.get("processing"):
                 raise ValueError("Overlay provenance required")
-    event("data_contract_validated", schema_version="1.0", directory=str(data_dir), require_overlays=require_overlays)
+    event("data_contract_validated", schema_version=mission.get("schema_version"), directory=str(data_dir), require_overlays=require_overlays)
 
 
 if __name__ == "__main__":
