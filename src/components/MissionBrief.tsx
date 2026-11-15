@@ -18,6 +18,16 @@ export function MissionBrief({ siteName, isDemoData, hasStarted, onContinue, onR
   useEffect(() => {
     // Keep the help dialog at its top while focusing the primary action for keyboard users.
     continueRef.current?.focus({ preventScroll: true });
+export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProps) {
+  // Purpose: intro dialog explaining the mission and how to use the map.
+  // `isDemoData` adds the placeholder-data note; `onStart` closes it and begins step 1.
+  // `briefRef` is the scrollable dialog body, `startRef` the Start button (focused on open).
+  const briefRef = useRef<HTMLDivElement>(null);
+  const startRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Focus Start for keyboard users without letting the browser scroll the dialog down to it,
+    // then make sure the dialog opens at its top.
+    startRef.current?.focus({ preventScroll: true });
     if (briefRef.current) briefRef.current.scrollTop = 0;
   }, []);
   return (
@@ -51,6 +61,9 @@ export function MissionBrief({ siteName, isDemoData, hasStarted, onContinue, onR
           <button className="primary" onClick={onContinue} ref={continueRef}>{hasStarted ? 'Resume walkthrough' : 'Start walkthrough'}</button>
           {hasStarted && <button className="link-btn" onClick={onRestart}>Restart from Step 1</button>}
         </div>
+        <button className="primary" onClick={onStart} ref={startRef}>
+          Start the walkthrough
+        </button>
       </div>
     </div>
   );
