@@ -22,7 +22,15 @@ export function MarsScaleBar() {
   useMapEvents({ zoomend: () => setScales(measure()), moveend: () => setScales(measure()), resize: () => setScales(measure()) });
 
   return (
-    <div className="mars-scale" aria-label={`Scale on Mars: ${scales.ew.label} east-west, ${scales.ns.label} north-south`}>
+    <div className="mars-scale" aria-label={`North is up. Scale on Mars: ${scales.ew.label} east-west, ${scales.ns.label} north-south`}>
+      {/* North arrow: this map never rotates (plain lat/lon), so north is always straight up. */}
+      <div className="mars-compass" aria-hidden="true">
+        <svg viewBox="0 0 20 24" width="16" height="20">
+          <path d="M10 1 17 22 10 17 3 22Z" fill="#e6e6e6" stroke="#0b0d10" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M10 1 10 17 3 22Z" fill="#e5484d" />
+        </svg>
+        <span>N</span>
+      </div>
       <div className="mars-scale-row">
         <div className="mars-scale-bar" style={{ width: scales.ew.px }} />
         <span>{scales.ew.label} east–west</span>
