@@ -260,7 +260,7 @@ export interface RouteAuditEntry {
   cells_unknown?: number;
   cells_outside?: number;
   cells_on_scarp_face?: number;
-  profile?: [number, number | null, number | null][]; // [distance_m, elevation_m, slope_deg]
+  profile?: [number, number | null, number | null, number?, string?][]; // [distance_m, elevation_m, slope_deg]
 }
 
 export interface RouteAudit {

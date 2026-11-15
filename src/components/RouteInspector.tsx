@@ -20,7 +20,7 @@ export function RouteInspector({selection,audit,onClose}:{selection:Inspection;a
         <p>Vertices: {selection.route.geometry.coordinates.length} · Mode thresholds: walk {audit?.thresholds_deg.crew_exclude}°, drive {audit?.thresholds_deg.rover_exclude}° (provisional)</p>
         <p>First exclusion along route: {measured(entry.first_exclusion_at_m,' m')} · actual cell: {entry.first_exclusion?.coordinates.join(', ')??'Not measured'}</p>
         <ul>{entry.reasons.map(r=><li key={r}>{r}</li>)}</ul>
-        <div dangerouslySetInnerHTML={{__html:profileSvg(entry.profile,audit?.thresholds_deg.crew_caution??15,audit?.thresholds_deg.crew_exclude??20)}}/>
+        <div dangerouslySetInnerHTML={{__html:profileSvg(entry.profile,audit?.thresholds_deg.crew_caution??15,(entry.agent==='rover'?audit?.thresholds_deg.rover_exclude:audit?.thresholds_deg.crew_exclude)??20)}}/>
       </>}
     </>}
     {selection.details!==undefined && <details open><summary>Waypoint purpose, uncertainty and restrictions</summary><pre>{JSON.stringify(selection.details,null,2)}</pre></details>}

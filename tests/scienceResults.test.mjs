@@ -51,8 +51,10 @@ test('all published bytes verify and changed mission or artifact bytes become st
   const original=global.fetch,events=[],logger=createLogger({runId:'freshness',sink:e=>events.push(e)});
   let changed=null;
   global.fetch=async url=>{
-    const name=String(url).split('/data/')[1], body=fs.readFileSync(new URL(name,root),'utf8')+(name===changed?' ':'');
-    return {ok:true,headers:new Headers(),json:async()=>JSON.parse(body),text:async()=>body};
+    const name=String(url).split('/data/')[1];
+    if(changed==='missing-bundle' && ['routes.geojson','hazards.geojson','coverage.geojson','route_audit.json','itinerary_report.json'].includes(name)) return {ok:false,status:404};
+    const bytes=fs.readFileSync(new URL(name,root)),body=Buffer.concat([bytes,Buffer.from(name===changed?' ':'')]);
+    return {ok:true,headers:new Headers(),json:async()=>JSON.parse(body.toString()),text:async()=>body.toString(),arrayBuffer:async()=>body};
   };
   try {
     assert.equal((await loadAnalysis('/',logger)).state,'current');
@@ -60,5 +62,10 @@ test('all published bytes verify and changed mission or artifact bytes become st
       changed=name;assert.equal((await loadAnalysis('/',logger)).state,'stale',name);
     }
     assert.ok(events.some(e=>e.event==='results.freshness'&&e.state==='stale'));
+    changed='missing-bundle';
+    const independent=await loadAnalysis('/',logger);
+    assert.equal(independent.state,'stale');
+    assert.equal(independent.reportStates['feasibility_report.json'],'current');
+    assert.ok(independent.reports['feasibility_report.json'].verdict);
   } finally {global.fetch=original;}
 });

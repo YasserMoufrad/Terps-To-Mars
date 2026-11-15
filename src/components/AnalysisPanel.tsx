@@ -6,16 +6,16 @@ import { appLogger } from '../lib/appLogger';
 export function AnalysisPanel({analysis}:{analysis:AnalysisResults}) {
   // analysis carries independently loaded offline results, including legitimate infeasibility.
   const [report,setReport]=useState('feasibility_report.json');
-  const data=analysis.reports[report];
+  const data=analysis.reports[report], reportState=analysis.reportStates?.[report]??analysis.state;
   return <section className="analysis-panel" aria-label="Offline analytical results">
     <h2>Offline analysis</h2><p role="status">{analysis.state}: {analysis.reason}</p>
     <p>Planning evidence · crew clearance not established. Missing artifact review does not mean artifact-free.</p>
-    <label>Report <select value={report} onChange={e=>{
+    <p>Selected report: {reportState}</p><label>Report <select value={report} onChange={e=>{
       // Report selection changes presentation only; it never starts a backend operation.
       setReport(e.target.value);appLogger.info('analysis','report.inspect',{report:e.target.value,state:analysis.state});
     }}><option value="feasibility_report.json">Site feasibility and uncertainty</option>
       <option value="itinerary_report.json">EVA budgets, walkback and backup independence</option></select></label>
-    {analysis.state==='current' && data ? <ResultTree value={data}/> : <p>{analysis.state==='stale'?'Stale — requires regeneration':'Not measured'}</p>}
+    {reportState==='current' && data ? <ResultTree value={data}/> : <p>{reportState==='stale'?'Stale — requires regeneration':reportState==='invalid'?'Invalid report — requires regeneration':'Not measured'}</p>}
   </section>;
 }
 

@@ -7,10 +7,9 @@ export function MapLegend() {
   return (
     <div className="map-legend" aria-label="Map legend">
       <div className="legend-row">
-        <span className="line line-main" /> Crew route
-        <span className="line line-backup" /> Backup
-        <span className="line line-rover" /> Rover
-        <span className="line line-unverified" /> Unverified
+        <span className="line" style={{borderColor:'#ff5365'}} /> Rejected by audit
+        <span className="line line-unverified" /> Candidate / unaudited
+        <span className="line" style={{borderColor:'#b4b9c2'}} /> Replaced
       </div>
       <div className="legend-row">
         <span className="swatch" style={{ background: HAZARD_COLORS.U }} /> Under feet

@@ -59,8 +59,8 @@ export function profileSvg(profile: RouteAuditEntry['profile'], caution: number,
     path += `${pen ? 'L' : 'M'}${x(p[0])},${y(p[1])}`;
     pen = true;
   }
-  const ticks = points.filter((p) => p[2] !== null && (p[2] as number) >= caution)
-    .map((p) => `<rect x="${x(p[0])}" y="${height - 8}" width="2" height="6" fill="${(p[2] as number) >= exclude ? '#e5484d' : '#f5a524'}"/>`)
+  const ticks = points.filter((p) => p[2] !== null && ((p[4]!=='drive' && (p[2] as number) >= caution) || (p[2] as number)>=(p[3]??exclude)))
+    .map((p) => `<rect x="${x(p[0])}" y="${height - 8}" width="2" height="6" fill="${(p[2] as number) >= (p[3]??exclude) ? '#e5484d' : '#f5a524'}"/>`)
     .join('');
   return `<svg class="route-profile" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" `
     + `aria-label="Elevation profile, ${Math.round(span)} m relief over ${Math.round(maxD)} m">`

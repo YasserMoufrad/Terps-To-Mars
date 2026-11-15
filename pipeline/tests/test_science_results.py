@@ -46,3 +46,16 @@ def test_backup_has_no_invented_observation_objective():
     coords = [lonlat(grid, 10), lonlat(grid, 40)]
     result = audit_route(route(coords, kind="backup"), mission_for(coords[0], coords[1]), grid, RULES)
     assert result["objective"] == "undeclared" and "end_offset_m" not in result
+
+
+def test_walk_only_adapter_has_measured_leg_length(tmp_path):
+    """A short walk-only schema-1.0 route must not fail fabricated-leg validation."""
+    from pipeline.science_results import itinerary_results
+    feature = {"type": "Feature", "properties": {"id": "walk", "agent": "crew", "kind": "main", "version": "before", "stats": {}},
+               "geometry": {"type": "LineString", "coordinates": [[0, 0], [.001, 0]]}}
+    routes = {"features": [feature]}
+    (tmp_path / "routes.geojson").write_text(json.dumps(routes))
+    results = itinerary_results(routes, tmp_path, RULES, 240, 20, 20)
+    assert results[0]["accepted_budget"] is True
+    assert results[0]["leg_problems"] == []
+    assert "legs" not in feature["properties"]

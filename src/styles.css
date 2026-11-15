@@ -17,3 +17,6 @@
 .route-inspector pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}
 .route-selector label{display:block}.route-selector span{display:block;font-size:10px;color:#fac775}
 @media(max-width:800px){.side-content{overflow:visible;max-height:none}.side-content .route-inspector{max-height:65vh}.imagery-controls{max-height:30vh}.slope-legend{left:10px;top:auto;bottom:112px;min-width:130px;max-width:160px}}
+
+.route-selector{bottom:125px}
+@media(max-width:800px){.route-selector{bottom:70px;max-width:calc(100% - 35px)}.slope-legend{bottom:135px}.map-legend{font-size:9px;max-width:calc(100% - 35px)}}

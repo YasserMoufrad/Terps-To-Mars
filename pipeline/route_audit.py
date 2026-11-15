@@ -283,7 +283,7 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, faces
     step = max(1, math.ceil(len(cells) / PROFILE_POINTS))
     sample = cells[::step] + ([cells[-1]] if (len(cells) - 1) % step else [])
     result["profile"] = [[round(c["distance_m"], 1), None if c["elevation"] is None else round(c["elevation"], 2),
-                          None if c["slope"] is None else round(c["slope"], 1)] for c in sample]
+                          None if c["slope"] is None else round(c["slope"], 1), c["limit"], c["mode"]] for c in sample]
     kinds = {reason.split(":")[0] for reason in reasons}
     result["audit_status"] = next((s for s in STATUS_ORDER if s in kinds), "candidate_requires_inspection")
     # A route may claim "inspection_required", "no_viable_route" or "backup_unavailable"; "ok" is never

@@ -1,9 +1,1 @@
-{
-  "east": -147.87999999999997,
-  "north": 54.17500316744629,
-  "processing": "NASA HiRISE DTM-derived slope, ~1 m grid; one PNG pixel per DTM cell, no reprojection; classes from hazard_rules.json; unknown cells gray-checkered; evidence=nasa_derived",
-  "schema_version": "1.0",
-  "source": "DTEEC_071085_2345_071006_2345_A01",
-  "south": 54.11999992683143,
-  "west": -147.925016041762
-}
+{"east":-147.87999999999997,"north":54.17500316744629,"processing":"NASA HiRISE DTM-derived slope, ~1 m grid; one PNG pixel per DTM cell, no reprojection; classes from hazard_rules.json; unknown cells gray-checkered; evidence=nasa_derived","schema_version":"1.0","source":"DTEEC_071085_2345_071006_2345_A01","south":54.11999992683143,"west":-147.925016041762}

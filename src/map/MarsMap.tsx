@@ -142,12 +142,12 @@ export function MarsMap({
     setSelection({route,cell,point,name:id,source:'route_audit.json / routes.geojson',evidence:'inferred; terrain NASA-derived'});
     appLogger.info('analysis','route.inspect',{route_id:id,audit_status:entry?.audit_status??'not_current',segment:cell?.segment_index,coordinates:cell?.coordinates,crew_clearance:'not_established'});
   };
-  const inspectPoint = (name: string, point: LatLon, evidence = 'inferred') => {
+  const inspectPoint = (name: string, point: LatLon, evidence = 'inferred', source = 'mission.json', purpose = name) => {
     // Published node identity and coordinates remain separate from terrain clearance.
-    const report=analysis?.state==='current'?analysis.reports['feasibility_report.json'] as {points?:Record<string,{lonlat:number[];uncertainty:unknown}>}:null;
+    const report=analysis?.reportStates?.['feasibility_report.json']==='current'?analysis.reports['feasibility_report.json'] as {points?:Record<string,{lonlat:number[];uncertainty:unknown}>}:null;
     const assessed=Object.entries(report?.points??{}).find(([,p])=>Math.abs(p.lonlat[0]-point.lon)<.00003 && Math.abs(p.lonlat[1]-point.lat)<.00003);
-    setSelection({route:null,cell:null,point,name,source:'mission.json',evidence,details:{purpose:name,
-      quality:mission.placeholder?'Placeholder mission coordinate':'Published candidate; review status unresolved',
+    setSelection({route:null,cell:null,point,name,source,evidence,details:{purpose,
+      quality:source!=='mission.json'?'Image-traced feature; ground truth not reviewed':mission.placeholder?'Placeholder mission coordinate':'Published candidate; review status unresolved',
       uncertainty:assessed?.[1].uncertainty??'Not measured',clearance:'not_established'}});
     appLogger.info('analysis','node.inspect',{name,point,evidence,crew_clearance:'not_established'});
   };
@@ -321,7 +321,7 @@ export function MarsMap({
           hiriseBounds={hiriseBounds}
           targets={targets}
           stage={stage}
-          onInspect={target=>{setInspectedTarget(target);if(target?.target) inspectPoint(target.name,target.target,target.evidence);else setSelection(null);}}
+          onInspect={target=>{setInspectedTarget(target);if(target?.target) inspectPoint(target.name,target.target,target.evidence,target.source,target.note);else setSelection(null);}}
           slopeOpacity={slopeOpacity}
           onOpacity={setSlopeOpacity}
           state={sizeMismatch && hiriseTiles.length === 0 ? 'failed' : hdState}
@@ -375,7 +375,7 @@ export function MarsMap({
                   `${EVIDENCE_LABEL[p.evidence]} · click for evidence`,
               );
               // Clicking a hazard opens its evidence card in the side panel.
-              layer.on('click', () => onSelectHazard(p));
+              layer.on('click', (e: L.LeafletMouseEvent) => { L.DomEvent.stopPropagation(e.originalEvent); onSelectHazard(p); });
             }}
           />
         )}
@@ -418,41 +418,41 @@ export function MarsMap({
           }}
         />
 
-        <CircleMarker eventHandlers={{click:()=>inspectPoint("Habitat",mission.endpoints.habitat)}} center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
+        <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Habitat",mission.endpoints.habitat)}} center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
           <Tooltip permanent direction="left" className="map-label">Habitat</Tooltip>
         </CircleMarker>
-        <CircleMarker eventHandlers={{click:()=>inspectPoint("Observation primary",mission.endpoints.observation_primary)}} center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
+        <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Observation primary",mission.endpoints.observation_primary)}} center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
           {/* Amber, not green: the point is an unconfirmed candidate, not a cleared site. */}
           <Tooltip permanent direction="right" className="map-label">Observation point (candidate)</Tooltip>
         </CircleMarker>
 
         {stage === 'rover' && (
-          <CircleMarker eventHandlers={{click:()=>inspectPoint("Rover incident",mission.discovery.location,"simulated")}} center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
+          <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Rover incident",mission.discovery.location,"simulated")}} center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
             <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground?</Tooltip>
           </CircleMarker>
         )}
 
         {stage === 'eva' && (
-          <CircleMarker eventHandlers={{click:()=>inspectPoint("Drone perch",mission.drone.perch,"simulated")}} center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
+          <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Drone perch",mission.drone.perch,"simulated")}} center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
             <Tooltip permanent direction="right" className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
           </CircleMarker>
         )}
-        {analysis?.state==='current' && Object.entries((analysis.reports['feasibility_report.json'] as {points?:Record<string,{lonlat:[number,number];uncertainty:{radius_m:number}}>})?.points??{}).map(([id,p])=>
-          <Polygon key={'uncertainty-'+id} positions={uncertaintyRing(p.lonlat,p.uncertainty.radius_m)}
+        {analysis?.reportStates?.['feasibility_report.json']==='current' && Object.entries((analysis.reports['feasibility_report.json'] as {points?:Record<string,{lonlat:[number,number];uncertainty:{radius_m:number}}>})?.points??{}).map(([id,p])=>
+          <Polygon bubblingMouseEvents={false} key={'uncertainty-'+id} positions={uncertaintyRing(p.lonlat,p.uncertainty.radius_m)}
             pathOptions={{color:'#d6b5ff',weight:1,dashArray:'3 3',fillOpacity:.08}}
             eventHandlers={{click:()=>inspectPoint(id,{lon:p.lonlat[0],lat:p.lonlat[1]})}}>
             <Tooltip>{id}: {p.uncertainty.radius_m} m modeled position uncertainty</Tooltip>
           </Polygon>)}
         {inspectedTarget?.geometry && <GeoJSON key={inspectedTarget.id} data={asGeoJson(inspectedTarget.geometry)}
           style={{color:'#62ddff',weight:5,opacity:0.95}} interactive={false}/>}
-        {inspectedTarget?.target && <CircleMarker center={toLatLng(inspectedTarget.target)} radius={14}
+        {inspectedTarget?.target && <CircleMarker bubblingMouseEvents={false} center={toLatLng(inspectedTarget.target)} radius={14}
           pathOptions={{color:'#62ddff',weight:3,fillOpacity:0}}><Tooltip permanent>{inspectedTarget.name}</Tooltip></CircleMarker>}
         {selection?.route && <GeoJSON key={'selected-'+selection.route.properties.id} data={asGeoJson(selection.route)} style={{color:'#fff',weight:7,opacity:.7}} interactive={false}/>}
-        {selection?.cell && <CircleMarker center={[selection.cell.coordinates[1],selection.cell.coordinates[0]]} radius={7} pathOptions={{color:'#fff',fillColor:'#ff642f',fillOpacity:1}}/>}
+        {selection?.cell && <CircleMarker bubblingMouseEvents={false} center={[selection.cell.coordinates[1],selection.cell.coordinates[0]]} radius={7} pathOptions={{color:'#fff',fillColor:'#ff642f',fillOpacity:1}}/>}
         {selection?.route && currentEntry(routeAudit,selection.route)?.first_exclusion &&
-          <CircleMarker center={[currentEntry(routeAudit,selection.route)!.first_exclusion!.coordinates[1],currentEntry(routeAudit,selection.route)!.first_exclusion!.coordinates[0]]}
+          <CircleMarker bubblingMouseEvents={false} center={[currentEntry(routeAudit,selection.route)!.first_exclusion!.coordinates[1],currentEntry(routeAudit,selection.route)!.first_exclusion!.coordinates[0]]}
             radius={10} pathOptions={{color:'#ff3948',weight:3,fillOpacity:.3}}><Tooltip>First excluded native cell</Tooltip></CircleMarker>}
-        {mission.endpoints.observation_backup && <CircleMarker center={toLatLng(mission.endpoints.observation_backup)}
+        {mission.endpoints.observation_backup && <CircleMarker bubblingMouseEvents={false} center={toLatLng(mission.endpoints.observation_backup)}
           eventHandlers={{click:()=>inspectPoint('Observation backup',mission.endpoints.observation_backup!)}}
           radius={7} pathOptions={{color:'#f5a524'}}><Tooltip>Backup candidate</Tooltip></CircleMarker>}
       </MapContainer>
@@ -474,12 +474,12 @@ function TerrainClick({analysis,onSelect}:{analysis:AnalysisResults|undefined;on
   // Sparse native samples disclose their actual position and offset; no interpolation is performed.
   useMapEvents({click:e=>{
     const point={lat:e.latlng.lat,lon:e.latlng.lng};
-    const report=analysis?.state==='current'?analysis.reports['terrain_samples.json'] as {samples?:[number,number,number|null,number|null,number|null,string,number,number][];stride_cells:number;bounds:{west:number;east:number;south:number;north:number}}:null;
+    const report=analysis?.reportStates?.['terrain_samples.json']==='current'?analysis.reports['terrain_samples.json'] as {samples?:[number,number,number|null,number|null,number|null,string,number,number][];stride_cells:number;bounds:{west:number;east:number;south:number;north:number}}:null;
     const b=report?.bounds;
     const inside=b && point.lon>=b.west && point.lon<=b.east && point.lat>=b.south && point.lat<=b.north;
     const cells:AuditCell[]=inside?(report?.samples??[]) .map(([lon,lat,elevation,slope,roughness_m,quality,col,row])=>({
       coordinates:[lon,lat],elevation,slope,roughness_m,known:quality==='valid_unreviewed',inside:true,col,row,
-      segment_index:-1,distance_m:0,limit:20,mode:'walk'
+      segment_index:-1,distance_m:0,limit:(analysis!.reports['analysis_rules.json'] as {rules:{crew_exclude_deg:{value:number}}}).rules.crew_exclude_deg.value,mode:'walk'
     })):[];
     onSelect({point,route:null,cell:nearestCell(cells,point),name:'Terrain sample',source:inside?'terrain_samples.json (sparse; stride '+report?.stride_cells+' native cells)':'Outside published numeric coverage',evidence:'nasa_derived; artifact review unavailable'});
     appLogger.info('analysis','terrain.inspect',{point,inside:Boolean(inside),state:analysis?.state});

@@ -10,13 +10,14 @@ from pipeline.route_audit import audit_file, load_grid
 from pipeline.terrain import analyze, load_rules
 from pipeline.hazards import hazard_masks
 from pipeline.feasibility import audit_site, _cell
-from pipeline.itinerary import evaluate_file, evaluate_mixed, backup_independence
+from pipeline.itinerary import evaluate_file, evaluate_mixed, backup_independence, polyline_m
 from pipeline.logging_config import configure_logging, event, operation
 
 INPUTS = ("routes.geojson", "mission.json", "hazards.geojson", "coverage.geojson",
           "scarp_lines.geojson", "science_targets.json", "slope.meta.json", "slope.bounds.json",
-          "analysis_rules.json", "terrain_source.json")
+          "analysis_rules.json", "terrain_source.json", "slope.png")
 ALGORITHMS = ("science_results.py", "route_audit.py", "terrain.py", "hazards.py", "feasibility.py", "itinerary.py", "routing.py")
+REPORT_INPUTS = {"route_audit.json":["routes.geojson","mission.json","hazards.geojson","coverage.geojson","scarp_lines.geojson","science_targets.json","slope.meta.json","slope.bounds.json","slope.png","analysis_rules.json","terrain_source.json","route_audit.json"],"terrain_samples.json":["terrain_source.json","analysis_rules.json","terrain_samples.json"],"feasibility_report.json":["mission.json","scarp_lines.geojson","analysis_rules.json","terrain_source.json","feasibility_report.json"],"itinerary_report.json":["routes.geojson","mission.json","analysis_rules.json","itinerary_report.json"]}
 ARTIFACTS = ("route_audit.json", "terrain_samples.json", "feasibility_report.json", "itinerary_report.json")
 
 
@@ -37,7 +38,7 @@ def verify(data_dir):
     algorithms = manifest.get("algorithms", {})
     if set(algorithms) != set(ALGORITHMS) or any(digest(Path(__file__).parent / name) != sha for name, sha in algorithms.items()):
         raise ValueError("Analysis generator changed — regenerate science results")
-    if manifest.get("schema_version") != "1.0" or set(manifest.get("files", {})) != expected:
+    if manifest.get("schema_version") != "1.0" or manifest.get("report_inputs") != REPORT_INPUTS or set(manifest.get("files", {})) != expected:
         raise ValueError("Incomplete analysis manifest")
     changed = [name for name, sha in manifest["files"].items()
                if not (root / name).is_file() or digest(root / name) != sha]
@@ -103,10 +104,12 @@ def publish(data_dir, dtm, eva_minutes=240, walk_speed=20, site_minutes=20):
         "results": itinerary_results(routes, root, rules, eva_minutes, walk_speed, site_minutes)})
     # Pin LF and compact scientific arrays before exact-byte digest generation.
     for name in INPUTS + ARTIFACTS:
+        if name.endswith('.png'):
+            continue
         path = root / name
         payload = json.loads(path.read_text())
         path.write_text(json.dumps(payload, separators=(",", ":"), allow_nan=False) + "\n", encoding="utf-8", newline="\n")
-    manifest = {"schema_version": "1.0", "algorithms": {name: digest(Path(__file__).parent / name) for name in ALGORITHMS}, "files": {name: digest(root / name) for name in INPUTS + ARTIFACTS}}
+    manifest = {"schema_version": "1.0", "report_inputs": REPORT_INPUTS, "algorithms": {name: digest(Path(__file__).parent / name) for name in ALGORITHMS}, "files": {name: digest(root / name) for name in INPUTS + ARTIFACTS}}
     write_json(root / "analysis_manifest.json", manifest)
     verify(root)
     event("science_results_published", files=len(manifest["files"]), samples=len(samples),
@@ -121,7 +124,7 @@ def itinerary_results(routes, root, rules, eva_minutes, walk_speed, site_minutes
     for feature in crew:
         if not feature["properties"].get("legs"):
             adapted = json.loads(json.dumps(feature))
-            adapted["properties"]["legs"] = [{"mode": "walk", "from": 0, "to": len(feature["geometry"]["coordinates"]) - 1}]
+            adapted["properties"]["legs"] = [{"mode": "walk", "from": 0, "to": len(feature["geometry"]["coordinates"]) - 1, "length_m": polyline_m(feature["geometry"]["coordinates"])}]
             result = evaluate_mixed(adapted, rules, eva_minutes, {"drive": 83.3, "walk": walk_speed}, site_minutes)
             result["mode_basis"] = "schema 1.0 crew route assumed walk-only; two-way retrace arithmetic, not a declared return objective"
             results.append(result)

@@ -25,7 +25,7 @@ export function ImageryControls({overview,hiriseBounds,targets,stage,state,regis
     const size=map.getSize(), left=Math.min(45,size.x*.12), top=Math.min(narrow?220:170,size.y*.4);
     map.flyToBounds(selected.bounds,{maxZoom:17,paddingTopLeft:[left,top],paddingBottomRight:[35,55]});
     onInspect(selected); setViewport(selected.name);
-    appLogger.info('map','view.inspect_target',{target_id:selected.id,target:selected.target,bounds:selected.bounds,
+    appLogger.info('map','view.inspect_target',{target_id:selected.science_target_id??selected.id,target:selected.target,bounds:selected.bounds,
       source:selected.source,evidence:selected.evidence,mission_stage:stage});
   };
   const overviewView=() => {

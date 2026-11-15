@@ -9,7 +9,7 @@ export interface ScienceTargets {
 }
 export interface InspectionTarget {
   id: string; name: string; target: LatLon | null; bounds: [[number, number], [number, number]] | null;
-  source: string; evidence: Evidence; note: string; reason?: string; geometry?: ScarpLines;
+  source: string; evidence: Evidence; note: string; reason?: string; geometry?: ScarpLines; science_target_id?:string;
 }
 export const DEFAULT_SCIENCE_TARGETS: ScienceTargets = {
   schema_version: '1.0', status: 'unresolved', active_id: null,
@@ -61,7 +61,8 @@ export function resolveScienceTarget(spec: ScienceTarget, lines: ScarpLines | nu
 
 export function activeScienceTarget(catalog: ScienceTargets, targets: InspectionTarget[]): InspectionTarget {
   // A science objective is a team decision; unresolved selection cannot silently choose the original scarp.
-  return targets.find(t => catalog.status==='selected' && t.id===catalog.active_id) ?? {
+  const resolved=targets.find(t => catalog.status==='selected' && t.id===catalog.active_id);
+  return resolved?{...resolved,id:'active',science_target_id:resolved.id}:{
     id:'active',name:'Active science target — unresolved',target:null,bounds:null,source:'science_targets.json',
     evidence:'inferred',note:'The team has not selected a reviewed active scarp ID.',
     reason:'Science target unresolved. Select a named scarp to inspect its geometry without declaring it the mission target.',
