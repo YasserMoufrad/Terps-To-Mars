@@ -8,6 +8,7 @@ import { DiscoveryCard } from './DiscoveryCard';
 import { EvidenceCard } from './EvidenceCard';
 import { alertSeverity } from './alertSeverity';
 import { GroundViewCard } from './GroundViewCard';
+import { ScienceCard } from './ScienceCard';
 import { StageSummaryCard } from './StageSummaryCard';
 import type { StageSummary } from '../map/stageSummary';
 
@@ -54,6 +55,9 @@ export function StagePanel({
       </section>
 
       <StageSummaryCard summary={summary} />
+
+      {/* Why the walk exists (Step 1) and what the crew does at the cliff (Step 4). */}
+      {(stage === 'orbital' || stage === 'eva') && <ScienceCard />}
 
       {notices.length > 0 && (
         <section className="card notices">
