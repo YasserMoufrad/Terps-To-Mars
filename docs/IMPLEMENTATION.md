@@ -1,6 +1,6 @@
 # Implementation Plan
 
-Terrapin Trekkers · NASA Space Apps Challenge 2026 · *Interplanetary Survival Guide: Martian Map*
+Terps to Mars · NASA Space Apps Challenge 2026 · *Interplanetary Survival Guide: Martian Map*
 
 This is the working engineering plan for the app and the data pipeline. The data contract (section 4) is binding: both the Python pipeline and the React app follow it exactly, and any change is agreed between the two owners first.
 
