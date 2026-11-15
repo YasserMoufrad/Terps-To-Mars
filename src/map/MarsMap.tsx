@@ -25,7 +25,7 @@ import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
 import { dronePerchLabel } from './reviewPresentation';
-import { observationTarget, resolveScarpTarget } from './scarpTarget';
+import { crewFaceTarget, observationTarget, resolveScarpTarget } from './scarpTarget';
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
 import { SlopeLegend } from './SlopeLegend';
 import { auditFor, diagnosticHtml } from './routeAudit';
@@ -119,6 +119,9 @@ export function MarsMap({
     ...hiriseTiles.filter((t) => t.role === 'core').map((t) => t.bounds),
   ];
   const scarpTarget = useMemo(() => resolveScarpTarget(scarpLines, nativeCoverage), [scarpLines, hiriseBounds, hiriseTiles]);
+  // The face the crew observes (second scarp) is a different place from the main face "Inspect scarp" shows.
+  const crewFace = useMemo(() => crewFaceTarget(scarpLines, mission.endpoints.observation_primary, nativeCoverage),
+    [scarpLines, mission, hiriseBounds, hiriseTiles]);
   useEffect(() => {
     // Log the resolved target once per data load: which source drives navigation, or why it is disabled.
     if (scarpTarget.target) appLogger.info('map', 'scarp_target.resolved', { target: scarpTarget.target, source: scarpTarget.source, evidence: 'inferred' });
@@ -288,6 +291,7 @@ export function MarsMap({
           hiriseBounds={hiriseBounds}
           scarp={scarpTarget}
           observation={observationTarget(mission.endpoints.observation_primary)}
+          crewFace={crewFace}
           state={sizeMismatch && hiriseTiles.length === 0 ? 'failed' : hdState}
           registration={registrationNote(hiriseMeta)}
           onRetry={retryImagery}

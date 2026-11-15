@@ -14,12 +14,13 @@ interface ImageryControlsProps {
   hiriseBounds: OverlayBounds | null; // native image footprint; null when not published
   scarp: ScarpTarget; // resolved scarp-face target (null target = disabled, with a reason)
   observation: LatLon | null; // selected observation waypoint
+  crewFace?: ScarpTarget; // face the crew looks at (second scarp); absent or null target = disabled
   state: ImageryLoadState; // combined HiRISE load state
   registration: string; // visible alignment note (registrationNote)
   onRetry: () => void; // re-requests the HiRISE layers after a failure
 }
 
-export function ImageryControls({ overview, hiriseBounds, scarp, observation, state, registration, onRetry }: ImageryControlsProps) {
+export function ImageryControls({ overview, hiriseBounds, scarp, observation, crewFace, state, registration, onRetry }: ImageryControlsProps) {
   // Purpose: explicit views instead of an automatic re-fit on every stage change. The two inspect buttons
   // go to different objectives: the scarp face (from scarp geometry) and the observation waypoint.
   const map = useMap();
@@ -40,6 +41,14 @@ export function ImageryControls({ overview, hiriseBounds, scarp, observation, st
       zoom: INSPECT_ZOOM, target: scarp.target, source: scarp.source, evidence: scarp.evidence, imagery_state: state,
     });
   };
+  const crewFaceDisabledReason = !crewFace || crewFace.target === null ? crewFace?.reason ?? 'Not available.'
+    : imageryOff ? "Turn on the HiRISE layer to inspect the crew's ice face." : undefined;
+  const inspectCrewFace = () => {
+    // Purpose: fly to the second-scarp face the crew observes (not the main face the drone images).
+    if (!crewFace?.target || crewFaceDisabledReason) return;
+    map.flyTo([crewFace.target.lat, crewFace.target.lon], INSPECT_ZOOM);
+    appLogger.info('map', 'view.inspect_crew_face', { zoom: INSPECT_ZOOM, target: crewFace.target, source: crewFace.source, evidence: crewFace.evidence });
+  };
   const inspectObservation = () => {
     if (!observation) return;
     map.flyTo([observation.lat, observation.lon], INSPECT_ZOOM);
@@ -55,6 +64,12 @@ export function ImageryControls({ overview, hiriseBounds, scarp, observation, st
             title={scarpDisabledReason ?? scarp.note}>
             Inspect scarp
           </button>
+          {crewFace && (
+            <button type="button" onClick={inspectCrewFace} disabled={crewFaceDisabledReason !== undefined}
+              title={crewFaceDisabledReason ?? crewFace.note}>
+              Inspect crew&apos;s ice face
+            </button>
+          )}
           <button type="button" onClick={inspectObservation} disabled={!observation}
             title="Centre on the candidate observation point (not the scarp)">
             Inspect observation point
