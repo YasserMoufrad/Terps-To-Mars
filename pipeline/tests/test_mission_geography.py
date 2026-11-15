@@ -124,7 +124,7 @@ def test_published_audit_fingerprint_matches_published_files():
     assert fp["rules_sha256"] == route_audit.canonical_sha256(load_rules())
     assert fp["endpoints"] == endpoints_fingerprint(mission)
     assert fp["scarp"] == scarp_fingerprint(read("scarp_lines.geojson"))
-    assert fp["scarp_profiles_sha256"] == route_audit.canonical_sha256(load_sites(SITES)["scarp_profiles"])
+    assert fp["scarp_profiles_sha256"] == route_audit.profiles_fingerprint(load_sites(SITES))
     assert fp["routes"] == {f["properties"]["id"]: route_fingerprint(f) for f in routes["features"]}
     assert audit["zone_checks"] == "edge_setback_and_rockfall"
 

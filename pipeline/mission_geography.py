@@ -281,7 +281,8 @@ def route_feature(grid, rid, kind, agent, version, status, legs):
         props["legs"] = out_legs
         drive = sum(l["length_m"] for l in out_legs if l["mode"] == "drive")
         if drive:
-            props["walkback_min"] = round(length / SPEEDS_M_MIN["walk"], 1)
+            # Walkback (PR #15 contract): minutes on foot from the farthest drive point (the parked rover) home.
+            props["walkback_min"] = round(drive / SPEEDS_M_MIN["walk"], 1)
     return {"type": "Feature", "properties": props, "geometry": {"type": "LineString", "coordinates": coords}}
 
 
@@ -530,6 +531,14 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
         rover_cells[c] = True
     corridor = distance_transform_edt(~rover_cells, sampling=(terrain.resolution, float(np.median(terrain.column_spacing)))) <= 10.0
     coverage = [feature("cov-orbit-001", "Polygon", [box_ring(inner_bounds)], state="orbit_only", simulated=False, sensor="none")]
+    # Ground no robot has seen yet at orbital planning: the walk leg and both viewpoints, padded 60 m.
+    walk_pts = [grid.lonlat(c) for c in walk1] + [[points[k]["lon"], points[k]["lat"]] for k in ("observation_primary", "observation_backup")]
+    pad_lat = 60.0 / (math.radians(1) * 3_389_500.0)
+    pad_lon = pad_lat / math.cos(math.radians(points["observation_primary"]["lat"]))
+    unscouted = {"south": min(p[1] for p in walk_pts) - pad_lat, "north": max(p[1] for p in walk_pts) + pad_lat,
+                 "west": min(p[0] for p in walk_pts) - pad_lon, "east": max(p[0] for p in walk_pts) + pad_lon}
+    coverage.append(feature("cov-unscouted-001", "Polygon", [box_ring({k: round(v, 7) for k, v in unscouted.items()})],
+                            state="unscouted", simulated=False, sensor="none"))
     coverage += polygons(corridor, grid, COVERAGE_BLOCK, "all", "cov-rover",
                          {"state": "rover_checked", "simulated": True, "sensor": "stereo_cam"})
     viewpoints = {"lat": (points["observation_primary"]["lat"] + points["observation_backup"]["lat"]) / 2,
@@ -549,7 +558,7 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
     try:
         write_json(staging / "hazards.geojson", {**collection(hazards), "placeholder": False})
         write_json(staging / "coverage.geojson", {**collection(coverage), "placeholder": False})
-        write_json(staging / "routes.geojson", {**collection(route_list), "placeholder": False})
+        write_json(staging / "routes.geojson", {**collection(route_list), "schema_version": "1.1", "placeholder": False})  # 1.1: legs
         write_json(staging / "mission.json", mission)
         # Audit exactly the staged files with the same analysed grid; refuse to publish a line that fails.
         shutil.copy2(scarp_path, staging / "scarp_lines.geojson")

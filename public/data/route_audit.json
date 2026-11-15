@@ -4814,7 +4814,7 @@
     }
   ],
   "routes_placeholder": false,
-  "routes_sha256": "63e00ac9d386ed85d8b4ded58b9cf9aa9ee0239d2a0529948bbce4e26b34dbcb",
+  "routes_sha256": "cddce98391e3867b7a7118ce8965265e04f4b1e8ca517679d095cabd43b014f9",
   "scarp_source": "scarp_lines.geojson",
   "schema_version": "1.0",
   "terrain_evidence": "nasa_derived",

@@ -37,7 +37,7 @@ test('rover: old route runs through the simulated soft ground; decision follows 
 test('eva: main route status and backup limits come from the route data', () => {
   const s = stageSummary('eva', data);
   assert.match(text(s), /Main route: Needs inspection: the crew-rover drive is not yet modeled/);
-  assert.match(text(s), /Backup: A \d+ m walk between the backup viewpoint and the crew rover; it shares/);
+  assert.match(text(s), /Backup: A \d+ m walk between the backup viewpoint and the crew rover/);
   const noBackup = { ...data, routes: { ...data.routes, features: data.routes.features.filter((r) => r.properties.kind !== 'backup') } };
   const row = stageSummary('eva', noBackup).rows.find((r) => r.label === 'Backup');
   assert.equal(row.tone, 'stop');

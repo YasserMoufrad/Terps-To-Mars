@@ -132,7 +132,7 @@
         },
         "status": "inspection_required",
         "version": "before",
-        "walkback_min": 148.6
+        "walkback_min": 107.0
       },
       "type": "Feature"
     },
@@ -411,7 +411,7 @@
         },
         "status": "inspection_required",
         "version": "after",
-        "walkback_min": 148.9
+        "walkback_min": 107.3
       },
       "type": "Feature"
     },
@@ -564,12 +564,12 @@
         "status": "backup_unavailable",
         "status_reason": "over the EVA time with reserve, walkback exceeds the EVA",
         "version": "after",
-        "walkback_min": 166.0
+        "walkback_min": 110.4
       },
       "type": "Feature"
     }
   ],
   "placeholder": false,
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "type": "FeatureCollection"
 }

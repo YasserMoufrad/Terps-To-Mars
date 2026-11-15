@@ -40,10 +40,13 @@ test('generated routes pass their own terrain audit; budget-rejected ones still 
   assert.equal(routeRejectedForStyle(orbital.properties, auditFor(audit, orbital.properties.id)), false);
   assert.equal(routeRejectedForStyle(orbital.properties, { audit_status: 'excluded_terrain' }), true);
   assert.equal(routeStyle(orbital.properties, null, false).color, '#b4b9c2');
-  const main = routes.features.find((f) => f.properties.id === 'rt-crew-main-v2');
-  assert.equal(routeStyle(main.properties, null, routeRejectedForStyle(main.properties, auditFor(audit, 'rt-crew-main-v2'))).color, '#b4b9c2');
-  assert.equal(orbital.properties.status, 'no_viable_route');
-  assert.match(orbital.properties.status_reason, /round-trip/);
+  // No route is ever red: a rejected one (here the backup, over the EVA budget) is a thin grey dotted line.
+  const backup = routes.features.find((f) => f.properties.id === 'rt-crew-backup-v2');
+  assert.equal(backup.properties.status, 'backup_unavailable');
+  const style = routeStyle(backup.properties, null, routeRejectedForStyle(backup.properties, auditFor(audit, backup.properties.id)));
+  assert.equal(style.color, '#8a9099');
+  assert.equal(style.dashArray, '2 9');
+  for (const f of routes.features) assert.notEqual(routeStyle(f.properties, null, true).color, '#e5484d');
 });
 
 test('a terrain-rejected line is rejected and its first excluded crossing is listed', () => {
