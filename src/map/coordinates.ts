@@ -29,6 +29,18 @@ export function marsDistanceM(a: LatLonPoint, b: LatLonPoint): number {
   return 2 * MARS_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+export const WALK_M_PER_MIN = 20; // the EVA planning walking pace (same as the time budget)
+
+export function measureText(a: LatLonPoint, b: LatLonPoint): { metres: number; distance: string; walk: string } {
+  // Purpose: the measuring tool's label for points `a` → `b`: Mars great-circle distance ("412 m" / "1.23 km") and
+  // the straight-line walking time at the planning pace. Straight line over the sphere: not a route, ignores slope.
+  const metres = marsDistanceM(a, b);
+  const distance = metres >= 1000 ? `${(metres / 1000).toFixed(2)} km` : `${Math.round(metres)} m`;
+  const minutes = metres / WALK_M_PER_MIN;
+  const walk = minutes < 1 ? 'under 1 min walk' : `about ${Math.round(minutes)} min walk`;
+  return { metres, distance, walk };
+}
+
 export function niceScale(metresPerPixel: number, maxPx = 110): { metres: number; px: number; label: string } {
   // Purpose: the largest "round" length (1, 2 or 5 x 10^n m) that fits in `maxPx` pixels at `metresPerPixel`,
   // with its bar width in pixels and a label in m or km.
