@@ -9,6 +9,7 @@ import { MarsMap } from './map/MarsMap';
 import { routesFor } from './map/stageFilters';
 import { stageSummary } from './map/stageSummary';
 import { readinessFor } from './map/routeReadiness';
+import { beforeAfter } from './map/beforeAfter';
 import { DEFAULT_LAYERS, type LayerVisibility } from './map/layers';
 import { StagePanel } from './components/StagePanel';
 import { ErrorBanner, DataBadge } from './components/IssuesBanner';
@@ -72,6 +73,12 @@ export function App() {
         uncertainty: d.uncertainty,
         chosen_option: d.chosen_option === '' ? 'pending' : d.chosen_option,
       });
+      // The before/after comparison the Step 2 card shows, once per visit (simulated scouting, measured terrain).
+      const cmp = data.coverage && data.hazards ? beforeAfter(mission, routes, data.coverage, data.hazards, data.routeAudit) : null;
+      appLogger.info('safety', 'route.before_after', {
+        before_route_id: d.before_route_id, after_route_id: d.after_route_id, evidence: 'simulated scouting; terrain nasa_derived',
+        rows: cmp ? Object.fromEntries(cmp.rows.map((r) => [r.label, { before: r.before, after: r.after, better: r.better }])) : 'unavailable',
+      });
     }
   }, [stage, data]);
 
@@ -84,6 +91,7 @@ export function App() {
   // The Mars color layer comes from Mars Trek tiles, so it is always available.
   const available = {
     color: true, hirise: hiriseBounds !== null || hiriseTiles.length > 0, slope: slopeBounds !== null, hazards: true, coverage: true,
+    nightIr: true, // Mars Trek tiles, like the color layer
   };
 
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
@@ -173,6 +181,8 @@ export function App() {
               onCloseHazard={() => setSelectedHazard(null)}
               routeNotices={routeNotices}
               summary={stageSummary(stage, { mission, hazards, routes, coverage, readiness })}
+              mainRoute={routes.features.find((r) => r.properties.id === mission.discovery.after_route_id)}
+              comparison={stage === 'rover' ? beforeAfter(mission, routes, coverage, hazards, data.routeAudit) : null}
               toggles={(
                 <LayerToggles
                   layers={layers}

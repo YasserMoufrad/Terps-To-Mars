@@ -27,7 +27,7 @@ function inRing(lon: number, lat: number, ring: Ring): boolean {
   return inside;
 }
 
-function polygons(geometry: { type: string; coordinates: unknown }): Ring[][] {
+export function polygons(geometry: { type: string; coordinates: unknown }): Ring[][] {
   // Purpose: Polygon or MultiPolygon as a list of polygons (outer ring first, then holes).
   if (geometry.type === 'Polygon') return [geometry.coordinates as Ring[]];
   if (geometry.type === 'MultiPolygon') return geometry.coordinates as Ring[][];

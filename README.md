@@ -1,6 +1,6 @@
 # Terps To Mars
 
-**NASA Space Apps Challenge 2026 · Interplanetary Survival Guide: Martian Map · Team Terrapin Trekkers**
+**NASA Space Apps Challenge 2026 · Interplanetary Survival Guide: Martian Map · Team Terps to Mars**
 
 A Mars spacewalk planning map built on real NASA data. Simulated robots scout first so a crew can evaluate candidate routes to possible ice exposures in Milankovič crater, a place no rover or human has visited.
 
@@ -86,4 +86,4 @@ Our engineers were the creative brain in the loop; AI coding assistants were the
 
 ## Team
 
-Terrapin Trekkers: Yasser, Nic, Brianna, Geury, Samar and Kenneth.
+Terps to Mars: Yasser, Nic, Brianna, Geury, Samar and Kenneth.

@@ -23,12 +23,13 @@ import {
 import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } from './stageFilters';
 import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
 import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
-import type { LayerVisibility } from './layers';
+import { NIGHT_IR_RAMP, NIGHT_IR_STRETCH, nightIrStretch, type LayerVisibility } from './layers';
 import { routeLabel } from './routeLabel';
 import { FitToMission } from './FitToMission';
 import { MapLegend, type LegendKeys, type LineKey } from './MapLegend';
 import { CoordinateReadout } from './CoordinateReadout';
 import { MarsScaleBar } from './MarsScaleBar';
+import { MeasureButton, MeasureLayer } from './MeasureTool';
 import { dronePerchLabel } from './reviewPresentation';
 import { crewFaceTarget } from './scarpTarget';
 import {
@@ -61,6 +62,12 @@ const THEMIS_ATTRIBUTION = 'THEMIS: NASA/JPL/ASU via Mars Trek';
 const VIKING_COLOR_URL =
   'https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg';
 const VIKING_COLOR_ATTRIBUTION = 'Color: Viking MDIM 2.1 color mosaic, NASA/USGS via Mars Trek';
+
+// THEMIS night-time infrared controlled mosaic (100 m/px; tiles stop at zoom 9 here, checked 2026-11-16).
+// Night brightness is a relative proxy for how well the ground holds heat (firm vs loose), not a temperature.
+const THEMIS_NIGHT_URL =
+  'https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_NightIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png';
+const THEMIS_NIGHT_ATTRIBUTION = 'THEMIS Night IR: NASA/JPL/ASU via Mars Trek';
 
 const EVIDENCE_LABEL = { nasa_derived: 'NASA-derived', inferred: 'Inferred', simulated: 'Simulated' } as const;
 
@@ -155,6 +162,7 @@ export function MarsMap({
   const [inspectedTarget, setInspectedTarget] = useState<InspectionTarget | null>(null);
   const [selection, setSelection] = useState<Inspection | null>(null);
   const [replay, setReplay] = useState('context'); // rover stage: show both routes, or only before / after
+  const [measuring, setMeasuring] = useState(false); // measuring tool on: map clicks place points A and B
   const selectRoute = (id: string, point: LatLon | null = null) => {
     // Open the inspector for route `id`; `point` (a click) picks the nearest crossed native DTM cell. Only a current
     // audit whose feature snapshot matches the drawn route supplies measurements.
@@ -253,6 +261,7 @@ export function MarsMap({
       ctx9: createTileErrorReporter(appLogger, 'ctx_z9'),
       ctx10: createTileErrorReporter(appLogger, 'ctx_z10'),
       color: createTileErrorReporter(appLogger, 'viking_color'),
+      nightIr: createTileErrorReporter(appLogger, 'themis_night_ir'),
     }),
     [],
   );
@@ -319,7 +328,9 @@ export function MarsMap({
         <GuidedMapFocus action={guidedAction} mission={mission} />
         <CoordinateReadout />
         <MarsScaleBar />
-        <TerrainClick analysis={analysis} onSelect={setSelection} />
+        {/* While measuring, clicks place measure points instead of opening the terrain inspector. */}
+        {!measuring && <TerrainClick analysis={analysis} onSelect={setSelection} />}
+        <MeasureLayer active={measuring} />
 
         <TileLayer
           url={THEMIS_URL}
@@ -406,6 +417,22 @@ export function MarsMap({
             )}
           </Pane>
         )}
+        {/* Night infrared, above the HiRISE detail (220) and the color (250) but under the slope map (380) and every
+            data layer, so routes and hazards stay readable on top of it. */}
+        {layers.nightIr && (
+          // `filter` stretches the site's brightness range and false-colors it (NightIrFilter below): display only,
+          // the NASA tiles themselves are unchanged.
+          <Pane name="night-ir" style={{ zIndex: 300, filter: 'url(#night-ir-ramp)' }}>
+            <TileLayer
+              url={THEMIS_NIGHT_URL}
+              attribution={THEMIS_NIGHT_ATTRIBUTION}
+              maxNativeZoom={9}
+              maxZoom={MAP_MAX_ZOOM}
+              opacity={0.9}
+              eventHandlers={onTileError(tileErrors.nightIr)}
+            />
+          </Pane>
+        )}
         <ImageryControls
           overview={{
             geometries: stageRoutes.features.map((f) => f.geometry.coordinates),
@@ -465,8 +492,9 @@ export function MarsMap({
 
         {layers.hazards && (
           <GeoJSON
-            key={`hazards-${stage}`}
+            key={`hazards-${stage}-${measuring}`}
             data={asGeoJson(visibleHazards)}
+            interactive={!measuring} // while measuring, a click on a hazard places a point instead
             style={(f) => hazardStyle(f?.properties as HazardProperties)}
             onEachFeature={(f, layer) => {
               const p = f.properties as HazardProperties;
@@ -488,8 +516,9 @@ export function MarsMap({
           interactive={false}
         />
         <GeoJSON
-          key={`routes-${stage}-${replay}`}
+          key={`routes-${stage}-${replay}-${measuring}`}
           data={asGeoJson(drawnRoutes)}
+          interactive={!measuring} // while measuring, a click on a route places a point instead
           style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id)), readiness[p.id]?.state === 'go'); }}
           onEachFeature={(f, layer) => {
             const p = f.properties as DrawnRouteProperties;
@@ -622,6 +651,11 @@ export function MarsMap({
       {selection && typeof document !== 'undefined' && document.getElementById('analysis-inspector-slot')
         && createPortal(<RouteInspector selection={selection} audit={routeAudit} onClose={() => setSelection(null)} />, document.getElementById('analysis-inspector-slot')!)}
 
+      <NightIrFilter />
+      <MeasureButton active={measuring} onToggle={() => {
+        appLogger.info('ui', 'measure.toggle', { on: !measuring });
+        setMeasuring((m) => !m);
+      }} />
       <MapLegend keys={legendKeys} />
       {layers.slope && slopeMeta && slopePublished && <SlopeLegend meta={slopeMeta} state={slopeState} opacity={slopeOpacity} onOpacity={setSlopeOpacity} onRetry={retrySlope} />}
       {!imageryLoaded && <div className="map-loading">Loading Mars imagery…</div>}
@@ -661,6 +695,29 @@ function TerrainClick({ analysis, onSelect }: { analysis: AnalysisResults | unde
     appLogger.info('analysis', 'terrain.inspect', { point, inside, state: analysis?.state });
   } });
   return null;
+}
+
+function NightIrFilter() {
+  // Purpose: the SVG filter the night-IR pane uses: first a linear stretch so the site's 2nd-98th percentile brightness
+  // (NIGHT_IR_STRETCH) fills 0..1, then a lookup table that maps that gray to the blue (loose) → orange (firm) ramp.
+  const { slope, intercept } = nightIrStretch(NIGHT_IR_STRETCH.low, NIGHT_IR_STRETCH.high);
+  const table = (i: 0 | 1 | 2) => NIGHT_IR_RAMP.map((c) => c[i]).join(' ');
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+      <filter id="night-ir-ramp" colorInterpolationFilters="sRGB">
+        <feComponentTransfer>
+          <feFuncR type="linear" slope={slope} intercept={intercept} />
+          <feFuncG type="linear" slope={slope} intercept={intercept} />
+          <feFuncB type="linear" slope={slope} intercept={intercept} />
+        </feComponentTransfer>
+        <feComponentTransfer>
+          <feFuncR type="table" tableValues={table(0)} />
+          <feFuncG type="table" tableValues={table(1)} />
+          <feFuncB type="table" tableValues={table(2)} />
+        </feComponentTransfer>
+      </filter>
+    </svg>
+  );
 }
 
 function uncertaintyRing(point: [number, number], radius: number): [number, number][] {

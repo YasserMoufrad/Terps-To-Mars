@@ -1,7 +1,8 @@
 // Checkboxes for the optional map layers. Pipeline layers that do not exist yet
 // are shown as unavailable instead of disappearing, so nobody wonders where they went.
 
-import { LAYER_LABELS, type LayerVisibility } from '../map/layers';
+import { Fragment } from 'react';
+import { LAYER_EXPLANATIONS, LAYER_LABELS, rampGradient, type LayerVisibility } from '../map/layers';
 
 interface LayerTogglesProps {
   layers: LayerVisibility;
@@ -20,7 +21,8 @@ export function LayerToggles({ layers, available, onChange, notes = {} }: LayerT
       <h3>Layers</h3>
       <p className="muted">Slope map shows DTM terrain classes; scouting coverage is simulated. Switch them on to compare evidence, not to clear a route.</p>
       {keys.map((key) => (
-        <label key={key} className={available[key] ? undefined : 'unavailable'}>
+        <Fragment key={key}>
+        <label className={available[key] ? undefined : 'unavailable'}>
           <input
             type="checkbox"
             checked={layers[key] && available[key]}
@@ -31,6 +33,16 @@ export function LayerToggles({ layers, available, onChange, notes = {} }: LayerT
           {!available[key] && <span className="muted"> (waiting for pipeline)</span>}
           {available[key] && notes[key] && <span className="layer-note"> ({notes[key]})</span>}
         </label>
+        {/* How to read the layer, shown under its checkbox only while it is on. */}
+        {layers[key] && available[key] && key === 'nightIr' && (
+          // Color key for the night-IR ramp (same colors as the map filter, from rampGradient).
+          <div className="ir-key" aria-label="Night infrared color key: blue cools fast, looser; orange stays warm, firmer">
+            <div className="ir-key-bar" style={{ background: rampGradient() }} />
+            <div className="ir-key-labels"><span>Cools fast: looser</span><span>Stays warm: firmer</span></div>
+          </div>
+        )}
+        {layers[key] && available[key] && LAYER_EXPLANATIONS[key] && <p className="layer-explain">{LAYER_EXPLANATIONS[key]}</p>}
+        </Fragment>
       ))}
     </section>
   );
