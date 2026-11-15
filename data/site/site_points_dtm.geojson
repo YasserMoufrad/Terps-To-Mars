@@ -8,15 +8,15 @@
    "properties": {
     "id": "habitat",
     "name": "Habitat",
-    "where": "Geury's habitat moved 59 m to flat ground (his spot had 24 cells >= 20 deg within 15 m)",
-    "elevation_m": -3920.6,
+    "where": "Moved 2026-11-14 (Yasser) about 2.5 km north onto the plain beside the crew's drive, so the whole drive + walk trip is under the 5,000 m round-trip rule even if driving counts; steepest cell within 15 m 17.7 deg (none >= 20), roughness 0.3 m, outside every scarp no-go zone, rover-drivable. Re-checked by pipeline.mission_geography (mission_geography_report.json)",
+    "elevation_m": -3971.4,
     "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
    },
    "geometry": {
     "type": "Point",
     "coordinates": [
-     -147.901301,
-     54.12777
+     -147.906865,
+     54.150243
     ]
    }
   },

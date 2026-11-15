@@ -1,5 +1,5 @@
 {
-  "_note": "Habitat -> viewpoints walking the whole way (expected infeasible: ~4 km straight-line round trip). DTM-checked points.",
+  "_note": "Habitat -> viewpoints walking the whole way (about 2.5 km straight-line each way; expected over the walking budget). DTM-checked points.",
   "window_latlon": {
     "south": 54.12,
     "west": -147.925,
@@ -8,8 +8,8 @@
   },
   "points": {
     "habitat": {
-      "lat": 54.12777,
-      "lon": -147.901301
+      "lat": 54.150243,
+      "lon": -147.906865
     },
     "observation_primary": {
       "lat": 54.172784,
