@@ -477,7 +477,7 @@ export function MarsMap({
                 : p.kind === 'rover_path'
                   ? 'Scout rover path (simulated, uncrewed)'
                   : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}` +
-                    (go ? ' (scouted: go for EVA; simulated scouting, not a real-world certification)'
+                    (go ? ' (conditional planning go after simulated scouting; crew clearance not established)'
                       : `${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`);
             const legs = legSummary(p);
             // Prefer measured numbers from the route audit (#18) over the file's claimed stats; otherwise show the
@@ -507,9 +507,9 @@ export function MarsMap({
           ) : null;
         })}
 
-        <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Habitat', mission.endpoints.habitat) }}
+        <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Habitat (landing site)', mission.endpoints.habitat) }}
           center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
-          <Tooltip permanent direction="left" className="map-label">Habitat</Tooltip>
+          <Tooltip permanent direction="left" className="map-label">Habitat (landing site)</Tooltip>
         </CircleMarker>
         <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Observation primary', mission.endpoints.observation_primary) }}
           center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
