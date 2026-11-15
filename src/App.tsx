@@ -136,6 +136,7 @@ export function App() {
               onCloseHazard={() => setSelectedHazard(null)}
               routeNotices={routeNotices}
               summary={stageSummary(stage, { mission, hazards, routes, coverage, readiness })}
+              mainRoute={routes.features.find((r) => r.properties.id === mission.discovery.after_route_id)}
               toggles={(
                 <LayerToggles
                   layers={layers}
