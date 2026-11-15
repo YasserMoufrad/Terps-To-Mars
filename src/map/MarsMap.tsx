@@ -1,6 +1,6 @@
 // The map itself: Mars basemap tiles plus our data layers for the current stage.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { GeoJsonObject } from 'geojson';
@@ -9,8 +9,14 @@ import { appLogger } from '../lib/appLogger';
 import { createTileErrorReporter, type TileCoords } from './tileErrors';
 import type {
   StageId, Mission, HazardCollection, RouteCollection, CoverageCollection,
-  HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds,
+  HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds, HiriseMeta, HiriseTiles,
 } from '../data/types';
+import { MAP_MAX_ZOOM, imageryAttribution } from './imagery';
+import { ImageryControls } from './ImageryControls';
+import {
+  EMPTY_LOAD, applyLoadEvent, combinedState, decodedSizeMatches, registrationNote,
+  type ImageryLoadState, type LayerLoad,
+} from './imageryState';
 import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } from './stageFilters';
 import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle, DRIVE_COLOR } from './layerStyles';
 import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
@@ -47,9 +53,12 @@ interface MarsMapProps {
   routes: RouteCollection;
   coverage: CoverageCollection;
   hiriseBounds: OverlayBounds | null;
+  hiriseMeta: HiriseMeta | null;
+  hiriseTiles: HiriseTiles[];
   slopeBounds: OverlayBounds | null;
   layers: LayerVisibility;
   onSelectHazard: (hazard: HazardProperties) => void;
+  onImageryState?: (state: ImageryLoadState) => void; // reports the HiRISE load state to the layer toggles
 }
 
 function toLatLng(p: LatLon): [number, number] {
@@ -73,12 +82,47 @@ function dataUrl(file: string): string {
 }
 
 export function MarsMap({
-  stage, mission, hazards, routes, coverage, hiriseBounds, slopeBounds, layers, onSelectHazard,
+  stage, mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, hiriseTiles, slopeBounds, layers, onSelectHazard,
+  onImageryState,
 }: MarsMapProps) {
+  // `hiriseTiles`: published HiRISE tile sets (context ring first, native corridor last).
   // Purpose: draw the basemap and every data layer for the current `stage`.
   // `layers` holds the user's toggles; `onSelectHazard` opens a hazard's evidence card.
+  // `hiriseMeta` describes the native-resolution HiRISE image (pixel size, measured alignment).
   // `imageryLoaded` hides the loading message once the first CTX tiles arrive.
   const [imageryLoaded, setImageryLoaded] = useState(false);
+  // HiRISE load tracking: per-layer counters (key = tile role or "overlay"), the retry `attempt`
+  // (bumping it remounts the layers), and a decoded-size mismatch that withdraws the 4K overlay.
+  const [sizeMismatch, setSizeMismatch] = useState(false);
+  const showOverlay = hiriseBounds !== null && !sizeMismatch && !hiriseTiles.some((t) => t.role === 'core');
+  // The single 4K overlay starts requesting its image as soon as it mounts, so it begins "pending".
+  const initialLoads = (): Record<string, LayerLoad> => (showOverlay ? { overlay: { ...EMPTY_LOAD, pending: true } } : {});
+  const [hdLoads, setHdLoads] = useState<Record<string, LayerLoad>>(initialLoads);
+  const [attempt, setAttempt] = useState(0);
+  const loggedRef = useRef('');
+  const hdPublished = hiriseTiles.length > 0 || showOverlay;
+  const hdState = combinedState(Object.values(hdLoads), hdPublished, layers.hirise);
+  const hdEvent = (key: string, kind: 'loading' | 'load' | 'tileload' | 'error') =>
+    setHdLoads((prev) => ({ ...prev, [key]: applyLoadEvent(prev[key] ?? EMPTY_LOAD, kind) }));
+
+  // Report and log the HiRISE state once per attempt and state (pans that reload tiles do not re-log).
+  useEffect(() => {
+    onImageryState?.(hdState);
+    const key = `${attempt}:${hdState}`;
+    if (hdState === 'loading' || hdState === 'ready' || loggedRef.current === key) return;
+    loggedRef.current = key;
+    const fields = { imagery_state: hdState, attempt, tiles: hiriseTiles.map((t) => t.role), overlay: showOverlay };
+    if (hdState === 'failed' || hdState === 'partial') appLogger.warn('map', 'imagery.load_state', fields);
+    else appLogger.info('map', 'imagery.load_state', fields);
+  }, [hdState, attempt]);
+
+  const retryImagery = () => {
+    // Purpose: drop the failed attempt's counters and remount the HiRISE layers.
+    appLogger.info('map', 'imagery.retry', { attempt: attempt + 1 });
+    setSizeMismatch(false);
+    setHdLoads(hiriseBounds && !hiriseTiles.some((t) => t.role === 'core') ? { overlay: { ...EMPTY_LOAD, pending: true } } : {});
+    setAttempt((a) => a + 1);
+  };
 
   // One tile-error reporter per basemap layer, created once for the life of the map.
   const tileErrors = useMemo(
@@ -115,7 +159,7 @@ export function MarsMap({
         center={toLatLng(mission.site)}
         zoom={12}
         minZoom={4}
-        maxZoom={15}
+        maxZoom={MAP_MAX_ZOOM}
       >
         <FitToMission
           geometries={[...routes.features, ...hazards.features].map((f) => f.geometry.coordinates)}
@@ -126,18 +170,18 @@ export function MarsMap({
           url={THEMIS_URL}
           attribution={THEMIS_ATTRIBUTION}
           maxNativeZoom={9}
-          maxZoom={15}
+          maxZoom={MAP_MAX_ZOOM}
           eventHandlers={onTileError(tileErrors.themis)}
         />
         {/* Three layers, best on top. The CTX server sometimes fails a zoom-10 tile
             (HTTP 500); when that happens the zoom-9 CTX copy underneath shows through,
             and THEMIS is the last resort. A failed tile never leaves a black hole. */}
-        <TileLayer url={CTX_URL} maxNativeZoom={9} maxZoom={15} eventHandlers={onTileError(tileErrors.ctx9)} />
+        <TileLayer url={CTX_URL} maxNativeZoom={9} maxZoom={MAP_MAX_ZOOM} eventHandlers={onTileError(tileErrors.ctx9)} />
         <TileLayer
           url={CTX_URL}
           attribution={CTX_ATTRIBUTION}
           maxNativeZoom={10}
-          maxZoom={15}
+          maxZoom={MAP_MAX_ZOOM}
           eventHandlers={{ load: () => setImageryLoaded(true), ...onTileError(tileErrors.ctx10) }}
         />
 
@@ -149,16 +193,75 @@ export function MarsMap({
               url={VIKING_COLOR_URL}
               attribution={VIKING_COLOR_ATTRIBUTION}
               maxNativeZoom={7}
-              maxZoom={15}
+              maxZoom={MAP_MAX_ZOOM}
               eventHandlers={onTileError(tileErrors.color)}
             />
           </Pane>
         )}
 
-        {/* Pipeline images: drawn only once Nic's bounds files exist and the toggle is on. */}
-        {hiriseBounds && layers.hirise && (
-          <ImageOverlay url={dataUrl('hirise.jpg')} bounds={toCorners(hiriseBounds)} attribution="HiRISE: NASA/JPL-Caltech/UArizona" />
+        {/* Native-resolution HiRISE (grayscale RED band), drawn only once Nic's bounds file exists.
+            Its pane sits between the basemap tiles (200) and the color pane (250), so the real
+            Viking color tints it exactly as it tints CTX: hue from color data, every detail from HiRISE. */}
+        {/* Tiles: the ~1 m context ring (zoom 12-15) underneath, native ~0.25 m corridor (zoom 16+)
+            on top; Leaflet fetches only the tiles on screen. The single 4K overlay is the fallback
+            when no native core tiles are published. */}
+        {layers.hirise && hdPublished && (
+          <Pane name="hirise-detail" style={{ zIndex: 220 }}>
+            {hiriseTiles.map((t, i) => (
+              <TileLayer
+                key={`${t.role}-${attempt}`}
+                url={dataUrl(t.url_template)}
+                bounds={[[t.bounds.south, t.bounds.west], [t.bounds.north, t.bounds.east]]}
+                minZoom={t.min_zoom}
+                maxNativeZoom={t.max_native_zoom}
+                maxZoom={MAP_MAX_ZOOM}
+                attribution={i === 0 ? imageryAttribution(hiriseMeta) : undefined}
+                eventHandlers={{
+                  loading: () => hdEvent(t.role, 'loading'),
+                  tileload: () => hdEvent(t.role, 'tileload'),
+                  tileerror: () => hdEvent(t.role, 'error'),
+                  load: () => hdEvent(t.role, 'load'),
+                }}
+              />
+            ))}
+            {showOverlay && hiriseBounds && (
+              <ImageOverlay
+                key={`overlay-${attempt}`}
+                url={dataUrl('hirise.jpg')}
+                bounds={toCorners(hiriseBounds)}
+                attribution={hiriseTiles.length === 0 ? imageryAttribution(hiriseMeta) : undefined}
+                eventHandlers={{
+                  load: (e) => {
+                    // A decoded size that disagrees with hirise.meta.json means image and metadata come from
+                    // different exports: withdraw the image instead of showing it with a wrong caption.
+                    const img = (e.target as L.ImageOverlay).getElement();
+                    const natural: [number, number] = [img?.naturalWidth ?? 0, img?.naturalHeight ?? 0];
+                    if (!decodedSizeMatches(natural, hiriseMeta)) {
+                      appLogger.error('map', 'imagery.size_mismatch', { decoded: natural, expected: hiriseMeta?.output_pixels });
+                      setSizeMismatch(true);
+                      hdEvent('overlay', 'error');
+                    } else {
+                      hdEvent('overlay', 'tileload');
+                    }
+                    hdEvent('overlay', 'load');
+                  },
+                  error: () => { hdEvent('overlay', 'error'); hdEvent('overlay', 'load'); },
+                }}
+              />
+            )}
+          </Pane>
         )}
+        <ImageryControls
+          overview={{
+            geometries: [...routes.features, ...hazards.features].map((f) => f.geometry.coordinates),
+            points: [mission.endpoints.habitat, mission.endpoints.observation_primary],
+          }}
+          hiriseBounds={hiriseBounds}
+          inspectCandidates={[mission.endpoints.observation_primary, mission.site]}
+          state={sizeMismatch && hiriseTiles.length === 0 ? 'failed' : hdState}
+          registration={registrationNote(hiriseMeta)}
+          onRetry={retryImagery}
+        />
         {slopeBounds && layers.slope && (
           <ImageOverlay url={dataUrl('slope.png')} bounds={toCorners(slopeBounds)} opacity={0.6} />
         )}
@@ -227,8 +330,9 @@ export function MarsMap({
         <CircleMarker center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
           <Tooltip permanent direction="left" className="map-label">Habitat</Tooltip>
         </CircleMarker>
-        <CircleMarker center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#3ddc97', fillOpacity: 1, weight: 2 }}>
-          <Tooltip permanent direction="right" className="map-label">Observation point</Tooltip>
+        <CircleMarker center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
+          {/* Amber, not green: the point is an unconfirmed candidate, not a cleared site. */}
+          <Tooltip permanent direction="right" className="map-label">Observation point (candidate)</Tooltip>
         </CircleMarker>
 
         {stage === 'rover' && (

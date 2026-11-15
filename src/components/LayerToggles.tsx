@@ -7,11 +7,13 @@ interface LayerTogglesProps {
   layers: LayerVisibility;
   available: Record<keyof LayerVisibility, boolean>;
   onChange: (next: LayerVisibility) => void;
+  notes?: Partial<Record<keyof LayerVisibility, string>>; // load problems, e.g. HiRISE "failed to load"
 }
 
-export function LayerToggles({ layers, available, onChange }: LayerTogglesProps) {
+export function LayerToggles({ layers, available, onChange, notes = {} }: LayerTogglesProps) {
   // Purpose: one checkbox per optional layer. `available` disables layers whose data
-  // does not exist yet; `onChange` receives the whole new visibility object.
+  // does not exist yet; `onChange` receives the whole new visibility object; `notes` says when a
+  // checked layer is not actually showing, so a ticked box never implies a failed image loaded.
   const keys = Object.keys(LAYER_LABELS) as (keyof LayerVisibility)[];
   return (
     <section className="card toggles">
@@ -26,6 +28,7 @@ export function LayerToggles({ layers, available, onChange }: LayerTogglesProps)
           />
           {LAYER_LABELS[key]}
           {!available[key] && <span className="muted"> (waiting for pipeline)</span>}
+          {available[key] && notes[key] && <span className="layer-note"> ({notes[key]})</span>}
         </label>
       ))}
     </section>
