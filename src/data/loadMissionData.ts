@@ -14,6 +14,8 @@ import {
 } from './types.ts';
 import { silentLogger, type Logger } from '../lib/logger.ts';
 import { checkAuditFreshness } from '../map/auditFreshness.ts';
+import { loadAnalysis, stable, REPORT_INPUTS, type AnalysisResults } from './analysis.ts';
+import { checkScienceTargets, DEFAULT_SCIENCE_TARGETS, type ScienceTargets } from '../map/scienceTargets.ts';
 
 export interface LoadIssue {
   file: string;
@@ -22,6 +24,8 @@ export interface LoadIssue {
 }
 
 export interface MissionData {
+  analysis: AnalysisResults; // offline analysis reports with exact-byte freshness (analysis_manifest.json)
+  scienceTargets: ScienceTargets; // named scarps to inspect; the active objective may be unresolved
   hazards: HazardCollection | null;
   routes: RouteCollection | null;
   coverage: CoverageCollection | null;
@@ -80,6 +84,14 @@ function checkAllowed(
   }
 }
 
+function unsupportedVersion(data: { schema_version?: unknown }, file: string, issues: LoadIssue[]): boolean {
+  // Purpose: true (and an error issue) when a core contract file declares a schema_version the app cannot read;
+  // such a file is ignored rather than drawn with fields the app may misread (PR #20, accepting 1.0 and 1.1).
+  if ((SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(data.schema_version)) return false;
+  issues.push({ file, severity: 'error', message: `Unsupported schema_version "${String(data.schema_version)}" (app reads ${SUPPORTED_SCHEMA_VERSIONS.join(', ')}); file ignored.` });
+  return true;
+}
+
 function checkSchemaVersion(data: { schema_version?: unknown }, file: string, issues: LoadIssue[]): void {
   // Purpose: record an error when a file's schema_version is not one the app supports
   // (SUPPORTED_SCHEMA_VERSIONS: 1.0 and 1.1; the current version is SCHEMA_VERSION).
@@ -115,6 +127,7 @@ export function checkFeatureCollection(raw: unknown, file: string, issues: LoadI
     issues.push({ file, severity: 'error', message: 'Not a GeoJSON FeatureCollection; file ignored.' });
     return null;
   }
+  if (unsupportedVersion(raw, file, issues)) return null;
   const bad = raw.features.findIndex((f: unknown) => !isObject(f) || !isObject(f.properties)
     || typeof f.properties.id !== 'string' || !isObject(f.geometry) || typeof f.geometry.type !== 'string'
     || !coordinatesOk(f.geometry.coordinates));
@@ -136,6 +149,7 @@ export function checkMissionShape(raw: unknown, issues: LoadIssue[]): unknown | 
     issues.push({ file: 'mission.json', severity: 'error', message: 'mission.json is missing site, stages, discovery or drone; file ignored.' });
     return null;
   }
+  if (unsupportedVersion(raw, 'mission.json', issues)) return null;
   return raw;
 }
 
@@ -399,7 +413,15 @@ export function checkRouteAudit(raw: unknown, file: string, issues: LoadIssue[])
     issues.push({ file, severity: 'warning', message: 'Route audit is malformed and was ignored.' });
     return null;
   }
-  checkSchemaVersion(a, file, issues);
+  if (unsupportedVersion(a, file, issues)) return null;
+  // route_audit/3 per-cell records: every cell needs coordinates, a limit, a segment, booleans, and finite-or-null values.
+  if (a.routes.some((r) => r.cells?.some((c) => !Array.isArray(c.coordinates) || c.coordinates.length !== 2
+    || !c.coordinates.every(finite) || !finite(c.limit) || !finite(c.segment_index)
+    || typeof c.known !== 'boolean' || typeof c.inside !== 'boolean'
+    || ![c.slope, c.elevation, c.roughness_m].every((v) => v === null || finite(v))))) {
+    issues.push({ file, severity: 'warning', message: 'Route audit has invalid native-cell measurements and was ignored.' });
+    return null;
+  }
   return a as RouteAudit;
 }
 
@@ -470,6 +492,25 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
       routeAudit = null;
     }
   }
+  // Offline analysis (PR #20): reports bound to exact input bytes by analysis_manifest.json. A report is shown only
+  // while its manifest state is "current"; the fingerprint check above still decides whether the audit is usable.
+  const analysis = await loadAnalysis(baseUrl, logger);
+  const displayed: Record<string, unknown> = { 'mission.json': missionRaw, 'routes.geojson': routesRaw,
+    'hazards.geojson': hazardsRaw, 'coverage.geojson': coverageRaw, 'scarp_lines.geojson': scarpRaw,
+    'slope.meta.json': slopeMetaRaw, 'slope.bounds.json': slopeRaw };
+  for (const [name, value] of Object.entries(displayed)) {
+    // A publication or cache that changed during load must not attach verified reports to other displayed data.
+    if (value !== null && analysis.reports[name] !== undefined && stable(value) !== stable(analysis.reports[name])) {
+      analysis.state = 'stale';
+      analysis.reason = 'Displayed inputs changed during load; regenerate or reload: ' + name;
+      for (const [report, inputs] of Object.entries(REPORT_INPUTS)) if (inputs.includes(name) && analysis.reportStates) analysis.reportStates[report] = 'stale';
+      logger.warn('analysis', 'results.context_changed', { file: name, crew_clearance: 'not_established' });
+    }
+  }
+  // Without a manifest the fingerprint-checked audit still counts as current (main's behavior); with one, its state rules.
+  if (routeAudit) routeAudit.freshness = analysis.state === 'missing' ? 'current' : (analysis.reportStates?.['route_audit.json'] ?? analysis.state);
+  const scienceTargets = checkScienceTargets(analysis.reports['science_targets.json'] ?? await fetchOptional(baseUrl, 'science_targets.json', issues))
+    ?? DEFAULT_SCIENCE_TARGETS;
   if (routeAudit && routes) {
     const audited = new Set(routeAudit.routes.map((r) => r.id));
     const missing = routes.features.map((f) => f.properties.id).filter((id) => !audited.has(id));
@@ -520,6 +561,8 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
   });
 
   return {
+    analysis,
+    scienceTargets,
     hazards,
     routes,
     coverage,

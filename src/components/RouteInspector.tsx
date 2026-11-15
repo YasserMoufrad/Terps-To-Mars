@@ -18,7 +18,7 @@ export function RouteInspector({selection,audit,onClose}:{selection:Inspection;a
       {entry && <><p>Objective: {entry.objective??'Undeclared'} · Direction: {entry.orientation??'Not measured'}</p>
         <p>Start: {selection.route.geometry.coordinates[0]?.join(', ')??'Not measured'} · End: {selection.route.geometry.coordinates.at(-1)?.join(', ')??'Not measured'}</p>
         <p>Vertices: {selection.route.geometry.coordinates.length} · Mode thresholds: walk {audit?.thresholds_deg.crew_exclude}°, drive {audit?.thresholds_deg.rover_exclude}° (provisional)</p>
-        <p>First exclusion along route: {measured(entry.first_exclusion_at_m,' m')} · actual cell: {entry.first_exclusion?.coordinates.join(', ')??'Not measured'}</p>
+        <p>First exclusion along route: {measured(entry.first_exclusion_at_m,' m')} · actual cell: {entry.first_exclusion?.coordinates?.join(', ')??'Not measured'}</p>
         <ul>{entry.reasons.map(r=><li key={r}>{r}</li>)}</ul>
         <div dangerouslySetInnerHTML={{__html:profileSvg(entry.profile,audit?.thresholds_deg.crew_caution??15,(entry.agent==='rover'?audit?.thresholds_deg.rover_exclude:audit?.thresholds_deg.crew_exclude)??20)}}/>
       </>}

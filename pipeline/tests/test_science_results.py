@@ -34,18 +34,23 @@ def test_first_exclusion_is_an_actual_crossed_native_cell():
     coords = [lonlat(grid, 10), lonlat(grid, 90)]
     result = audit_route(route(coords), mission_for(coords[0], coords[1]), grid, RULES)
     cell = result["first_exclusion"]
-    assert cell in result["cells"]
-    assert cell["coordinates"] == grid.cell_lonlat(cell["col"], cell["row"])
+    crossed = {k: cell[k] for k in ("segment_index", "coordinates", "col", "row", "slope", "limit")}
+    assert any(all(c[k] == v for k, v in crossed.items()) for c in result["cells"]), "first exclusion is a crossed cell"
+    assert cell["coordinates"] == pytest.approx(grid.cell_lonlat(cell["col"], cell["row"]), abs=1e-7)
+    assert [cell["lon"], cell["lat"]] == cell["coordinates"] and cell["kind"] == "slope"
     assert cell["slope"] >= cell["limit"] and cell["segment_index"] == 0
     assert cell["distance_m"] == pytest.approx(result["first_exclusion_at_m"], abs=.1)
 
 
-def test_backup_has_no_invented_observation_objective():
-    """Backup return paths require a declared objective; do not bind them to a backup waypoint."""
+def test_backup_objective_is_a_declared_mission_pair():
+    """A backup joins the habitat with a declared viewpoint (main #19: either one); never an invented point."""
     grid = grid_with_wall()
     coords = [lonlat(grid, 10), lonlat(grid, 40)]
     result = audit_route(route(coords, kind="backup"), mission_for(coords[0], coords[1]), grid, RULES)
-    assert result["objective"] == "undeclared" and "end_offset_m" not in result
+    assert result["objective"] in ("habitat->observation_backup", "habitat->observation_primary")
+    no_viewpoints = {"endpoints": {"habitat": mission_for(coords[0], coords[1])["endpoints"]["habitat"]}}
+    undeclared = audit_route(route(coords, kind="backup"), no_viewpoints, grid, RULES)
+    assert undeclared["objective"] == "undeclared" and "end_offset_m" not in undeclared
 
 
 def test_walk_only_adapter_has_measured_leg_length(tmp_path):

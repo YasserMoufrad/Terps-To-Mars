@@ -5,7 +5,7 @@
 
 import type { Mission, RouteAudit, RouteFeature, ScarpLines, SlopeMeta } from '../data/types';
 
-export const AUDIT_ALGORITHM_VERSION = 'route_audit/2';
+export const AUDIT_ALGORITHM_VERSION = 'route_audit/3';
 
 async function sha256Hex(text: string): Promise<string> {
   // Purpose: hex SHA-256 of a UTF-8 string (Web Crypto, available in browsers and Node 20+).

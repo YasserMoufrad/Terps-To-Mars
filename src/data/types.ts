@@ -279,12 +279,21 @@ export interface RouteAuditEntry {
   cells_in_edge_setback?: number;
   cells_in_rockfall_zone?: number;
   objective?: string; // e.g. "habitat->observation_backup": which mission endpoints the line joins
-  first_exclusion?: { distance_m: number; lon: number; lat: number; kind: string }; // first excluded cell crossed
+  orientation?: string; // "outbound" or "return" relative to the objective
+  cells_caution?: number;
+  first_exclusion_at_m?: number;
+  // First excluded cell crossed: lon/lat/kind (route_audit/2) plus coordinates and segment (route_audit/3).
+  first_exclusion?: { distance_m: number; lon: number; lat: number; kind: string; coordinates?: [number, number]; segment_index?: number };
   fingerprint?: string; // SHA-256 of the audited route (see src/map/auditFreshness.ts)
-  profile?: [number, number | null, number | null][]; // [distance_m, elevation_m, slope_deg]
+  input_route?: RouteFeature; // exact feature snapshot the audit measured (route_audit/3)
+  cells?: import('../map/routeInspection').AuditCell[]; // every crossed native DTM cell (route_audit/3)
+  artifact_review?: string; // "not_reviewed": no stereo-artifact mask
+  // [distance_m, elevation_m, slope_deg, limit_deg?, mode?]: limit/mode added in route_audit/3
+  profile?: [number, number | null, number | null, number?, string?][];
 }
 
 export interface RouteAudit {
+  freshness?: import('./analysis').Freshness; // set by the loader from analysis_manifest.json (PR #20)
   schema_version: string;
   routes_sha256: string;
   mission_placeholder: boolean;

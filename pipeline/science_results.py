@@ -52,8 +52,12 @@ def verify(data_dir):
     return manifest
 
 
-def publish(data_dir, dtm, eva_minutes=240, walk_speed=20, site_minutes=20):
-    """Publish current mission analyses; DTM is immutable NASA input, times are modeled minutes."""
+def publish(data_dir, dtm, eva_minutes=240, walk_speed=20, site_minutes=20, sites=Path("pipeline/site/mission_sites.json")):
+    """Publish current mission analyses; DTM is immutable NASA input, times are modeled minutes.
+
+    sites: mission_sites.json whose scarp profiles drive the audit's edge-setback/rockfall checks, so this audit
+    matches the one pipeline.mission_geography publishes (same zones, same fingerprint).
+    """
     root = Path(data_dir)
     rules = load_rules()
     mission = json.loads((root / "mission.json").read_text())
@@ -63,7 +67,7 @@ def publish(data_dir, dtm, eva_minutes=240, walk_speed=20, site_minutes=20):
                "sha256": digest(dtm), "evidence": "nasa_derived",
                "artifact_review": "not_reviewed", "vertical_uncertainty_m": None})
     audit = audit_file(root / "routes.geojson", root / "mission.json", dtm,
-                       root / "scarp_lines.geojson", rules)
+                       root / "scarp_lines.geojson", rules, sites_path=sites if Path(sites).is_file() else None)
     write_json(root / "route_audit.json", audit)
     coords = [c for f in routes["features"] for c in f["geometry"]["coordinates"]]
     coords += [[p["lon"], p["lat"]] for p in mission["endpoints"].values()]

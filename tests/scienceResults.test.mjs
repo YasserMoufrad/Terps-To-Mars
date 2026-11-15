@@ -37,14 +37,19 @@ test('segment click selects the nearest native cell, not a route maximum',()=>{
 test('science target remains unresolved; absent upper geometry and outside imagery disable inspection',()=>{
   assert.equal(activeScienceTarget(DEFAULT_SCIENCE_TARGETS,[]).target,null);
   const lines=read('scarp_lines.geojson');
-  assert.match(resolveScienceTarget(DEFAULT_SCIENCE_TARGETS.targets[1],lines,[]).reason,/not published/);
+  // The upper scarp is published since #17; removing its lines must disable it with a reason.
+  const mainOnly={...lines,features:lines.features.filter(f=>!f.properties.id.startsWith('upper-'))};
+  assert.match(resolveScienceTarget(DEFAULT_SCIENCE_TARGETS.targets[1],mainOnly,[]).reason,/not published/);
+  assert.match(resolveScienceTarget(DEFAULT_SCIENCE_TARGETS.targets[1],lines,[]).reason,/outside/);
   assert.match(resolveScienceTarget(DEFAULT_SCIENCE_TARGETS.targets[0],lines,[]).reason,/outside/);
   assert.equal(checkScienceTargets({...DEFAULT_SCIENCE_TARGETS,status:'selected',active_id:'invented'}),null);
   assert.equal(checkScienceTargets({...DEFAULT_SCIENCE_TARGETS,schema_version:'1.1'}),null);
 });
 test('rejected claimed-ok geometry never logs positive feasibility',()=>{
   const events=[],logger=createLogger({runId:'science-test',sink:e=>events.push(e)});
-  logRouteReview(logger,routes.features.find(f=>f.properties.status==='ok'),'rover',audit);
+  // No published route claims ok (the audit flags that as an overclaim), so test a copy that does.
+  const claimedOk=structuredClone(routes.features.find(f=>f.properties.kind==='rover_path'));claimedOk.properties.status='ok';
+  logRouteReview(logger,claimedOk,'rover',audit);
   assert.equal(events[0].geometric_feasibility,false);assert.equal(events[0].crew_clearance,'not_established');
 });
 test('all published bytes verify and changed mission or artifact bytes become stale',async()=>{

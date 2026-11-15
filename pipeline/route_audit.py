@@ -30,7 +30,9 @@ from pipeline.terrain import MARS_GEOGRAPHIC, analyze, load_rules, read_terrain,
 SCHEMA_VERSION = "1.0"
 PROFILE_POINTS = 240  # elevation-profile samples kept per route in the JSON
 LENGTH_TOLERANCE_M = 15.0  # plus 2 % of the length: claimed stats are rounded
-ALGORITHM_VERSION = "route_audit/2"  # bump when the audit logic or the fingerprint format changes
+ALGORITHM_VERSION = "route_audit/3"  # bump when the audit logic, payload or the fingerprint format changes
+# route_audit/3 (PR #20): per-cell records (segment, coordinates, roughness), input_route/input_context snapshots,
+# profile limit/mode columns and artifact_review.
 # Which (start, end) mission endpoints each route kind may join, in either direction; the closest pair wins.
 # A backup is any independent way between the habitat and a viewpoint: a return-home backup from the
 # primary viewpoint is as valid as an outbound route to the backup viewpoint. Rover paths declare none.
@@ -130,6 +132,7 @@ class TerrainGrid:
     def __init__(self, terrain, analysis, rules):
         """terrain: pipeline.terrain.Terrain crop; analysis: terrain.analyze output; rules: hazard rules."""
         self.terrain, self.slope, self.valid = terrain, analysis["slope"], analysis["valid"]
+        self.roughness = analysis.get("roughness")  # local elevation range (m); provisional, may be absent
         self.lon0 = float(terrain.crs.to_dict().get("lon_0", 0))
         self.caution = float(threshold(rules, "crew_caution_deg"))
         self.limits = {"crew": float(threshold(rules, "crew_exclude_deg")), "rover": float(threshold(rules, "rover_exclude_deg"))}
@@ -176,17 +179,21 @@ def traverse(grid, coords, modes=None):
     """Walk every DTM cell crossed by the polyline coords; returns per-cell rows with distance along the line.
 
     modes: per-segment "drive"/"walk" (default walk); drive cells use the rover limit, walk cells the crew limit.
+    Each row also carries segment_index (0-based polyline segment), the cell-centre [lon, lat] and roughness_m.
     """
     pixels = grid.to_pixel(coords)
     rows, along = [], 0.0
     height, width = grid.slope.shape
     modes = modes or ["walk"] * (len(coords) - 1)
-    for (a, b), (pa, pb), mode in zip(zip(coords, coords[1:]), zip(pixels, pixels[1:]), modes):
+    roughness = getattr(grid, "roughness", None)
+    for segment_index, ((a, b), (pa, pb), mode) in enumerate(zip(zip(coords, coords[1:]), zip(pixels, pixels[1:]), modes)):
         seg_m = mars_distance(a, b)
         for (col, row), t in supercover(pa[0], pa[1], pb[0], pb[1]):
             inside = 0 <= row < height and 0 <= col < width
             known = inside and bool(grid.valid[row, col])
-            rows.append({"col": col, "row": row, "distance_m": along + t * seg_m, "inside": inside, "known": known,
+            rough = float(roughness[row, col]) if known and roughness is not None and np.isfinite(roughness[row, col]) else None
+            rows.append({"segment_index": segment_index, "coordinates": list(grid.cell_lonlat(col, row)), "roughness_m": rough,
+                         "col": col, "row": row, "distance_m": along + t * seg_m, "inside": inside, "known": known,
                          "limit": grid.limits["rover" if mode == "drive" else "crew"], "mode": mode,
                          "slope": float(grid.slope[row, col]) if known else None,
                          "elevation": float(grid.terrain.elevation[row, col]) if known else None})
@@ -343,6 +350,19 @@ def profiles_fingerprint(sites):
     return canonical_sha256({key: sites[key] for _, _, key in SCARPS if key in sites})
 
 
+def published_cell(cell):
+    """Compact copy of one traversed cell for route_audit.json (rounded; on_scarp_face only when tested)."""
+    out = {"segment_index": cell["segment_index"], "coordinates": [round(cell["coordinates"][0], 7), round(cell["coordinates"][1], 7)],
+           "col": cell["col"], "row": cell["row"], "distance_m": round(cell["distance_m"], 1),
+           "inside": cell["inside"], "known": cell["known"], "limit": cell["limit"], "mode": cell["mode"],
+           "slope": None if cell["slope"] is None else round(cell["slope"], 2),
+           "elevation": None if cell["elevation"] is None else round(cell["elevation"], 2),
+           "roughness_m": None if cell["roughness_m"] is None else round(cell["roughness_m"], 3)}
+    if "on_scarp_face" in cell:
+        out["on_scarp_face"] = cell["on_scarp_face"]
+    return out
+
+
 def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, zones=None):
     """Measure one route feature; returns its diagnostic dict (never modifies the feature).
 
@@ -353,7 +373,8 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, zones
     coords = feature.get("geometry", {}).get("coordinates") or []
     agent = props.get("agent", "crew")
     tolerance = float(threshold(rules, "position_uncertainty_m"))
-    result = {"id": props.get("id"), "agent": agent, "kind": props.get("kind"), "claimed_status": props.get("status"),
+    # input_route: exact snapshot of the audited feature; the app shows measurements only while it matches.
+    result = {"input_route": feature, "id": props.get("id"), "agent": agent, "kind": props.get("kind"), "claimed_status": props.get("status"),
               "evidence": "inferred", "terrain_evidence": "nasa_derived",
               "exclude_threshold_deg": {"walk": grid.limits["crew"], "drive": grid.limits["rover"]}, "reasons": []}
     reasons = result["reasons"]
@@ -426,6 +447,8 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, zones
     if face:
         hits = point_in_polygon([p[0] for p in centres], [p[1] for p in centres], face) if centres else np.array([])
         result["cells_on_scarp_face"] = int(hits.sum())
+        for cell, hit in zip(inside, hits):
+            cell["on_scarp_face"] = bool(hit)
         if hits.any():
             cell = inside[int(np.argmax(hits))]
             firsts.append((cell["distance_m"], cell, "scarp_face"))
@@ -433,12 +456,17 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, zones
     if firsts:
         distance, cell, what = min(firsts, key=lambda f: f[0])
         lon, lat = grid.cell_lonlat(cell["col"], cell["row"])
-        result["first_exclusion"] = {"distance_m": round(distance, 1), "lon": round(lon, 7), "lat": round(lat, 7), "kind": what}
+        # The actual crossed cell (PR #20: coordinates, segment, local slope and limit) plus lon/lat/kind (#19 marker).
+        result["first_exclusion"] = {**published_cell(cell), "distance_m": round(distance, 1),
+                                     "lon": round(lon, 7), "lat": round(lat, 7), "kind": what}
         result["first_exclusion_at_m"] = round(distance, 1)
+    result["cells"] = [published_cell(c) for c in cells]
+    result["artifact_review"] = "not_reviewed"  # no reviewed stereo-artifact mask: valid cells may still be artifacts
     step = max(1, math.ceil(len(cells) / PROFILE_POINTS))
     sample = cells[::step] + ([cells[-1]] if (len(cells) - 1) % step else [])
+    # [distance_m, elevation_m, slope_deg, exclusion limit_deg, mode]: the limit differs for drive and walk cells.
     result["profile"] = [[round(c["distance_m"], 1), None if c["elevation"] is None else round(c["elevation"], 2),
-                          None if c["slope"] is None else round(c["slope"], 1)] for c in sample]
+                          None if c["slope"] is None else round(c["slope"], 1), c["limit"], c["mode"]] for c in sample]
     kinds = {reason.split(":")[0] for reason in reasons}
     result["audit_status"] = next((s for s in STATUS_ORDER if s in kinds), "candidate_requires_inspection")
     # A route may claim "inspection_required", "no_viable_route" or "backup_unavailable"; "ok" is never
@@ -492,6 +520,8 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
                         "scarp_profiles_sha256": profiles_fingerprint(sites),
                         "routes": {a["id"]: a["fingerprint"] for a in audits}},
         "zone_checks": "edge_setback_and_rockfall" if zones else "not_run: no scarp profiles supplied",
+        # The exact mission, scarp and rules this audit read, so a reader can see what it was computed from.
+        "input_context": {"mission": mission, "scarp_lines": scarp, "rules": rules},
         "mission_placeholder": bool(mission.get("placeholder")), "routes_placeholder": bool(routes.get("placeholder")),
         "scarp_source": Path(scarp_path).name if scarp else None,
         "thresholds_deg": {"crew_caution": grid.caution, "crew_exclude": grid.limits["crew"], "rover_exclude": grid.limits["rover"]},
