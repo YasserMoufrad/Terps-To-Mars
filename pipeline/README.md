@@ -86,6 +86,18 @@ Copy `pipeline/output/hirise-tiles/` to `public/data/hirise-tiles/` (stop `npm r
 
 This compares two products of the same HiRISE stereo pipeline, so agreement shows the HD visual layer lines up with DTM-derived hazards; it is not independent ground truth, and CTX comparison is not performed.
 
+## Slope map and route audit (standalone, real DTM)
+
+The slope map does not depend on routes or the mission scenario, so it is produced even when no route is viable:
+
+```bash
+docker run --rm -v "$PWD:/app" -w /app terps-pipeline:uv python -m pipeline.slope_mvp
+docker run --rm -v "$PWD:/app" -w /app terps-pipeline:uv python -m pipeline.route_audit --output public/data/route_audit.json
+```
+
+- `slope_mvp` reads `pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG`, pads the crop so edge gradients are complete, runs `terrain.analyze`, classifies with `hazard_rules.json` and writes `slope.png` (one pixel per DTM cell, palette with alpha), `slope.meta.json` and `slope.bounds.json` (last) via a staging folder with rollback. `--bounds S W N E` changes the area; `--data-dir` writes elsewhere. A missing DTM fails with instructions; synthetic terrain is never published.
+- `route_audit` checks every line in `routes.geojson` against the same analysis: measured vs claimed length, endpoint offsets, every crossed cell (supercover), per-leg limits (drive 24°, walk 20°), unknown/outside cells, traced scarp-face crossings and an elevation profile. Re-run it whenever `routes.geojson` changes; the test suite checks `routes_sha256`.
+
 ## Mixed drive/walk itineraries
 
 Evaluate crew routes that carry drive/walk `legs` (contract 1.1). Prints one report per route plus backup independence:
