@@ -24,6 +24,7 @@ import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } fro
 import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
 import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
 import type { LayerVisibility } from './layers';
+import { routeLabel } from './routeLabel';
 import { FitToMission } from './FitToMission';
 import { MapLegend, type LegendKeys, type LineKey } from './MapLegend';
 import { CoordinateReadout } from './CoordinateReadout';
@@ -284,6 +285,7 @@ export function MarsMap({
         zoom={12}
         minZoom={4}
         maxZoom={MAP_MAX_ZOOM}
+        attributionControl={false} // hides the bottom-right credit bar (Leaflet + tile source credits)
       >
         <FitToMission
           // Routes and endpoints only: hazard and coverage polygons (DTM-wide slope clusters) would widen the view.
@@ -475,7 +477,7 @@ export function MarsMap({
                 : p.kind === 'rover_path'
                   ? 'Scout rover path (simulated, uncrewed)'
                   : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}` +
-                    (go ? ' (scouted: go for EVA; simulated scouting, not a real-world certification)'
+                    (go ? ' (conditional planning go after simulated scouting; crew clearance not established)'
                       : `${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`);
             const legs = legSummary(p);
             // Prefer measured numbers from the route audit (#18) over the file's claimed stats; otherwise show the
@@ -500,14 +502,14 @@ export function MarsMap({
           return first ? (
             <CircleMarker key={`excl-${f.properties.id}`} center={[first.lat, first.lon]} radius={6}
               pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
-              <Tooltip direction="top">{`First excluded crossing: ${first.kind.replace(/_/g, ' ')}, ${Math.round(first.distance_m)} m along ${f.properties.id}`}</Tooltip>
+              <Tooltip direction="top">{`First excluded crossing: ${first.kind.replace(/_/g, ' ')}, ${Math.round(first.distance_m)} m along ${routeLabel(f.properties.id)}`}</Tooltip>
             </CircleMarker>
           ) : null;
         })}
 
-        <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Habitat', mission.endpoints.habitat) }}
+        <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Habitat (landing site)', mission.endpoints.habitat) }}
           center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
-          <Tooltip permanent direction="left" className="map-label">Habitat</Tooltip>
+          <Tooltip permanent direction="left" className="map-label">Habitat (landing site)</Tooltip>
         </CircleMarker>
         <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Observation primary', mission.endpoints.observation_primary) }}
           center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
@@ -574,7 +576,7 @@ export function MarsMap({
           <select aria-label="Inspect route" value={selection?.route?.properties.id ?? ''}
             onChange={(e) => (e.target.value ? selectRoute(e.target.value) : setSelection(null))}>
             <option value="">Select a route</option>
-            {routes.features.map((f) => <option key={f.properties.id} value={f.properties.id}>{f.properties.id}</option>)}
+            {routes.features.map((f) => <option key={f.properties.id} value={f.properties.id}>{routeLabel(f.properties.id)}</option>)}
           </select>
         </label>
         {stage === 'rover' && (

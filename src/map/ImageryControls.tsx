@@ -33,6 +33,8 @@ export function ImageryControls({ overview, hiriseBounds, targets, stage, state,
   const [viewport, setViewport] = useState('Stage overview');
   const selected = targets.find((t) => t.id === choice) ?? targets[0];
   const narrow = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
+  // Collapsible: starts closed on phones, where the open panel covers half the map.
+  const [open, setOpen] = useState(!narrow);
   const reason = selected?.reason ?? (!selected?.target ? 'Target not available.' : undefined);
 
   const inspect = () => {
@@ -71,6 +73,10 @@ export function ImageryControls({ overview, hiriseBounds, targets, stage, state,
     <div className="leaflet-top leaflet-right">
       <div className="leaflet-control imagery-controls"
         ref={(node) => { if (node) { L.DomEvent.disableClickPropagation(node); L.DomEvent.disableScrollPropagation(node); } }}>
+        <button type="button" className="imagery-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          {open ? '▾' : '▸'} Map view
+        </button>
+        {open && (<>
         <div className="imagery-buttons">
           <button type="button" onClick={overviewView}>Stage overview</button>
           <label>Inspect{' '}
@@ -101,6 +107,7 @@ export function ImageryControls({ overview, hiriseBounds, targets, stage, state,
             </details>
           </div>
         )}
+        </>)}
       </div>
     </div>
   );

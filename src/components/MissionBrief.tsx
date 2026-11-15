@@ -1,6 +1,8 @@
 // The first thing a judge sees: what this map is, why it matters, and how to use it.
 // Reopened any time from the "About this mission" button in the header.
 
+import { useEffect, useRef } from 'react';
+
 interface MissionBriefProps {
   siteName: string;
   isDemoData: boolean;
@@ -10,9 +12,18 @@ interface MissionBriefProps {
 export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProps) {
   // Purpose: intro dialog explaining the mission and how to use the map.
   // `isDemoData` adds the placeholder-data note; `onStart` closes it and begins step 1.
+  // `briefRef` is the scrollable dialog body, `startRef` the Start button (focused on open).
+  const briefRef = useRef<HTMLDivElement>(null);
+  const startRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Focus Start for keyboard users without letting the browser scroll the dialog down to it,
+    // then make sure the dialog opens at its top.
+    startRef.current?.focus({ preventScroll: true });
+    if (briefRef.current) briefRef.current.scrollTop = 0;
+  }, []);
   return (
     <div className="brief-backdrop" role="dialog" aria-modal="true" aria-labelledby="brief-title">
-      <div className="brief">
+      <div className="brief" ref={briefRef}>
         <p className="brief-kicker">NASA Space Apps 2026 · Interplanetary Survival Guide: Martian Map</p>
         <h1 id="brief-title">Plan and evaluate a Marswalk to an ice-scarp candidate</h1>
         <p>
@@ -42,7 +53,7 @@ export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProp
           </p>
         )}
 
-        <button className="primary" onClick={onStart} autoFocus>
+        <button className="primary" onClick={onStart} ref={startRef}>
           Start the walkthrough
         </button>
       </div>
