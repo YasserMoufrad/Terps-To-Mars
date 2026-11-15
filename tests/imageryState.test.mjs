@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
-  EMPTY_LOAD, applyLoadEvent, combinedState, decodedSizeMatches, inspectTarget, registrationNote, SAMPLING_DISCLOSURE,
+  EMPTY_LOAD, applyLoadEvent, combinedState, decodedSizeMatches, registrationNote, SAMPLING_DISCLOSURE,
 } from '../src/map/imageryState.ts';
 
 const meta = JSON.parse(readFileSync(new URL('../public/data/hirise.meta.json', import.meta.url), 'utf8'));
@@ -43,10 +43,4 @@ test('disclosures state sampling vs optical resolution and the measured ~1 m reg
   assert.match(note, /not independent ground truth/);
   assert.doesNotMatch(note, /verified|cleared|safe/i);
 });
-
-test('Inspect scarp never targets a point outside the native image', () => {
-  const b = { south: 54.15, west: -147.92, north: 54.17, east: -147.89 };
-  assert.deepEqual(inspectTarget(b, [{ lat: 54.16291, lon: -147.90546 }]), { lat: 54.16291, lon: -147.90546 });
-  const centre = inspectTarget(b, [{ lat: 54.141, lon: -147.894 }]); // main's observation point is south of the crop
-  assert.ok(Math.abs(centre.lat - 54.16) < 1e-9 && Math.abs(centre.lon + 147.905) < 1e-9);
-});
+// "Inspect scarp" targeting is tested in scarpNavigation.test.mjs (scarp geometry only, no midpoint fallback).
