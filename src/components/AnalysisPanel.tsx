@@ -7,8 +7,9 @@ export function AnalysisPanel({analysis}:{analysis:AnalysisResults}) {
   // analysis carries independently loaded offline results, including legitimate infeasibility.
   const [report,setReport]=useState('feasibility_report.json');
   const data=analysis.reports[report], reportState=analysis.reportStates?.[report]??analysis.state;
-  return <section className="analysis-panel" aria-label="Offline analytical results">
-    <h2>Offline analysis</h2><p role="status">{analysis.state}: {analysis.reason}</p>
+  // Collapsed by default in the side panel: the stage story comes first; the raw reports are one click away.
+  return <details className="analysis-panel" aria-label="Offline analytical results">
+    <summary>Offline analysis (advanced) · {analysis.state}</summary><p role="status">{analysis.state}: {analysis.reason}</p>
     <p>Planning evidence · crew clearance not established. Missing artifact review does not mean artifact-free.</p>
     <p>Selected report: {reportState}</p><label>Report <select value={report} onChange={e=>{
       // Report selection changes presentation only; it never starts a backend operation.
@@ -16,7 +17,7 @@ export function AnalysisPanel({analysis}:{analysis:AnalysisResults}) {
     }}><option value="feasibility_report.json">Site feasibility and uncertainty</option>
       <option value="itinerary_report.json">EVA budgets, walkback and backup independence</option></select></label>
     {reportState==='current' && data ? <ResultTree value={data}/> : <p>{reportState==='stale'?'Stale — requires regeneration':reportState==='invalid'?'Invalid report — requires regeneration':'Not measured'}</p>}
-  </section>;
+  </details>;
 }
 
 function ResultTree({value}:{value:unknown}) {
