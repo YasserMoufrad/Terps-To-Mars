@@ -8,6 +8,7 @@ import type { StageId, HazardProperties } from './data/types';
 import { MarsMap } from './map/MarsMap';
 import { routesFor } from './map/stageFilters';
 import { stageSummary } from './map/stageSummary';
+import { readinessFor } from './map/routeReadiness';
 import { DEFAULT_LAYERS, type LayerVisibility } from './map/layers';
 import { StagePanel } from './components/StagePanel';
 import { ErrorBanner, DataBadge } from './components/IssuesBanner';
@@ -72,9 +73,14 @@ export function App() {
   };
 
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
+  // A route the robots have scouted end to end (routeReadiness) gets a "go" notice instead of "requires inspection".
+  const readiness = ready ? readinessFor(stage, routes, data.routeAudit, coverage, hazards) : {};
   const routeNotices =
     ready
-      ? reviewNotices(stage, routes, mission, data.routeAudit)
+      ? reviewNotices(stage, routes, mission, data.routeAudit).map((n) => {
+        const id = n.split(':')[0];
+        return readiness[id]?.state === 'go' ? `${id}: scouted end to end by the rover: go for EVA (simulated scouting; not a real-world certification).` : n;
+      })
       : [];
 
   const changeStage = (next: StageId) => {
@@ -129,7 +135,7 @@ export function App() {
               hazardsArePlaceholder={data.placeholderFiles.includes('hazards.geojson')}
               onCloseHazard={() => setSelectedHazard(null)}
               routeNotices={routeNotices}
-              summary={stageSummary(stage, { mission, hazards, routes, coverage })}
+              summary={stageSummary(stage, { mission, hazards, routes, coverage, readiness })}
               toggles={(
                 <LayerToggles
                   layers={layers}

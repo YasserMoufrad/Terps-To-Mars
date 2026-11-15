@@ -37,7 +37,7 @@ export function StagePanel({
   return (
     <aside className="panel">
       {selectedHazard && (
-        <EvidenceCard hazard={selectedHazard} isPlaceholder={hazardsArePlaceholder} onClose={onCloseHazard} />
+        <EvidenceCard hazard={selectedHazard} isPlaceholder={hazardsArePlaceholder} mission={mission} onClose={onCloseHazard} />
       )}
 
       <section className="card">
