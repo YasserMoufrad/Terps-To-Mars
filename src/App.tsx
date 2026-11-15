@@ -111,6 +111,9 @@ export function App() {
               hiriseMeta={hiriseMeta}
               hiriseTiles={hiriseTiles}
               slopeBounds={slopeBounds}
+              slopeMeta={data.slopeMeta}
+              scarpLines={data.scarpLines}
+              routeAudit={data.routeAudit}
               layers={layers}
               onSelectHazard={setSelectedHazard}
               onImageryState={setHiriseState}

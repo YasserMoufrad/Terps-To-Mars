@@ -10,6 +10,7 @@ import {
   COVERAGE_STATES, SENSORS, type RouteLeg,
   type HazardCollection, type RouteCollection, type CoverageCollection,
   type Mission, type OverlayBounds, type HiriseMeta, type HiriseTiles,
+  type SlopeMeta, type ScarpLines, type RouteAudit,
 } from './types.ts';
 import { silentLogger, type Logger } from '../lib/logger.ts';
 
@@ -27,7 +28,10 @@ export interface MissionData {
   hiriseBounds: OverlayBounds | null;
   hiriseMeta: HiriseMeta | null;
   hiriseTiles: HiriseTiles[]; // wide, then context, then core (draw order); empty when not published
-  slopeBounds: OverlayBounds | null;
+  slopeBounds: OverlayBounds | null; // null unless slope.meta.json is valid and describes the same grid
+  slopeMeta: SlopeMeta | null;
+  scarpLines: ScarpLines | null; // traced scarp edge + foot; drives "Inspect scarp"
+  routeAudit: RouteAudit | null; // measured diagnostics per route line (pipeline.route_audit)
   issues: LoadIssue[];
   placeholderFiles: string[];
 }
@@ -336,6 +340,65 @@ export function checkHiriseTiles(raw: unknown, file: string, issues: LoadIssue[]
   return t as HiriseTiles;
 }
 
+export function checkSlopeMeta(raw: unknown, bounds: OverlayBounds | null, file: string, issues: LoadIssue[]): SlopeMeta | null {
+  // Purpose: accept slope.meta.json only when it is NASA-derived, has a legend and describes exactly the
+  // grid in slope.bounds.json. A mismatch means PNG and bounds come from different runs: never draw it.
+  if (raw === null) return null;
+  const m = raw as Partial<SlopeMeta>;
+  const reasons: string[] = [];
+  if (m.schema_version !== SCHEMA_VERSION) reasons.push(`schema_version ${String(m.schema_version)} is not ${SCHEMA_VERSION}`);
+  if (m.evidence !== 'nasa_derived') reasons.push('evidence must be nasa_derived (no synthetic slope maps)');
+  const px = m.grid?.pixels;
+  if (!Array.isArray(px) || px.length !== 2 || !px.every((v) => Number.isInteger(v) && v > 0 && v <= 16384)) {
+    reasons.push('grid.pixels must be two positive integers');
+  }
+  const t = m.thresholds_deg;
+  if (!t || !finite(t.crew_caution) || !finite(t.crew_exclude) || !finite(t.rover_exclude)
+    || !(t.crew_caution < t.crew_exclude && t.crew_exclude <= t.rover_exclude)) {
+    reasons.push('thresholds_deg must be increasing finite degrees');
+  }
+  if (!Array.isArray(m.legend) || m.legend.length < 5 || !m.legend.some((e) => e.class === 'unknown')) {
+    reasons.push('legend must list every class including unknown');
+  }
+  const b = m.bounds;
+  if (bounds && b && (['south', 'west', 'north', 'east'] as const).some((k) => !finite(b[k]) || Math.abs(b[k] - bounds[k]) > 1e-7)) {
+    reasons.push('bounds differ from slope.bounds.json');
+  }
+  if (reasons.length > 0) {
+    issues.push({ file, severity: 'error', message: `Slope map withdrawn: ${reasons.join('; ')}.` });
+    return null;
+  }
+  return m as SlopeMeta;
+}
+
+export function checkScarpLines(raw: unknown, file: string, issues: LoadIssue[]): ScarpLines | null {
+  // Purpose: accept the traced scarp only with both an edge and a foot line of finite signed coordinates.
+  if (raw === null) return null;
+  const fc = raw as Partial<ScarpLines>;
+  const lines = Array.isArray(fc.features) ? fc.features : [];
+  const ok = (id: string) => lines.some((f) => f?.properties?.id === id && f.geometry?.type === 'LineString'
+    && Array.isArray(f.geometry.coordinates) && f.geometry.coordinates.length >= 2 && coordinatesOk(f.geometry.coordinates));
+  if (!ok('scarp-edge') || !ok('scarp-foot')) {
+    issues.push({ file, severity: 'warning', message: 'Scarp lines need a valid scarp-edge and scarp-foot LineString; ignored.' });
+    return null;
+  }
+  checkSchemaVersion(fc, file, issues);
+  return fc as ScarpLines;
+}
+
+export function checkRouteAudit(raw: unknown, file: string, issues: LoadIssue[]): RouteAudit | null {
+  // Purpose: accept route_audit.json when it lists route entries with an audit status; never an "ok" status.
+  if (raw === null) return null;
+  const a = raw as Partial<RouteAudit>;
+  if (!Array.isArray(a.routes) || a.routes.some((r) => typeof r?.id !== 'string' || typeof r?.audit_status !== 'string'
+    || (r.audit_status as string) === 'ok' || !Array.isArray(r.reasons))) {
+    issues.push({ file, severity: 'warning', message: 'Route audit is malformed and was ignored.' });
+    return null;
+  }
+  checkSchemaVersion(a, file, issues);
+  return a as RouteAudit;
+}
+
 async function fetchOptional(baseUrl: string, file: string, issues: LoadIssue[]): Promise<unknown | null> {
   // Purpose: fetch a file that may legitimately be absent (no issue for 404); parse errors still warn.
   const local: LoadIssue[] = [];
@@ -382,7 +445,24 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
   // Missing metadata (an older publish) keeps the image without a caption; metadata that is present
   // but invalid withdraws the image, so a malformed HD asset never draws just because bounds exist.
   let hiriseBounds = checkOverlayBounds(hiriseRaw, 'hirise.bounds.json', issues);
-  const slopeBounds = checkOverlayBounds(slopeRaw, 'slope.bounds.json', issues);
+  let slopeBounds = checkOverlayBounds(slopeRaw, 'slope.bounds.json', issues);
+  // The slope map is drawn only with metadata describing the same grid (legend, thresholds, provenance).
+  const slopeMetaRaw = slopeBounds ? await fetchJson(baseUrl, 'slope.meta.json', issues, 'error') : null;
+  const slopeMeta = checkSlopeMeta(slopeMetaRaw, slopeBounds, 'slope.meta.json', issues);
+  if (slopeMeta === null) slopeBounds = null;
+  const [scarpRaw, auditRaw] = await Promise.all([
+    fetchOptional(baseUrl, 'scarp_lines.geojson', issues),
+    fetchOptional(baseUrl, 'route_audit.json', issues),
+  ]);
+  const scarpLines = checkScarpLines(scarpRaw, 'scarp_lines.geojson', issues);
+  const routeAudit = checkRouteAudit(auditRaw, 'route_audit.json', issues);
+  if (routeAudit && routes) {
+    const audited = new Set(routeAudit.routes.map((r) => r.id));
+    const missing = routes.features.map((f) => f.properties.id).filter((id) => !audited.has(id));
+    if (missing.length > 0) {
+      issues.push({ file: 'route_audit.json', severity: 'warning', message: `No terrain audit for ${missing.join(', ')}; re-run pipeline.route_audit.` });
+    }
+  }
   const hiriseMetaRaw = hiriseBounds ? await fetchJson(baseUrl, 'hirise.meta.json', issues, 'warning') : null;
   const hiriseMeta = checkHiriseMeta(hiriseMetaRaw, 'hirise.meta.json', issues);
   if (hiriseMetaRaw !== null && hiriseMeta === null) hiriseBounds = null;
@@ -418,6 +498,8 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     coverage_zones: coverage?.features.length ?? 0,
     placeholder_files: placeholderFiles,
     overlays: { hirise: hiriseBounds !== null, slope: slopeBounds !== null },
+    scarp_lines: scarpLines !== null,
+    route_audit: routeAudit ? Object.fromEntries(routeAudit.routes.map((r) => [r.id, r.audit_status])) : null,
     hirise_pixels: hiriseMeta?.output_pixels ?? null,
     hirise_alignment: hiriseMeta?.landmark_alignment ?? null,
     hirise_tiles: hiriseTiles.map((t) => `${t.role}:z${t.min_zoom}-${t.max_native_zoom}`),
@@ -432,6 +514,9 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     hiriseMeta,
     hiriseTiles,
     slopeBounds,
+    slopeMeta,
+    scarpLines,
+    routeAudit,
     issues,
     placeholderFiles,
   };
