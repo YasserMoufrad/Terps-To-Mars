@@ -28,7 +28,8 @@ export function ImageryControls({ overview, hiriseBounds, targets, stage, state,
   // Purpose: explicit views instead of an automatic re-fit on every stage change. `choice` is the selected target
   // id; `viewport` names what the map currently frames, so the stage and the view are never confused.
   const map = useMap();
-  const [choice, setChoice] = useState('active');
+  // Opens on the crew's ice face (what the walk is for); the unresolved "active science target" stays in the list.
+  const [choice, setChoice] = useState(() => (targets.some((t) => t.id === 'crew-face' && t.target) ? 'crew-face' : 'active'));
   const [viewport, setViewport] = useState('Stage overview');
   const selected = targets.find((t) => t.id === choice) ?? targets[0];
   const narrow = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
@@ -92,7 +93,8 @@ export function ImageryControls({ overview, hiriseBounds, targets, stage, state,
             <span className={`imagery-state imagery-${state}`}>HiRISE: {IMAGERY_STATUS_TEXT[state]}</span>
             {(state === 'failed' || state === 'partial') && <button type="button" className="link-btn" onClick={onRetry}>Retry</button>}
             {/* Open by default on wider screens; on phones one tap away so the map stays visible. */}
-            <details className="imagery-notes" open={!narrow}>
+            {/* Collapsed at load: open, it covered the viewpoint. */}
+            <details className="imagery-notes">
               <summary>Image source and alignment</summary>
               <p>{SAMPLING_DISCLOSURE}</p>
               <p>{registration}</p>

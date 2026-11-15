@@ -139,6 +139,8 @@ export function App() {
                 />
               )}
             />
+            {/* Offline analysis lives in the side panel (collapsed): as a page-level block it squeezed the map to 0 px. */}
+            <AnalysisPanel analysis={data.analysis}/>
             </div>
           </main>
         </>
@@ -146,7 +148,6 @@ export function App() {
         <div className="loading">Core data files are missing; see the errors above.</div>
       )}
 
-      <AnalysisPanel analysis={data.analysis}/>
       {showBrief && mission && (
         <MissionBrief
           siteName={mission.site.name}

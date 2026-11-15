@@ -15,7 +15,6 @@ interface SlopeLegendProps {
 export function SlopeLegend({ meta, state, opacity, onOpacity, onRetry }: SlopeLegendProps) {
   // Purpose: `meta` supplies the class labels and colours; `state` reports whether the PNG really decoded.
   // The failure line (with Retry) stays visible even when the key is collapsed.
-  const narrow = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 900px)').matches;
   return (
     <div className="slope-legend" aria-label="Slope legend">
       {state !== 'loaded' && (
@@ -24,7 +23,8 @@ export function SlopeLegend({ meta, state, opacity, onOpacity, onRetry }: SlopeL
           {state === 'failed' && <button type="button" className="slope-retry" onClick={onRetry}>Retry</button>}
         </div>
       )}
-      <details open={!narrow}>
+      {/* Collapsed at load on every screen: open, it covered the route on the map. One click shows the key. */}
+      <details>
         <summary className="slope-legend-title">Slope (degrees)</summary>
         {meta.legend.map((entry) => (
           <div className="legend-row" key={entry.class}>
