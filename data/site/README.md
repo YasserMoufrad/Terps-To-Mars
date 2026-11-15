@@ -18,6 +18,17 @@ Inputs for Nic's pipeline and for the placeholder map. The app does not load the
 - The drone perch is on the pit floor facing the tallest face (131 m from the foot), the part the crew cannot reach.
 - Budget for the placeholder trip: 83 min travel + 20 min site work = 103 of 168 min; walkback (rover fails at parking) 189 of 240 min EVA.
 
+## Second scarp and the viewpoint move (2026-11-14, PR #17)
+
+Geury's color check (`ice_zone_v2.geojson`) showed the east end of the main face is not bluish (0–13% vs 22–89% west/middle) and found a second bluish band. On the DTM that band is a **second north-facing scarp** (`upper-scarp-edge` / `upper-scarp-foot` in `scarp_lines.geojson`; up to 46 m, faces 64–67°). The old east-end viewpoint sat 20.0 m from its edge, so it was moved:
+
+| Point | Position | Why |
+| --- | --- | --- |
+| Viewpoint | 54.171114°N, −147.892507 | Faces a 22 m bluish section of the second scarp, 126 m from its foot; 0 cells ≥ 20° within 17 m; 611 m walk from parking (steepest 19.5°) |
+| Backup viewpoint | 54.172717°N, −147.893347 | Faces the same bluish scarp, 100 m from the primary (independent); just north of #16's 0.25 m crop (no independent flat spot fits inside it) |
+
+The second scarp's rockfall zone uses the pipeline's single site-wide height (72.6 m, the main face's tallest profile), and routing keeps a further 12 m margin (85 m), so `pipeline.feasibility` agrees with the map; per-scarp heights would loosen it. Budget 135 of 168 min, walkback 221 of 240 min. Nic's audit from parking: `candidate_requires_inspection`, all points `no_mapped_exclusion`. Scripts: `tools/site/second_scarp_viewpoints.py` (args: DTM, site_report, final, out, routing buffer floor 85, drawn buffer floor 72.6), `merge_second_scarp.py`, `site_files_second_scarp.py`.
+
 ## Nic's feasibility audit with these scarp inputs
 
 `tools/site/make_scarp_inputs.py <config> <out_dir>` turns the traced lines and measurements into the pipeline's scarp inputs (`edge_distance.npy`, `foot_distance.npy`, `scarp_risk.npy`, `scarp_height_m` 72.6 = tallest profile, `apron_m` 55.3 = median) on exactly the crop the config resolves to, and writes `config.json` next to them under git-ignored `pipeline/output/`. Results on the real DTM (2026-11-14, after #13 merged):

@@ -71,8 +71,12 @@ test('documented expectation: habitat ~2 km south; #16\'s native crop covers the
   assert.ok(habitatToScarp > 1900 && habitatToScarp < 4500, `${habitatToScarp.toFixed(0)} m`);
   const crop = { s: 54.1548789, n: 54.1721222, w: -147.917929, e: -147.8910703 };
   const inCrop = ([lon, lat]) => lat >= crop.s && lat <= crop.n && lon >= crop.w && lon <= crop.e;
-  for (const id of ['observation_primary', 'observation_backup', 'drone_perch', 'parking']) assert.ok(inCrop(at(id)), id);
+  for (const id of ['observation_primary', 'drone_perch', 'parking']) assert.ok(inCrop(at(id)), id);
   assert.ok(!inCrop(at('habitat')));
+  // The backup viewpoint (moved in PR #17 to face the second, bluish scarp) sits ~60 m north of the crop's
+  // north edge: no independent (>= 60 m apart) flat backup facing the bluish band fits inside the crop.
+  // It is on the DTM and CTX; extending the HiRISE crop north would cover it (integration note for Nic).
+  assert.ok(!inCrop(at('observation_backup')) && at('observation_backup')[1] < crop.n + 0.002, 'backup expected just north of the crop');
 });
 
 test('no crew route reads "ok" while it breaks the 5,000 m rule or shares most of its length with the main route', () => {
