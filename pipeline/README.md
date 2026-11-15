@@ -49,6 +49,53 @@ docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pip
 
 The centre is a diagnostic coordinate, not the confirmed scarp. Output goes to an ignored directory (never `public/data/`). Decoding a ~4K window takes about four minutes. Tile pyramid and map zoom changes are a separate patch.
 
+**Science view (ice band).** The 54.144 N preview sits south of the scarp. Geury's first-pass ice bands (`data/site/ice_zone.geojson`, PR #15) span about 54.161–54.168 N, −147.917 to −147.892, with the work site and observation points near −147.905. A 930 m × 1020 m crop centred at 54.1635, −147.9045 covers both bands and those points (centre still diagnostic until endpoints are confirmed):
+
+```bash
+docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.preview_hd --center-lat 54.1635 --center-lon -147.9045 --width-m 930 --height-m 1020 --format png --output pipeline/output/hirise-science-view
+```
+
+**Transparent no-data.** `--format png` writes grayscale+alpha PNGs: HiRISE null pixels (value 0) get alpha 0 instead of black. Reduction is no-data aware (`average_nodata_aware`): values and validity are averaged separately, so strip edges never blend null 0 into dark seams; an output pixel is kept when at least half its footprint is valid. JPEG output keeps nulls black and says so in `nodata_rendering`.
+
+**Registration check (measurement, not correction).** `python -m pipeline.registration` resamples the 0.25 m RED_A image onto the ~1 m RED_C orthoimage grid (the DTM's companion) at a grid of patches and measures each offset with upsampled phase cross-correlation. It reports per-patch north/east metres, RMS, max and `landmark_alignment` (`measured_within_tolerance`, `measured_exceeds_tolerance` or `insufficient_landmarks`). Featureless, no-data or poorly matched patches are skipped, never counted as agreement. No pixels are moved.
+
+```bash
+docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.registration --bounds 54.1590 -147.9140 54.1680 -147.8950 --grid 3 --output pipeline/output/hirise-science-view/registration.json
+```
+
+**Publishing to the map.** `python -m pipeline.publish_imagery --preview <preview dir> --registration <registration.json>` is the only way HD imagery reaches `public/data/`. It refuses non-HiRISE, reprojected/DTM-grid (`pipeline.run`'s `export_overlay`), upscaled or >4096 px images, names that are not a HiRISE RED orthoimage product, non-Mars CRS, non-finite metadata, a decoded size that differs from the metadata, and registration reports for another image/area, with another method, fewer than 4 patches, a tolerance over 2 m or a state that contradicts their own RMS/max. It re-encodes an opaque PNG as JPEG q95 (the map loads `hirise.jpg`), refuses a PNG with transparent no-data, stages and re-checks every file, then replaces image, meta and bounds (last) with rollback to the previous set on any failure (rollback-safe, not multi-file atomic), and adds `hirise.meta.json` with pixel size and measured alignment for the map caption. Current real result at 54.1635, −147.9045: 4093×4088 px, 4.6 MB, RMS 0.86 m / max 1.05 m vs RED_C (consistent ~0.63 m north, ~0.55 m west shift; flagged `measured_exceeds_tolerance`).
+
+```bash
+docker run --rm -v "$PWD:/app" -w /app terps-pipeline:uv python -m pipeline.publish_imagery --preview pipeline/output/hirise-science-view --registration pipeline/output/hirise-science-view/registration.json
+```
+
+**Tile pyramid (habitat to scarp).** One 4K square covers ~1 km; `pipeline.tiles_hd` cuts the same HiRISE into 256 px WebP tiles on Leaflet's EPSG:4326 grid (the CTX/THEMIS grid), so the browser fetches only what is on screen. Two sets:
+
+- `core`: native pixels (`--read-factor 1`) over the corridor 54.124–54.171 N, −147.922 to −147.886, zoom 16–17 (z17 ≈ 0.19 m E-W × 0.32 m N-S per tile pixel; the map enlarges z17 at z18).
+- `context`: a no-data-aware 4× average (~1 m, "1080p-equivalent") over a wider ring 54.110–54.185 N, −147.945 to −147.863, zoom 12–15.
+
+Each output pixel is a no-data-aware box average of the source pixels it covers, or the single nearest source pixel where the tile grid is finer than the source; nothing is interpolated or invented. Nulls are transparent. One global 2–98 % stretch per set. Each set has `tiles.json` (bounds, zooms, counts, bytes, alignment) and is built in a temporary folder then renamed into place.
+
+```bash
+docker run --rm -e GDAL_NUM_THREADS=ALL_CPUS -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.tiles_hd --bounds 54.041 -147.983 54.253 -147.787 --min-zoom 9 --max-zoom 11 --read-factor 16 --role wide --url-prefix hirise-tiles/wide --registration <registration.json> --output pipeline/output/hirise-tiles/wide
+docker run --rm -e GDAL_NUM_THREADS=ALL_CPUS -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.tiles_hd --bounds 54.110 -147.945 54.185 -147.863 --min-zoom 12 --max-zoom 15 --read-factor 4 --role context --url-prefix hirise-tiles/context --registration <registration.json> --output pipeline/output/hirise-tiles/context
+docker run --rm -e GDAL_NUM_THREADS=ALL_CPUS -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.tiles_hd --bounds 54.124 -147.922 54.171 -147.886 --min-zoom 16 --max-zoom 17 --role core --url-prefix hirise-tiles/core --registration <registration.json> --output pipeline/output/hirise-tiles/core
+```
+
+Copy `pipeline/output/hirise-tiles/` to `public/data/hirise-tiles/` (stop `npm run dev` first on Windows). The app draws context under core and keeps the single `hirise.jpg` only as a fallback when no core tiles exist.
+
+This compares two products of the same HiRISE stereo pipeline, so agreement shows the HD visual layer lines up with DTM-derived hazards; it is not independent ground truth, and CTX comparison is not performed.
+
+## Mixed drive/walk itineraries
+
+Evaluate crew routes that carry drive/walk `legs` (contract 1.1). Prints one report per route plus backup independence:
+
+```bash
+docker run --rm -v "$PWD/pipeline:/app/pipeline" terps-pipeline:uv python -m pipeline.itinerary --routes pipeline/output/pr15/routes.geojson --eva-minutes 240 --drive-speed 83.3 --walk-speed 20 --site-minutes 20
+```
+
+Reasons it can report: `leg_validation_failed`, `round_trip_distance_limit` (whole itinerary, strict `<` 5,000 m), `hard_excursion_cap`, `eva_time_limit` (30 % reserve), `walkback_exceeds_eva`. `walkback_state` is `walkback_within_reserve`, `walkback_uses_reserve` or `walkback_exceeds_eva`. The suggested status is always `inspection_required`: passing budgets is arithmetic, not crew clearance.
+
 ## Structured logs and traceability
 
 Standard-library logging emits JSON to stderr at INFO by default. Significant operations have a UTC timestamp, level, shared execution `run_id`, stage, event, duration and applicable source/evidence/entity/threshold fields. Nested operations reuse the same run ID; separate top-level calls get different IDs. No per-cell tracing is emitted. `PIPELINE_LOG_LEVEL=DEBUG` enables diagnostic detail; `PIPELINE_LOG_FILE=pipeline/logs/run.jsonl` adds an ignored JSONL file. For Docker, pass `-e PIPELINE_LOG_LEVEL=DEBUG -e PIPELINE_LOG_FILE=pipeline/logs/run.jsonl` and mount the repository read/write if persisting logs. `configure_logging(human=True)` offers readable console output while JSONL remains JSON. Configuration contents are fingerprinted rather than logged wholesale; never place secrets in scientific metadata.

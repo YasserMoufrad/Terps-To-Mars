@@ -1,0 +1,40 @@
+{
+  "bounds": {
+    "east": -147.863,
+    "north": 54.185,
+    "south": 54.11,
+    "west": -147.945
+  },
+  "bytes": 3485274,
+  "evidence": "nasa_derived",
+  "grid": "leaflet_epsg4326",
+  "landmark_alignment": "measured_exceeds_tolerance",
+  "limitations": "0.25 m map sampling is not 0.25 m optical resolution; visible rocks are candidates, not verified hazards; one global display stretch.",
+  "max_native_zoom": 15,
+  "min_zoom": 12,
+  "read_factor": 4,
+  "registration_max_m": 1.0484301251288293,
+  "registration_rms_m": 0.856803226465998,
+  "reprojection": "none (equirectangular is linear in lat/lon)",
+  "resampling": "nodata_aware_box_average; nearest single pixel where the tile grid is finer than the source",
+  "role": "context",
+  "schema_version": "1.0",
+  "source": "ESP_071006_2345_RED_A_01_ORTHO.JP2",
+  "source_resolution_m": [
+    0.996625165639,
+    0.996625165639
+  ],
+  "stretch": {
+    "high": 198.0,
+    "low": 75.0,
+    "method": "percentile_2_98"
+  },
+  "tile_counts": {
+    "12": 9,
+    "13": 25,
+    "14": 72,
+    "15": 240
+  },
+  "tile_size": 256,
+  "url_template": "hirise-tiles/context/{z}/{x}/{y}.webp"
+}

@@ -87,7 +87,7 @@ def test_1024_m_crop_is_capped_at_4096_by_area_averaging(source, tmp_path):
     export_hirise_hd(source, bounds_around(*CENTER, 1024, 50), out)
     meta = meta_for(out)
     assert meta["source_pixels"][0] > 4096 and meta["output_pixels"][0] == 4096
-    assert meta["resampling"] == "average"
+    assert meta["resampling"] == "average_nodata_aware"
 
 
 def test_small_crop_is_never_upscaled(source, tmp_path):
@@ -103,7 +103,7 @@ def test_reduction_uses_area_average_and_preserves_aspect(source, tmp_path):
     out = tmp_path / "hirise.jpg"
     export_hirise_hd(source, bounds_around(*CENTER, 200, 50), out, max_dimension=200)
     meta = meta_for(out)
-    assert meta["resampling"] == "average"
+    assert meta["resampling"] == "average_nodata_aware"
     source_ratio = meta["source_pixels"][0] / meta["source_pixels"][1]
     output_ratio = meta["output_pixels"][0] / meta["output_pixels"][1]
     assert output_ratio == pytest.approx(source_ratio, rel=0.02)
@@ -228,6 +228,14 @@ def test_preview_refuses_public_data_and_non_empty_output(source, tmp_path):
     result = preview(source, tmp_path / "ok", *CENTER, 50, 50)
     assert (tmp_path / "ok" / "hirise_reference.jpg").exists()
     assert result["meta"]["review_state"] == "diagnostic_unverified"
+
+
+def test_preview_png_format_writes_transparent_capable_images(source, tmp_path):
+    result = preview(source, tmp_path / "png", *CENTER, 50, 50, image_format="png")
+    assert (tmp_path / "png" / "hirise.png").exists() and (tmp_path / "png" / "hirise_reference.png").exists()
+    assert result["meta"]["format"] == "png" and result["meta"]["nodata_rendering"] == "transparent"
+    with pytest.raises(ValueError, match="image_format"):
+        preview(source, tmp_path / "bad", *CENTER, 50, 50, image_format="tiff")
 
 
 def test_bounds_around_uses_mars_radius():
