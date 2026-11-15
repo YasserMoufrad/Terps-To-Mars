@@ -2,10 +2,11 @@
 
 import type { StageSummary } from '../map/stageSummary';
 
-const TAG = { stop: 'Stop', caution: 'Caution', info: 'Info' } as const;
+const TAG = { stop: 'Stop', caution: 'Caution', info: 'Info', go: 'Go' } as const;
 
 export function StageSummaryCard({ summary }: { summary: StageSummary }) {
-  // Purpose: render one stage summary; each row's tone colors it (never green: no clearance).
+  // Purpose: render one stage summary; each row's tone colors it. Green "Go" appears only for a crew route
+  // scouted end to end (routeReadiness), a planning go under simulated scouting, not a certification.
   return (
     <section className="card stage-summary" aria-label={summary.title}>
       <h3>{summary.title}</h3>

@@ -1,8 +1,9 @@
 // Shown when a hazard is clicked: where the claim comes from and how sure we are.
 // This is what lets a judge check our map instead of trusting it.
 
-import type { HazardProperties } from '../data/types';
+import type { HazardProperties, Mission } from '../data/types';
 import { HAZARD_COLORS } from '../map/layerStyles';
+import { detectedBy } from '../map/detectedBy';
 
 const TYPE_LABEL = { U: 'Under their feet', O: 'Over their heads', S: 'In shadow' } as const;
 const EVIDENCE_TEXT = {
@@ -14,10 +15,11 @@ const EVIDENCE_TEXT = {
 interface EvidenceCardProps {
   hazard: HazardProperties;
   isPlaceholder: boolean; // true while hazards.geojson is placeholder data
+  mission: Mission | null; // supplies the rover's sensor readings for the simulated discovery
   onClose: () => void;
 }
 
-export function EvidenceCard({ hazard, isPlaceholder, onClose }: EvidenceCardProps) {
+export function EvidenceCard({ hazard, isPlaceholder, mission, onClose }: EvidenceCardProps) {
   // Purpose: explain one clicked `hazard`: type, severity, who it affects, evidence
   // class in plain words, source and note. `isPlaceholder` adds a warning that the
   // shape is hypothetical even when it names a NASA dataset. `onClose` hides the card.
@@ -47,6 +49,7 @@ export function EvidenceCard({ hazard, isPlaceholder, onClose }: EvidenceCardPro
         {isPlaceholder ? 'Intended evidence class: ' : ''}
         {EVIDENCE_TEXT[hazard.evidence]}
       </p>
+      <p><span className="muted">Detected by:</span> {detectedBy(hazard, mission)}</p>
       <p><span className="muted">Source:</span> {hazard.source}</p>
       <p>{hazard.note}</p>
     </section>

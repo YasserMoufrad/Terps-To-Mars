@@ -434,6 +434,10 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
     # a corner across a cell the rover may not enter (seen after the habitat move: one 26 deg cell).
     scouted = shortcut(dense1[:dense1.index(stop_cell) + 1], np.isfinite(rover_costs), grid)
     scout_detour = search(rover_costs2, stop_cell, cells["parking"], grid, "rt-rover-v2:detour")
+    # The crew's replanned drive is the scout's proven track (first drive up to the stop, then its detour), so every
+    # metre of it has been driven by the scout; the separately searched drive2 is kept only if the detour failed.
+    if scout_detour:
+        drive2 = scouted + scout_detour[1:]
     # Backup: separate drive and descent where the terrain allows (main corridor penalized, not forbidden).
     corridor_main = np.zeros(blocked.shape, bool)
     for c in crossed(grid, drive2) + crossed(grid, walk1):
@@ -444,6 +448,10 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
         costs[corridor_main & np.isfinite(costs)] *= BACKUP_PENALTY
     drive_b = search(rover_costs3, cells["habitat"], cells["parking"], grid, "rt-crew-backup-v2:drive")
     walk_b = search(crew_costs3, cells["parking"], cells["observation_backup"], grid, "rt-crew-backup-v2:walk")
+    # The scout returns along the backup: primary viewpoint -> backup viewpoint (crew-passable ground), the backup
+    # walk back to parking, then the backup drive home, so both crew routes are scouted (simulated) end to end.
+    hop = search(crew_costs, cells["observation_primary"], cells["observation_backup"], grid, "rt-rover-v2:viewpoints")
+    scout_return = (hop[1:] + walk_b[::-1][1:] + drive_b[::-1][1:]) if (hop and walk_b and drive_b) else []
 
     features = {
         "guess": route_feature(grid, "rt-orbital-guess-v1", "orbital_guess", "crew", "before", "inspection_required",
@@ -452,7 +460,7 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
                                [("drive", drive2), ("walk", walk1)]) if drive2 else
                  empty_route("rt-crew-main-v2", "main", "crew", "after", "no_viable_route"),
         "rover": route_feature(grid, "rt-rover-v2", "rover_path", "rover", "after", "inspection_required",
-                               [("drive", scouted + scout_detour[1:] + walk1[1:])]) if scout_detour else
+                               [("drive", scouted + scout_detour[1:] + walk1[1:] + scout_return)]) if scout_detour else
                  empty_route("rt-rover-v2", "rover_path", "rover", "after", "no_viable_route"),
         # Drawn viewpoint-first (return orientation, PR #17 convention): walk back to the rover, then drive home.
         "backup": route_feature(grid, "rt-crew-backup-v2", "backup", "crew", "after", "inspection_required",
@@ -529,7 +537,8 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
     # Coverage: simulated robot coverage only; orbit-only is the published DTM box.
     inner_bounds = grid_bounds(grid)
     rover_cells = np.zeros(blocked.shape, bool)
-    for c in crossed(grid, scouted) + crossed(grid, scout_detour) + crossed(grid, walk1):
+    scout_back = walk1[-1:] + scout_return  # the return leg, joined at the primary viewpoint
+    for c in crossed(grid, scouted) + crossed(grid, scout_detour) + crossed(grid, walk1) + crossed(grid, scout_back):
         rover_cells[c] = True
     corridor = distance_transform_edt(~rover_cells, sampling=(terrain.resolution, float(np.median(terrain.column_spacing)))) <= 10.0
     coverage = [feature("cov-orbit-001", "Polygon", [box_ring(inner_bounds)], state="orbit_only", simulated=False, sensor="none")]

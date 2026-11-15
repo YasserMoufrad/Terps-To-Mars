@@ -7,7 +7,7 @@
   },
   "backup_independence": {
     "backup_id": "rt-crew-backup-v2",
-    "backup_m": 1989.9,
+    "backup_m": 1976.0,
     "common_mode": null,
     "independent": true,
     "main_id": "rt-crew-main-v2",
@@ -26,16 +26,16 @@
       "accepted_budget": true,
       "applied_reasons": [],
       "available_min": 168.0,
-      "claimed_round_trip_m": 3979.8,
-      "drive_one_way_m": 878.6,
+      "claimed_round_trip_m": 3951.9,
+      "drive_one_way_m": 864.7,
       "eva_min": 240,
       "evidence": "inferred",
       "leg_problems": [],
-      "one_way_m": 1989.9,
+      "one_way_m": 1976.0,
       "reasons": [],
       "reserve_fraction": 0.3,
       "round_trip_limit_m": 5000,
-      "round_trip_m": 3979.8,
+      "round_trip_m": 3951.9,
       "route_id": "rt-crew-backup-v2",
       "site_min": 20,
       "speeds_m_min": {
@@ -43,28 +43,28 @@
         "walk": 20.0
       },
       "suggested_status": "inspection_required",
-      "total_min": 152.2,
-      "travel_min": 132.2,
+      "total_min": 151.9,
+      "travel_min": 131.9,
       "walk_one_way_m": 1111.3,
       "walk_round_trip_m": 2222.5,
-      "walkback_min": 99.5,
+      "walkback_min": 98.8,
       "walkback_state": "walkback_uses_reserve",
-      "walkback_total_min": 185.6
+      "walkback_total_min": 184.7
     },
     "rt-crew-main-v2": {
       "accepted_budget": true,
       "applied_reasons": [],
       "available_min": 168.0,
-      "claimed_round_trip_m": 3371.1,
-      "drive_one_way_m": 853.6,
+      "claimed_round_trip_m": 3403.6,
+      "drive_one_way_m": 869.8,
       "eva_min": 240,
       "evidence": "inferred",
       "leg_problems": [],
-      "one_way_m": 1685.5,
+      "one_way_m": 1701.8,
       "reasons": [],
       "reserve_fraction": 0.3,
       "round_trip_limit_m": 5000,
-      "round_trip_m": 3371.1,
+      "round_trip_m": 3403.6,
       "route_id": "rt-crew-main-v2",
       "site_min": 20,
       "speeds_m_min": {
@@ -72,13 +72,13 @@
         "walk": 20.0
       },
       "suggested_status": "inspection_required",
-      "total_min": 123.7,
-      "travel_min": 103.7,
+      "total_min": 124.1,
+      "travel_min": 104.1,
       "walk_one_way_m": 832.0,
       "walk_round_trip_m": 1663.9,
-      "walkback_min": 84.3,
+      "walkback_min": 85.1,
       "walkback_state": "walkback_within_reserve",
-      "walkback_total_min": 156.1
+      "walkback_total_min": 157.1
     },
     "rt-orbital-guess-v1": {
       "accepted_budget": true,
@@ -294,11 +294,11 @@
     "rt-crew-backup-v2": {
       "reason": null,
       "stats": {
-        "elevation_gain_m": 131.6,
-        "est_time_min": 132.2,
-        "length_m": 1989.9,
-        "max_slope_deg": 21.9,
-        "round_trip_m": 3979.8,
+        "elevation_gain_m": 132.4,
+        "est_time_min": 131.9,
+        "length_m": 1976.0,
+        "max_slope_deg": 21.3,
+        "round_trip_m": 3951.9,
         "shared_with_main_m": 0
       },
       "status": "inspection_required"
@@ -306,11 +306,11 @@
     "rt-crew-main-v2": {
       "reason": null,
       "stats": {
-        "elevation_gain_m": 28.5,
-        "est_time_min": 103.7,
-        "length_m": 1685.5,
-        "max_slope_deg": 22.3,
-        "round_trip_m": 3371.1,
+        "elevation_gain_m": 30.4,
+        "est_time_min": 104.1,
+        "length_m": 1701.8,
+        "max_slope_deg": 22.4,
+        "round_trip_m": 3403.6,
         "shared_with_main_m": 0
       },
       "status": "inspection_required"
@@ -330,11 +330,11 @@
     "rt-rover-v2": {
       "reason": null,
       "stats": {
-        "elevation_gain_m": 30.4,
-        "est_time_min": 170.2,
-        "length_m": 1701.8,
+        "elevation_gain_m": 164.6,
+        "est_time_min": 379.6,
+        "length_m": 3795.7,
         "max_slope_deg": 22.4,
-        "round_trip_m": 1701.8,
+        "round_trip_m": 3795.7,
         "shared_with_main_m": 0
       },
       "status": "inspection_required"

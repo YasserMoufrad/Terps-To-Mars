@@ -153,6 +153,7 @@ button { font: inherit; }
 .alert-info { border-color: #4da3ff; color: #b9d8ff; }
 .alert-caution { border-color: var(--warn); color: #fac775; }
 .alert-stop { border-color: var(--bad); color: #ffb3b5; }
+.alert-go { border-color: var(--good); color: #a7f0cf; }
 .notices { border-color: var(--warn); color: #fac775; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
 
 .discovery { border-color: var(--bad); }

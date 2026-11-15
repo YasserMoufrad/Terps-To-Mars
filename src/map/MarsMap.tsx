@@ -5,7 +5,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { GeoJsonObject } from 'geojson';
 import { createPortal } from 'react-dom';
-import { MapContainer, TileLayer, GeoJSON, CircleMarker, Polygon, Tooltip, ImageOverlay, Pane, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Marker, Polygon, Tooltip, ImageOverlay, Pane, useMapEvents } from 'react-leaflet';
+import { vehicleIcon } from './vehicleIcons';
 import { appLogger } from '../lib/appLogger';
 import { createTileErrorReporter, type TileCoords } from './tileErrors';
 import type {
@@ -20,11 +21,11 @@ import {
   type ImageryLoadState, type LayerLoad,
 } from './imageryState';
 import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } from './stageFilters';
-import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle, DRIVE_COLOR } from './layerStyles';
+import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
 import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
 import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
-import { MapLegend } from './MapLegend';
+import { MapLegend, type LegendKeys, type LineKey } from './MapLegend';
 import { CoordinateReadout } from './CoordinateReadout';
 import { dronePerchLabel } from './reviewPresentation';
 import { crewFaceTarget } from './scarpTarget';
@@ -34,6 +35,8 @@ import {
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
 import { SlopeLegend } from './SlopeLegend';
 import { auditFor, routeRejectedForStyle } from './routeAudit';
+import { readinessFor, type RouteReadiness } from './routeReadiness';
+import { detectedBy } from './detectedBy';
 import { RouteInspector } from '../components/RouteInspector';
 import { currentEntry, nearestCell, type AuditCell, type Inspection } from './routeInspection';
 import type { AnalysisResults } from '../data/analysis';
@@ -239,6 +242,14 @@ export function MarsMap({
   // A non-"ok" route that still has a line (e.g. the unverified orbital guess) is drawn,
   // styled amber so it never looks like a cleared route.
   // Crew routes with drive/walk legs are split so the drive leg can be drawn differently.
+  // Readiness per route at this stage: "go" (green) once the robots have scouted it end to end (routeReadiness).
+  const readiness = useMemo((): Record<string, RouteReadiness> => readinessFor(stage, routes, routeAudit, coverage, hazards),
+    [routes, stage, routeAudit, coverage, hazards]);
+  useEffect(() => {
+    // One safety-decision event per stage: which crew routes read as go, and why the others do not.
+    appLogger.info('safety', 'route.readiness', { mission_stage: stage, evidence: 'simulated scouting', crew_clearance: 'planning_go_only',
+      routes: Object.fromEntries(Object.entries(readiness).map(([id, r]) => [id, { state: r.state, reasons: r.reasons }])) });
+  }, [readiness]);
   // Rover-stage replay (a static preview, no command): "before" or "after" shows only that crew route.
   const replayId = replay === 'before' ? mission.discovery.before_route_id : replay === 'after' ? mission.discovery.after_route_id : null;
   const drawnRoutes = splitRouteLegs({ ...stageRoutes, features: stageRoutes.features
@@ -247,6 +258,21 @@ export function MarsMap({
   // During the rover stage the old crew route is shown faded next to the new one.
   const supersededId = stage === 'rover' ? mission.discovery.before_route_id : null;
   const parking = stage === 'eva' ? crewRoverParking(stageRoutes) : null;
+  // Legend entries for exactly what this stage draws (same decisions as routeStyle below).
+  const shownCoverage = layers.coverage ? visibleCoverage : highlightCoverageFor(stage, coverage, mission);
+  const legendKeys: LegendKeys = { lines: new Set<LineKey>(), hazards: new Set(), coverage: new Set() };
+  for (const f of drawnRoutes.features) {
+    const p = f.properties as DrawnRouteProperties;
+    const go = readiness[p.id]?.state === 'go';
+    if (p.id === supersededId) legendKeys.lines.add('replaced');
+    else if (routeRejectedForStyle(p, auditFor(routeAudit, p.id))) legendKeys.lines.add('rejected');
+    else if (p.kind === 'orbital_guess') legendKeys.lines.add('to-scout');
+    else if (p.kind === 'rover_path') legendKeys.lines.add('rover');
+    else if (!go) legendKeys.lines.add(p.leg_mode === 'drive' ? 'candidate-drive' : 'candidate');
+    else legendKeys.lines.add(p.leg_mode === 'drive' ? 'drive' : p.kind === 'backup' ? 'backup' : 'walk');
+  }
+  if (layers.hazards) for (const h of visibleHazards.features) legendKeys.hazards.add(h.properties.type);
+  for (const c of shownCoverage.features) if (c.properties.state !== 'orbit_only') legendKeys.coverage.add(c.properties.state);
 
   return (
     <div className="map-wrap">
@@ -417,7 +443,7 @@ export function MarsMap({
               const p = f.properties as HazardProperties;
               layer.bindTooltip(
                 `<strong>${p.type} · ${p.category.replace('_', ' ')}</strong> (${p.severity})<br/>` +
-                  `${EVIDENCE_LABEL[p.evidence]} · click for evidence`,
+                  `${EVIDENCE_LABEL[p.evidence]} · detected by: ${detectedBy(p, mission)} · click for evidence`,
               );
               // Clicking a hazard opens its evidence card in the side panel (not a terrain-sample inspection).
               layer.on('click', (e: L.LeafletMouseEvent) => { L.DomEvent.stopPropagation(e.originalEvent); onSelectHazard(p); });
@@ -429,22 +455,26 @@ export function MarsMap({
         <GeoJSON
           key={`route-casing-${stage}-${replay}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => { const p = f?.properties as RouteProperties; return routeCasingStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeCasingStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id)), readiness[p.id]?.state === 'go'); }}
           interactive={false}
         />
         <GeoJSON
           key={`routes-${stage}-${replay}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id)), readiness[p.id]?.state === 'go'); }}
           onEachFeature={(f, layer) => {
             const p = f.properties as DrawnRouteProperties;
             const entry = auditFor(routeAudit, p.id);
             const rejected = routeRejectedForStyle(p, entry);
+            const go = readiness[p.id]?.state === 'go';
             const label =
               p.id === supersededId
                 ? 'Old route (replaced)'
-                : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}` +
-                  `${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`;
+                : p.kind === 'rover_path'
+                  ? 'Scout rover path (simulated, uncrewed)'
+                  : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}` +
+                    (go ? ' (scouted: go for EVA; simulated scouting, not a real-world certification)'
+                      : `${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`);
             const legs = legSummary(p);
             // Prefer measured numbers from the route audit (#18) over the file's claimed stats; otherwise show the
             // drive/walk legs and walkback from the route data. The popup explains the audit verdict.
@@ -489,25 +519,27 @@ export function MarsMap({
           </CircleMarker>
         )}
 
+        {/* Small vehicle icons (vehicleIcons.ts): the scout rover where it stopped (red ring: hazard found), the crew
+            vehicle where the astronauts park it, the drone on its perch. */}
         {stage === 'rover' && (
-          <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Rover incident', mission.discovery.location, 'simulated') }}
-            center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground</Tooltip>
-          </CircleMarker>
+          <Marker icon={vehicleIcon('scout', '#e5484d')} position={toLatLng(mission.discovery.location)}
+            eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e.originalEvent); inspectPoint('Rover incident', mission.discovery.location, 'simulated'); } }}>
+            <Tooltip permanent direction="left" offset={[-16, 0]} className="map-label">Scout rover stopped (simulated): soft ground</Tooltip>
+          </Marker>
         )}
 
         {parking && (
-          <CircleMarker center={parking} radius={7} pathOptions={{ color: '#0b0d10', fillColor: DRIVE_COLOR, fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="right" className="map-label">Crew rover parks (proposed)</Tooltip>
-          </CircleMarker>
+          <Marker icon={vehicleIcon('crew')} position={parking}>
+            <Tooltip permanent direction="right" offset={[16, 0]} className="map-label">Crew vehicle parks here; walk the rest</Tooltip>
+          </Marker>
         )}
 
         {(stage === 'drone' || stage === 'eva') && (
-          <CircleMarker bubblingMouseEvents={false} eventHandlers={{ click: () => inspectPoint('Drone perch', mission.drone.perch, 'simulated') }}
-            center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
+          <Marker icon={vehicleIcon('drone')} position={toLatLng(mission.drone.perch)}
+            eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e.originalEvent); inspectPoint('Drone perch', mission.drone.perch, 'simulated'); } }}>
             {/* "top": the perch is only ~50 m from the observation point, whose label sits to the right. */}
-            <Tooltip permanent direction="top" offset={[0, -8]} className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
-          </CircleMarker>
+            <Tooltip permanent direction="top" offset={[0, -16]} className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
+          </Marker>
         )}
 
         {/* Modeled 15 m position uncertainty of each assessed point (current feasibility report only). */}
@@ -560,7 +592,7 @@ export function MarsMap({
       {selection && typeof document !== 'undefined' && document.getElementById('analysis-inspector-slot')
         && createPortal(<RouteInspector selection={selection} audit={routeAudit} onClose={() => setSelection(null)} />, document.getElementById('analysis-inspector-slot')!)}
 
-      <MapLegend />
+      <MapLegend keys={legendKeys} />
       {layers.slope && slopeMeta && slopePublished && <SlopeLegend meta={slopeMeta} state={slopeState} opacity={slopeOpacity} onOpacity={setSlopeOpacity} onRetry={retrySlope} />}
       {!imageryLoaded && <div className="map-loading">Loading Mars imagery…</div>}
     </div>

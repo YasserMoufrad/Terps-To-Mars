@@ -6,9 +6,12 @@ import type {
   StageId, Mission, HazardCollection, RouteCollection, CoverageCollection, RouteFeature, HazardFeature,
 } from '../data/types.ts';
 import { hazardsFor } from './stageFilters.ts';
+import { detectedBy } from './detectedBy.ts';
+import type { RouteReadiness } from './routeReadiness.ts';
 
-// No "ok" tone on purpose: nothing in this demo is crew clearance, so nothing is drawn green.
-export type SummaryTone = 'info' | 'caution' | 'stop';
+// "go" (green) only for a crew route that routeReadiness marks scouted end to end, from Step 3 on: a planning go
+// under simulated scouting, never a real-world certification. Everything else is info / caution / stop.
+export type SummaryTone = 'info' | 'caution' | 'stop' | 'go';
 
 export interface SummaryRow {
   label: string;
@@ -26,6 +29,7 @@ interface SummaryData {
   hazards: HazardCollection;
   routes: RouteCollection;
   coverage: CoverageCollection;
+  readiness?: Record<string, RouteReadiness>; // per route id, from routeReadiness (absent: nothing reads as go)
 }
 
 type Ring = number[][];
@@ -101,6 +105,7 @@ function rover({ mission, routes, hazards }: SummaryData): StageSummary {
   const sim = hazards.features.find((h) => h.properties.id === d.hazard_id);
   const rows: SummaryRow[] = [
     { label: 'Found', value: `Suspected soft ground (simulated, uncertainty ${d.uncertainty})`, tone: 'stop' },
+    ...(sim ? [{ label: 'Detected by', value: detectedBy(sim.properties, mission), tone: 'info' as const }] : []),
   ];
   if (before) {
     const hitsSim = sim ? hazardsCrossed(before, [sim]).length > 0 : false;
@@ -131,20 +136,25 @@ function drone({ mission, coverage }: SummaryData): StageSummary {
   };
 }
 
-function eva({ mission, routes, hazards }: SummaryData): StageSummary {
+function eva({ mission, routes, hazards, readiness }: SummaryData): StageSummary {
   // Purpose: the crew's review: route feasibility, backup limits, open hazards, decision needed.
   const main = routes.features.find((r) => r.properties.id === mission.discovery.after_route_id);
   const backup = routes.features.find((r) => r.properties.kind === 'backup' && r.properties.agent === 'crew' && r.properties.version === 'after');
   const open = hazards.features.filter((h) => h.properties.evidence !== 'nasa_derived');
   const rows: SummaryRow[] = [];
-  if (main) {
+  const isGo = (r: RouteFeature | undefined) => Boolean(r && readiness?.[r.properties.id]?.state === 'go');
+  if (main && isGo(main)) {
+    rows.push({ label: 'Main route', value: `Scouted end to end by the rover: go for EVA (${km(legLength(main, 'drive'))} drive + ${Math.round(legLength(main, 'walk'))} m walk; simulated scouting)`, tone: 'go' });
+  } else if (main) {
     const drive = legLength(main, 'drive');
     const reason = drive > 0 && main.properties.status === 'inspection_required' ? ': the crew-rover drive is not yet modeled' : '';
     rows.push({ label: 'Main route', value: `${statusWords(main.properties.status)}${reason}`, tone: statusTone(main.properties.status) });
   } else {
     rows.push({ label: 'Main route', value: 'No post-discovery route supplied', tone: 'stop' });
   }
-  if (backup) {
+  if (backup && isGo(backup)) {
+    rows.push({ label: 'Backup', value: `Scouted by the rover on its way back: go (${Math.round(legLength(backup, 'walk'))} m walk to the backup viewpoint, separate drive)`, tone: 'go' });
+  } else if (backup) {
     const walk = legLength(backup, 'walk');
     const shared = backup.properties.stats.shared_with_main_m;
     const sharesDrive = shared > 0.5 * backup.properties.stats.length_m;
@@ -158,7 +168,9 @@ function eva({ mission, routes, hazards }: SummaryData): StageSummary {
     rows.push({ label: 'Backup', value: 'No post-discovery backup assessment supplied', tone: 'stop' });
   }
   rows.push({ label: 'Open hazards', value: `${open.length} zone${open.length === 1 ? '' : 's'} inferred or simulated, to confirm on site`, tone: 'caution' });
-  rows.push({ label: 'Crew decision', value: 'Accept the route after rover scouting and inspection, or hold the EVA', tone: 'caution' });
+  rows.push({ label: 'Crew decision', value: isGo(main)
+    ? 'Go: drive the crew vehicle to parking, park it, walk to the viewpoint; hold the EVA if anything differs on site'
+    : 'Accept the route after rover scouting and inspection, or hold the EVA', tone: isGo(main) ? 'info' : 'caution' });
   return { title: 'Crew review', rows };
 }
 
