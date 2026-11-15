@@ -21,3 +21,7 @@
 
 .route-selector{bottom:125px}
 @media(max-width:800px){.route-selector{bottom:70px;max-width:calc(100% - 35px)}.slope-legend{bottom:135px}.map-legend{font-size:9px;max-width:calc(100% - 35px)}}
+.imagery-toggle{display:block;width:100%;text-align:left;font-weight:600}
+/* Pinned to the map's top-right corner, above the other overlays; shrinks to just the header when collapsed. */
+.leaflet-top.leaflet-right { top: 0; right: 0; z-index: 1000; }
+.leaflet-right .imagery-controls { float: right; clear: none; margin: 10px 10px 0 0; width: max-content; }

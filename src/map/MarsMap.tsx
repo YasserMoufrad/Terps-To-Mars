@@ -284,6 +284,7 @@ export function MarsMap({
         zoom={12}
         minZoom={4}
         maxZoom={MAP_MAX_ZOOM}
+        attributionControl={false} // hides the bottom-right credit bar (Leaflet + tile source credits)
       >
         <FitToMission
           // Routes and endpoints only: hazard and coverage polygons (DTM-wide slope clusters) would widen the view.
