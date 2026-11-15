@@ -11,6 +11,12 @@
 .route-selector{position:absolute;left:10px;bottom:80px;z-index:900;background:#171c24;padding:8px;color:#eee;font-size:12px}
 .ba-headline{font-size:13px;line-height:1.5}.ba-table{width:100%;border-collapse:collapse;font-size:12px}.ba-table th,.ba-table td{text-align:left;padding:4px;border-top:1px solid var(--line);vertical-align:top}
 .ba-table thead th{border-top:none;color:var(--muted);font-weight:600}.ba-table tbody th{font-weight:400;color:var(--muted)}.ba-better{color:#3ddc97;font-weight:600}.ba-note{font-size:11px;margin-top:6px}
+.measure-btn{position:absolute;left:10px;top:84px;z-index:900;width:34px;height:34px;display:grid;place-items:center;padding:0;background:#fff;color:#222;border:2px solid rgba(0,0,0,.3);border-radius:4px;cursor:pointer}
+.measure-btn.on{background:#62ddff;color:#0b0d10}
+.measure-hint{position:absolute;left:10px;top:124px;z-index:900;max-width:220px;background:rgba(16,19,24,.9);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:11px;line-height:1.4}
+.leaflet-tooltip.measure-label{background:#0b0d10;color:#62ddff;border:1px solid #62ddff;font-weight:600}
+.leaflet-container.measuring{cursor:crosshair}
+.ir-key{margin:2px 0 4px 24px}.ir-key-bar{height:10px;border-radius:3px;border:1px solid var(--line)}.ir-key-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
 .layer-explain{display:block;margin:0 0 8px 24px;font-size:11px;line-height:1.4;color:var(--muted)}
 .time-budget .tb-row{margin:8px 0}.tb-title{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}.tb-fit{color:#a7f0cf}.tb-over{color:#ffb3b5}
 .tb-track{position:relative;display:flex;height:14px;background:#2a303a;border-radius:4px;overflow:visible}.tb-seg{height:100%}.tb-seg:first-child{border-radius:4px 0 0 4px}

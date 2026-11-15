@@ -2,7 +2,7 @@
 // are shown as unavailable instead of disappearing, so nobody wonders where they went.
 
 import { Fragment } from 'react';
-import { LAYER_EXPLANATIONS, LAYER_LABELS, type LayerVisibility } from '../map/layers';
+import { LAYER_EXPLANATIONS, LAYER_LABELS, rampGradient, type LayerVisibility } from '../map/layers';
 
 interface LayerTogglesProps {
   layers: LayerVisibility;
@@ -33,6 +33,13 @@ export function LayerToggles({ layers, available, onChange, notes = {} }: LayerT
           {available[key] && notes[key] && <span className="layer-note"> ({notes[key]})</span>}
         </label>
         {/* How to read the layer, shown under its checkbox only while it is on. */}
+        {layers[key] && available[key] && key === 'nightIr' && (
+          // Color key for the night-IR ramp (same colors as the map filter, from rampGradient).
+          <div className="ir-key" aria-label="Night infrared color key: blue cools fast, looser; orange stays warm, firmer">
+            <div className="ir-key-bar" style={{ background: rampGradient() }} />
+            <div className="ir-key-labels"><span>Cools fast: looser</span><span>Stays warm: firmer</span></div>
+          </div>
+        )}
         {layers[key] && available[key] && LAYER_EXPLANATIONS[key] && <p className="layer-explain">{LAYER_EXPLANATIONS[key]}</p>}
         </Fragment>
       ))}
