@@ -113,6 +113,7 @@ button { font: inherit; }
 .line-drive { border-top: 5px solid #7cc4ff; }
 .line-unverified-drive { border-top: 4px dotted var(--warn); }
 .line-backup { border-top: 4px dashed var(--good); }
+.line-orbit-plan { border-top: 4px dashed #b4b9c2; }
 .line-rover { border-top: 4px dotted #ffffff; }
 .line-unverified { border-top: 4px dashed var(--warn); }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-left: 6px; }

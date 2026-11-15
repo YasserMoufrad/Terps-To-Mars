@@ -22,9 +22,10 @@ function capture() {
   return { events, logger: createLogger({ runId: 'test-run', sink: (e) => events.push(e) }) };
 }
 
-test('orbital stage hides post-discovery routes', () => {
+test('orbital stage shows only the orbit-only plan, not post-discovery routes', () => {
+  // Step 1 now draws the pre-scouting crew route (discovery.before_route_id) instead of the straight line.
   const ids = routesFor('orbital', routes, mission).features.map((f) => f.properties.id);
-  assert.deepEqual(ids, ['rt-orbital-guess-v1']);
+  assert.deepEqual(ids, [mission.discovery.before_route_id]);
 });
 
 test('drone/eva stages exclude the preliminary (before) backup', () => {

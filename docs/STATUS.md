@@ -91,6 +91,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Decision log
 
+- 2026-11-14 · Yasser: Step 1 now shows the orbit-only crew plan (`discovery.before_route_id`, DTM least-cost, drawn gray) instead of the straight-line `orbital_guess`, so orbit plans around visible cliffs and the rover's soft-ground find is what changes the route; Step 2 keeps it gray as the replaced route next to the yellow reroute. `rt-orbital-guess-v1` stays in the data and route audit, just not drawn. Soft-ground label drops the "?"
+
 - 2026-11-14 · Nic + Yasser: drive-then-walk EVA adopted. Contract bumped to schema 1.1 with optional route `legs` and `walkback_min`; 1.0 files (no legs) stay valid as walk-only. Two budget checks: (1) drive + walk round trip + site work ≤ 168 min; (2) drive out + site walk + site work + walk home along the drive legs ≤ 240 min. Drive speed 5 km/h, cautious and configurable (`hazard_rules.json`). Drive-leg routes stay `inspection_required` until a crew-rover traversability model exists
 - 2026-11-14 · Nic + Yasser: the 5 km round-trip limit applies to walking distance only; the 10 km hard cap is measured from the habitat (walkback). (Proposed by Nic; logged by Yasser's agent at Yasser's request)
 - 2026-11-14 · Nic: added optional contract files `slope.meta.json`, `scarp_lines.geojson`, `route_audit.json` (schema stays 1.0, additive); "Inspect scarp" uses scarp geometry only, no image-midpoint fallback; route audit never returns `ok`

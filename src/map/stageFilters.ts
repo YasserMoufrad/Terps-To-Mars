@@ -55,7 +55,9 @@ export function routesFor(stage: StageId, routes: RouteCollection, mission: Miss
     const p = f.properties;
     switch (stage) {
       case 'orbital':
-        return p.kind === 'orbital_guess' && p.version === 'before';
+        // The orbit-only crew plan (computed from the DTM before scouting); the rover stage then shows it
+        // replaced. The straight-line `orbital_guess` stays in the data for the route audit but is not drawn.
+        return p.id === beforeId;
       case 'rover':
         // Show the discovery: the rover's path, the old crew route and the new one.
         return (p.kind === 'rover_path' && p.version === 'after') || p.id === beforeId || p.id === afterId;

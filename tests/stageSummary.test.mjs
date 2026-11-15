@@ -20,8 +20,17 @@ test('every stage has its own summary and no row is ever "ok"/green', () => {
   }
 });
 
-test('orbital: the straight-line guess is reported as crossing no-go zones', () => {
-  const row = stageSummary('orbital', data).rows.find((r) => r.label === 'First guess');
+test('orbital: the orbit-only plan avoids mapped hazards but stays unverified', () => {
+  const row = stageSummary('orbital', data).rows.find((r) => r.label === 'Orbit-only plan');
+  assert.equal(row.tone, 'caution');
+  assert.match(row.value, /Drive \d\.\d\d km, walk \d+ m; routed around every mapped/);
+  assert.ok(!stageSummary('orbital', data).rows.some((r) => r.label === 'First guess'));
+});
+
+test('orbital: without the plan, the straight-line guess is reported as crossing no-go zones', () => {
+  const beforeId = data.mission.discovery.before_route_id;
+  const noPlan = { ...data, routes: { ...data.routes, features: data.routes.features.filter((r) => r.properties.id !== beforeId) } };
+  const row = stageSummary('orbital', noPlan).rows.find((r) => r.label === 'First guess');
   assert.equal(row.tone, 'stop');
   assert.match(row.value, /crosses \d+ no-go zone/);
 });

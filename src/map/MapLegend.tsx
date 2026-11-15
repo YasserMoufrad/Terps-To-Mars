@@ -7,6 +7,7 @@ export function MapLegend() {
   return (
     <div className="map-legend" aria-label="Map legend">
       <div className="legend-row">
+        <span className="line line-orbit-plan" /> Orbit-only plan
         <span className="line line-drive" /> Crew rover drive
         <span className="line line-main" /> Crew walk
         <span className="line line-backup" /> Backup

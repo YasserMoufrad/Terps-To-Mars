@@ -179,8 +179,9 @@ export function MarsMap({
   // styled amber so it never looks like a cleared route.
   // Crew routes with drive/walk legs are split so the drive leg can be drawn differently.
   const drawnRoutes = splitRouteLegs({ ...stageRoutes, features: stageRoutes.features.filter((f) => hasLine(f.geometry.coordinates)) });
-  // During the rover stage the old crew route is shown faded next to the new one.
-  const supersededId = stage === 'rover' ? mission.discovery.before_route_id : null;
+  // The orbit-only crew plan is drawn gray in the orbital stage and stays gray (as the replaced route) in the
+  // rover stage, where the rover's reroute appears in the normal route colors.
+  const supersededId = stage === 'orbital' || stage === 'rover' ? mission.discovery.before_route_id : null;
   const parking = stage === 'eva' ? crewRoverParking(stageRoutes) : null;
 
   return (
@@ -367,7 +368,7 @@ export function MarsMap({
             const p = f.properties as DrawnRouteProperties;
             const label =
               p.id === supersededId
-                ? 'Old route (replaced)'
+                ? stage === 'orbital' ? 'Orbit-only plan (unverified)' : 'Old route (replaced)'
                 : `${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')})` : ''}`;
             const entry = auditFor(routeAudit, p.id);
             const legs = legSummary(p);
@@ -391,7 +392,7 @@ export function MarsMap({
 
         {stage === 'rover' && (
           <CircleMarker center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground?</Tooltip>
+            <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground</Tooltip>
           </CircleMarker>
         )}
 

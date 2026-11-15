@@ -64,16 +64,26 @@ const statusWords = (status: string) =>
 const statusTone = (status: string): SummaryTone =>
   status === 'no_viable_route' || status === 'backup_unavailable' ? 'stop' : status === 'ok' ? 'info' : 'caution';
 
-function orbital({ hazards, routes, coverage }: SummaryData): StageSummary {
+function orbital({ mission, hazards, routes, coverage }: SummaryData): StageSummary {
   // Purpose: what orbital data shows and what it cannot show yet.
   const seen = hazardsFor('orbital', hazards).features;
   const nasa = seen.filter((h) => h.properties.evidence === 'nasa_derived').length;
   const inferred = seen.filter((h) => h.properties.evidence === 'inferred').length;
-  const guess = routes.features.find((r) => r.properties.kind === 'orbital_guess');
+  const plan = routes.features.find((r) => r.properties.id === mission.discovery.before_route_id);
+  const guess = plan ? undefined : routes.features.find((r) => r.properties.kind === 'orbital_guess');
   const unscouted = coverage.features.filter((c) => c.properties.state === 'unscouted').length;
   const rows: SummaryRow[] = [
     { label: 'From orbit', value: `${nasa} NASA-derived and ${inferred} inferred hazard zones`, tone: 'info' },
   ];
+  if (plan) {
+    const crossed = hazardsCrossed(plan, seen);
+    rows.push({
+      label: 'Orbit-only plan',
+      value: `Drive ${km(legLength(plan, 'drive'))}, walk ${Math.round(legLength(plan, 'walk'))} m; `
+        + (crossed.length > 0 ? `crosses ${crossed.length} mapped hazard zone${crossed.length > 1 ? 's' : ''}` : 'routed around every mapped cliff, slope and rockfall zone'),
+      tone: crossed.length > 0 ? 'stop' : 'caution',
+    });
+  }
   if (guess) {
     const crossed = hazardsCrossed(guess, seen);
     rows.push({
