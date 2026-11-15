@@ -2,6 +2,11 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 const root=new URL('../public/data/',import.meta.url);
 const sha=url=>crypto.createHash('sha256').update(fs.readFileSync(url)).digest('hex');
+function sourceSha(url) {
+  // Hash Python source as LF text because Git may check it out with CRLF on Windows.
+  const source = fs.readFileSync(url, 'utf8').replace(/\r\n/g, '\n');
+  return crypto.createHash('sha256').update(source).digest('hex');
+}
 const stable=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 const manifest=JSON.parse(fs.readFileSync(new URL('analysis_manifest.json',root)));
 const names=["routes.geojson","mission.json","hazards.geojson","coverage.geojson","scarp_lines.geojson","science_targets.json","slope.meta.json","slope.bounds.json","slope.png","analysis_rules.json","terrain_source.json","route_audit.json","terrain_samples.json","feasibility_report.json","itinerary_report.json"];
@@ -16,7 +21,7 @@ for(const[name,expected]of Object.entries(manifest.files)) {
 }
 for(const[name,expected]of Object.entries(manifest.algorithms)) {
   // Any scientific generator change invalidates published results.
-  if(sha(new URL('../pipeline/'+name,import.meta.url))!==expected) throw Error('Changed analysis generator: '+name);
+  if(sourceSha(new URL('../pipeline/'+name,import.meta.url))!==expected) throw Error('Changed analysis generator: '+name);
 }
 if(stable(JSON.parse(fs.readFileSync(new URL('../pipeline/hazard_rules.json',import.meta.url))))
   !==stable(JSON.parse(fs.readFileSync(new URL('analysis_rules.json',root))))) throw Error('Changed hazard rules: regenerate science results');

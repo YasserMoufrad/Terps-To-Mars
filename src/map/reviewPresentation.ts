@@ -44,6 +44,22 @@ export function reviewNotices(stage: StageId, routes: RouteCollection, mission: 
   return notices;
 }
 
+export function conservativeFeasibilityNotice(report: unknown, current: boolean): string | null {
+  // A current all-unscouted feasibility verdict is a separate assessment from audited, simulated-scout route candidates.
+  if (!current || !report || typeof report !== 'object') return null;
+  const result = report as { verdict?: unknown };
+  if (result.verdict !== 'no_route_found') return null;
+  return 'Conservative all-unscouted assessment: no route found. Separately audited routes are provisional planning candidates after simulated scouting; neither assessment grants crew clearance.';
+}
+
+export function logConservativeFeasibility(logger: Logger, stage: StageId, report: unknown, current: boolean): void {
+  // Record a current conservative no-route verdict with the page run ID; logging cannot change the assessment.
+  if (!conservativeFeasibilityNotice(report, current)) return;
+  logger.warn('safety', 'feasibility.conservative_no_route', {
+    mission_stage: stage, verdict: 'no_route_found', assessment: 'all_unscouted', crew_clearance: 'not_established',
+  });
+}
+
 export function logRouteReview(logger: Logger, route: RouteFeature, stage: StageId, audit: RouteAudit | null = null): void {
   // logger supplies the page correlation ID; route/status distinguish a candidate from failure.
   const p = route.properties;
