@@ -1,79 +1,501 @@
 {
-  "type": "FeatureCollection",
-  "schema_version": "1.0",
-  "placeholder": true,
   "features": [
     {
-      "type": "Feature",
+      "geometry": {
+        "coordinates": [
+          [
+            -147.9013006,
+            54.1277696
+          ],
+          [
+            -147.9023505,
+            54.1329493
+          ],
+          [
+            -147.9032692,
+            54.1357501
+          ],
+          [
+            -147.9036892,
+            54.137083
+          ],
+          [
+            -147.9042142,
+            54.1378085
+          ],
+          [
+            -147.9046604,
+            54.1384834
+          ],
+          [
+            -147.9056316,
+            54.1401706
+          ],
+          [
+            -147.9056053,
+            54.1404743
+          ],
+          [
+            -147.9040042,
+            54.144203
+          ],
+          [
+            -147.9030067,
+            54.1462277
+          ],
+          [
+            -147.899227,
+            54.1505301
+          ],
+          [
+            -147.8970483,
+            54.1558617
+          ],
+          [
+            -147.8950272,
+            54.1612945
+          ],
+          [
+            -147.8944498,
+            54.1625599
+          ],
+          [
+            -147.8929011,
+            54.1625937
+          ],
+          [
+            -147.8925599,
+            54.162813
+          ],
+          [
+            -147.8906962,
+            54.1633023
+          ],
+          [
+            -147.8906962,
+            54.1633192
+          ],
+          [
+            -147.8911162,
+            54.1658163
+          ],
+          [
+            -147.8941348,
+            54.1666261
+          ]
+        ],
+        "type": "LineString"
+      },
       "properties": {
+        "agent": "crew",
         "id": "rt-orbital-guess-v1",
         "kind": "orbital_guess",
-        "agent": "crew",
+        "legs": [
+          {
+            "est_time_min": 25.7,
+            "from": 0,
+            "length_m": 2139.3,
+            "mode": "drive",
+            "to": 13
+          },
+          {
+            "est_time_min": 20.3,
+            "from": 13,
+            "length_m": 406.4,
+            "mode": "walk",
+            "to": 19
+          }
+        ],
+        "stats": {
+          "elevation_gain_m": 52.9,
+          "est_time_min": 92.0,
+          "length_m": 2545.7,
+          "max_slope_deg": 23.7,
+          "round_trip_m": 5091.4,
+          "shared_with_main_m": 0
+        },
+        "status": "no_viable_route",
+        "status_reason": "over the 5 km round-trip rule",
         "version": "before",
-        "status": "inspection_required",
-        "stats": { "length_m": 1000, "round_trip_m": 2000, "est_time_min": 40, "elevation_gain_m": 30, "max_slope_deg": 24, "shared_with_main_m": 0 }
+        "walkback_min": 127.3
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.137], [-147.893, 54.145]] }
+      "type": "Feature"
     },
     {
-      "type": "Feature",
-      "properties": {
-        "id": "rt-crew-main-v1",
-        "kind": "main",
-        "agent": "crew",
-        "version": "before",
-        "status": "ok",
-        "stats": { "length_m": 820, "round_trip_m": 1640, "est_time_min": 35, "elevation_gain_m": 18, "max_slope_deg": 12, "shared_with_main_m": 0 }
+      "geometry": {
+        "coordinates": [
+          [
+            -147.9013006,
+            54.1277696
+          ],
+          [
+            -147.9023505,
+            54.1329493
+          ],
+          [
+            -147.9032692,
+            54.1357501
+          ],
+          [
+            -147.9036892,
+            54.137083
+          ],
+          [
+            -147.9042142,
+            54.1378085
+          ],
+          [
+            -147.9046604,
+            54.1384834
+          ],
+          [
+            -147.9056316,
+            54.1401706
+          ],
+          [
+            -147.9056053,
+            54.1404743
+          ],
+          [
+            -147.9043192,
+            54.1434944
+          ],
+          [
+            -147.9042929,
+            54.1434775
+          ],
+          [
+            -147.9040042,
+            54.1434607
+          ],
+          [
+            -147.9032955,
+            54.143545
+          ],
+          [
+            -147.902823,
+            54.1442874
+          ],
+          [
+            -147.9016943,
+            54.1467339
+          ],
+          [
+            -147.9000144,
+            54.1480836
+          ],
+          [
+            -147.8981508,
+            54.1536177
+          ],
+          [
+            -147.8956309,
+            54.15873
+          ],
+          [
+            -147.8944498,
+            54.1625599
+          ],
+          [
+            -147.8929011,
+            54.1625937
+          ],
+          [
+            -147.8925599,
+            54.162813
+          ],
+          [
+            -147.8906962,
+            54.1633023
+          ],
+          [
+            -147.8906962,
+            54.1633192
+          ],
+          [
+            -147.8911162,
+            54.1658163
+          ],
+          [
+            -147.8941348,
+            54.1666261
+          ]
+        ],
+        "type": "LineString"
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.892, 54.137], [-147.890, 54.141]] }
-    },
-    {
-      "type": "Feature",
       "properties": {
-        "id": "rt-crew-main-v2",
-        "kind": "main",
-        "agent": "crew",
-        "version": "after",
-        "status": "ok",
-        "stats": { "length_m": 940, "round_trip_m": 1880, "est_time_min": 41, "elevation_gain_m": 21, "max_slope_deg": 13, "shared_with_main_m": 0 }
-      },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.888, 54.131], [-147.884, 54.136], [-147.890, 54.141]] }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "id": "rt-crew-backup-v1",
-        "kind": "backup",
-        "agent": "crew",
-        "version": "before",
-        "status": "ok",
-        "stats": { "length_m": 990, "round_trip_m": 1980, "est_time_min": 44, "elevation_gain_m": 15, "max_slope_deg": 11, "shared_with_main_m": 40 }
-      },
-      "geometry": { "type": "LineString", "coordinates": [[-147.890, 54.141], [-147.903, 54.138], [-147.908, 54.133], [-147.900, 54.128]] }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "id": "rt-rover-v1",
-        "kind": "rover_path",
         "agent": "rover",
-        "version": "before",
-        "status": "ok",
-        "stats": { "length_m": 1810, "round_trip_m": 1810, "est_time_min": 120, "elevation_gain_m": 18, "max_slope_deg": 12, "shared_with_main_m": 820 }
-      },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.894, 54.135]] }
-    },
-    {
-      "type": "Feature",
-      "properties": {
         "id": "rt-rover-v2",
         "kind": "rover_path",
-        "agent": "rover",
-        "version": "after",
-        "status": "ok",
-        "stats": { "length_m": 1930, "round_trip_m": 1930, "est_time_min": 135, "elevation_gain_m": 21, "max_slope_deg": 13, "shared_with_main_m": 940 }
+        "stats": {
+          "elevation_gain_m": 52.0,
+          "est_time_min": 257.2,
+          "length_m": 2571.5,
+          "max_slope_deg": 23.7,
+          "round_trip_m": 2571.5,
+          "shared_with_main_m": 0
+        },
+        "status": "inspection_required",
+        "version": "after"
       },
-      "geometry": { "type": "LineString", "coordinates": [[-147.900, 54.128], [-147.896, 54.133], [-147.894, 54.135], [-147.888, 54.131], [-147.884, 54.136], [-147.890, 54.141], [-147.903, 54.138], [-147.908, 54.133], [-147.900, 54.128]] }
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            -147.9013006,
+            54.1277696
+          ],
+          [
+            -147.9023505,
+            54.1329493
+          ],
+          [
+            -147.9032692,
+            54.1357501
+          ],
+          [
+            -147.9036892,
+            54.137083
+          ],
+          [
+            -147.9042142,
+            54.1378085
+          ],
+          [
+            -147.9046604,
+            54.1384834
+          ],
+          [
+            -147.9056316,
+            54.1401706
+          ],
+          [
+            -147.9056053,
+            54.1404743
+          ],
+          [
+            -147.9051066,
+            54.1415204
+          ],
+          [
+            -147.9037154,
+            54.1430051
+          ],
+          [
+            -147.902823,
+            54.1442368
+          ],
+          [
+            -147.9016943,
+            54.1468182
+          ],
+          [
+            -147.9000407,
+            54.1480161
+          ],
+          [
+            -147.898177,
+            54.1535502
+          ],
+          [
+            -147.8956572,
+            54.1586625
+          ],
+          [
+            -147.8944498,
+            54.1625599
+          ],
+          [
+            -147.8929011,
+            54.1625937
+          ],
+          [
+            -147.8925599,
+            54.162813
+          ],
+          [
+            -147.8906962,
+            54.1633023
+          ],
+          [
+            -147.8906962,
+            54.1633192
+          ],
+          [
+            -147.8911162,
+            54.1658163
+          ],
+          [
+            -147.8941348,
+            54.1666261
+          ]
+        ],
+        "type": "LineString"
+      },
+      "properties": {
+        "agent": "crew",
+        "id": "rt-crew-main-v2",
+        "kind": "main",
+        "legs": [
+          {
+            "est_time_min": 25.8,
+            "from": 0,
+            "length_m": 2145.4,
+            "mode": "drive",
+            "to": 15
+          },
+          {
+            "est_time_min": 20.3,
+            "from": 15,
+            "length_m": 406.4,
+            "mode": "walk",
+            "to": 21
+          }
+        ],
+        "stats": {
+          "elevation_gain_m": 52.4,
+          "est_time_min": 92.2,
+          "length_m": 2551.8,
+          "max_slope_deg": 23.7,
+          "round_trip_m": 5103.6,
+          "shared_with_main_m": 0
+        },
+        "status": "no_viable_route",
+        "status_reason": "over the 5 km round-trip rule",
+        "version": "after",
+        "walkback_min": 127.6
+      },
+      "type": "Feature"
+    },
+    {
+      "geometry": {
+        "coordinates": [
+          [
+            -147.9013006,
+            54.1277696
+          ],
+          [
+            -147.902928,
+            54.1279383
+          ],
+          [
+            -147.9041092,
+            54.130486
+          ],
+          [
+            -147.9045291,
+            54.1311271
+          ],
+          [
+            -147.9048441,
+            54.1313971
+          ],
+          [
+            -147.9054741,
+            54.1334555
+          ],
+          [
+            -147.9064453,
+            54.1393945
+          ],
+          [
+            -147.9056578,
+            54.1456203
+          ],
+          [
+            -147.9041092,
+            54.1513568
+          ],
+          [
+            -147.9016156,
+            54.1541576
+          ],
+          [
+            -147.8973633,
+            54.1581563
+          ],
+          [
+            -147.8944498,
+            54.1625599
+          ],
+          [
+            -147.8926649,
+            54.1620538
+          ],
+          [
+            -147.8909587,
+            54.1623406
+          ],
+          [
+            -147.8905912,
+            54.1627287
+          ],
+          [
+            -147.8898825,
+            54.1645002
+          ],
+          [
+            -147.8906962,
+            54.1663562
+          ],
+          [
+            -147.8915099,
+            54.1667949
+          ],
+          [
+            -147.8926386,
+            54.1668961
+          ],
+          [
+            -147.8935048,
+            54.1668117
+          ],
+          [
+            -147.8935311,
+            54.1661368
+          ]
+        ],
+        "type": "LineString"
+      },
+      "properties": {
+        "agent": "crew",
+        "id": "rt-crew-backup-v2",
+        "kind": "backup",
+        "legs": [
+          {
+            "est_time_min": 26.5,
+            "from": 0,
+            "length_m": 2207.9,
+            "mode": "drive",
+            "to": 11
+          },
+          {
+            "est_time_min": 26.3,
+            "from": 11,
+            "length_m": 525.6,
+            "mode": "walk",
+            "to": 20
+          }
+        ],
+        "stats": {
+          "elevation_gain_m": 55.4,
+          "est_time_min": 105.6,
+          "length_m": 2733.5,
+          "max_slope_deg": 23.7,
+          "round_trip_m": 5467.0,
+          "shared_with_main_m": 0
+        },
+        "status": "backup_unavailable",
+        "status_reason": "over the 5 km round-trip rule",
+        "version": "after",
+        "walkback_min": 136.7
+      },
+      "type": "Feature"
     }
-  ]
+  ],
+  "placeholder": false,
+  "schema_version": "1.0",
+  "type": "FeatureCollection"
 }

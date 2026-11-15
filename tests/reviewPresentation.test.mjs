@@ -36,10 +36,12 @@ test('drone/eva stages exclude the preliminary (before) backup', () => {
 });
 
 test('missing post-discovery backup is reported, not hidden', () => {
-  assert.equal(missingBackupAssessment('eva', routes), true);
-  assert.equal(missingBackupAssessment('orbital', routes), false);
-  assert.ok(reviewNotices('eva', routes, mission).some((n) => /post-discovery backup/.test(n)));
-  const withBackup = { ...routes, features: [...routes.features, route({ id: 'b2', kind: 'backup' })] };
+  const noBackup = { ...routes, features: routes.features.filter((f) => f.properties.kind !== 'backup') };
+  assert.equal(missingBackupAssessment('eva', noBackup), true);
+  assert.equal(missingBackupAssessment('orbital', noBackup), false);
+  assert.ok(reviewNotices('eva', noBackup, mission).some((n) => /post-discovery backup/.test(n)));
+  assert.equal(missingBackupAssessment('eva', routes), false, 'the published data carries a post-discovery backup');
+  const withBackup = { ...noBackup, features: [...noBackup.features, route({ id: 'b2', kind: 'backup' })] };
   assert.equal(missingBackupAssessment('eva', withBackup), false);
 });
 
@@ -49,6 +51,9 @@ test('route notices never claim clearance', () => {
   assert.match(routeReviewNotice(route({ status: 'no_viable_route' }, [])), /No viable route/);
   assert.match(routeReviewNotice(route({ status: 'backup_unavailable' }, [])), /No independent/);
   assert.match(routeReviewNotice(route({ kind: 'orbital_guess' })), /unverified/);
+  const rejected = routeReviewNotice(route({ status: 'no_viable_route', status_reason: 'over the 5 km round-trip rule' }));
+  assert.match(rejected, /over the 5 km round-trip rule/);
+  assert.match(rejected, /rejected candidate/);
   assert.equal(routeReviewNotice(route({})), null);
 });
 

@@ -50,11 +50,13 @@ export function coverageStyle(p: CoverageProperties): PathOptions {
   };
 }
 
-export function routeStyle(p: RouteProperties, supersededId: string | null): PathOptions {
+export function routeStyle(p: RouteProperties, supersededId: string | null, rejected = false): PathOptions {
   // Purpose: Leaflet style for one route by p.kind. `supersededId` is the crew route
   // replaced by the discovery (drawn faded gray); a route that is not "ok" but still
   // has a line (e.g. the unverified orbital guess) is drawn amber and dashed.
+  // `rejected` (no viable route, or the terrain audit rejects the line): thin red broken line, never route-like.
   if (p.id === supersededId) return { color: '#b4b9c2', weight: 4, dashArray: '8 8', opacity: 0.8 };
+  if (rejected) return { color: '#e5484d', weight: 3, dashArray: '2 9', opacity: 0.95, lineCap: 'round' };
   if (p.status !== 'ok') return { color: '#f5a524', weight: 5, dashArray: '12 8', opacity: 1 };
   switch (p.kind) {
     case 'main':
@@ -68,9 +70,9 @@ export function routeStyle(p: RouteProperties, supersededId: string | null): Pat
   }
 }
 
-export function routeCasingStyle(p: RouteProperties, supersededId: string | null): PathOptions {
+export function routeCasingStyle(p: RouteProperties, supersededId: string | null, rejected = false): PathOptions {
   // Purpose: dark outline drawn under a route, 4 px wider than the route itself,
   // so the line stands out on gray terrain.
-  const width = routeStyle(p, supersededId).weight ?? 4;
+  const width = routeStyle(p, supersededId, rejected).weight ?? 4;
   return { color: '#0b0d10', weight: width + 4, opacity: 0.75, lineCap: 'round' };
 }

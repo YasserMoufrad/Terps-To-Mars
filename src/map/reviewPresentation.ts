@@ -5,9 +5,17 @@ import { hasLine, routesFor } from './stageFilters.ts';
 export function routeReviewNotice(route: RouteFeature): string | null {
   // Explain route status without equating calculated geometry with crew clearance.
   // route carries both planning status and possibly a drawable candidate line.
-  const { status, kind } = route.properties;
-  if (status === 'no_viable_route') return 'No viable route was found in the modeled terrain.';
-  if (status === 'backup_unavailable') return 'No independent, budgeted backup route was found.';
+  const { status, kind, status_reason: reason } = route.properties;
+  const drawn = hasLine(route.geometry.coordinates);
+  if (status === 'no_viable_route') {
+    return reason
+      ? `No viable route under the mission rules: ${reason}.${drawn ? ' The red dotted line is the rejected candidate.' : ''}`
+      : 'No viable route was found in the modeled terrain.';
+  }
+  if (status === 'backup_unavailable') {
+    return reason ? `No usable backup: ${reason}.${drawn ? ' The red dotted line is the rejected candidate.' : ''}`
+      : 'No independent, budgeted backup route was found.';
+  }
   if (status === 'inspection_required') {
     return hasLine(route.geometry.coordinates)
       ? 'Calculated candidate requires inspection; it is not crew clearance.'

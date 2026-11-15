@@ -45,7 +45,7 @@ ACQUIRE_HINT = ("Download the HiRISE DTM with `python -m pipeline.acquire` (see 
 OUTSIDE, BELOW, CAUTION, CREW_EXCLUDED, ROVER_EXCLUDED, UNKNOWN_A, UNKNOWN_B = range(7)
 PALETTE = {
     OUTSIDE: (0, 0, 0, 0),
-    BELOW: (77, 163, 255, 150),       # blue: below the crew caution threshold
+    BELOW: (77, 163, 255, 35),        # faint blue: below the crew caution threshold (kept subtle)
     CAUTION: (245, 165, 36, 200),     # amber: crew caution
     CREW_EXCLUDED: (229, 72, 77, 220),  # red: crew excluded under the model
     ROVER_EXCLUDED: (142, 78, 198, 235),  # purple: crew and rover excluded under the model

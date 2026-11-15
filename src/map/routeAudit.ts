@@ -13,6 +13,15 @@ export const AUDIT_STATUS_TEXT: Record<string, string> = {
   candidate_requires_inspection: 'Candidate: requires inspection (model-feasible, not crew-cleared)',
 };
 
+// Audit verdicts that mean the line crosses ground the model excludes, or never reaches its points.
+export const REJECTING_AUDIT = new Set(['geometry_invalid', 'outside_assessed_terrain', 'excluded_terrain', 'unassessed_terrain', 'endpoint_mismatch']);
+
+export function isRejected(p: RouteProperties, entry: RouteAuditEntry | null): boolean {
+  // Purpose: true when a drawn route must read as rejected (red, broken): the file says no route,
+  // or the terrain audit rejects the line. Never true merely because a route is unverified.
+  return p.status === 'no_viable_route' || p.status === 'backup_unavailable' || (entry !== null && REJECTING_AUDIT.has(entry.audit_status));
+}
+
 export function escapeHtml(text: string): string {
   // Purpose: make pipeline text safe to place inside a Leaflet popup's HTML.
   return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
@@ -40,6 +49,13 @@ export function diagnosticRows(entry: RouteAuditEntry): [string, string][] {
   if (entry.start_offset_m !== undefined && entry.end_offset_m !== undefined) {
     rows.push(['Start / end offset', `${Math.round(entry.start_offset_m)} m / ${Math.round(entry.end_offset_m)} m from the intended points`]);
   }
+  if (entry.first_exclusion) {
+    rows.push(['First excluded crossing', `${entry.first_exclusion.kind.replace(/_/g, ' ')} at ${Math.round(entry.first_exclusion.distance_m)} m along (marked on the map)`]);
+  }
+  if ((entry.cells_in_rockfall_zone ?? 0) > 0 || (entry.cells_in_edge_setback ?? 0) > 0) {
+    rows.push(['Scarp zones crossed', `${entry.cells_in_rockfall_zone ?? 0} rockfall, ${entry.cells_in_edge_setback ?? 0} edge-setback cells`]);
+  }
+  if (entry.objective) rows.push(['Joins', entry.objective.replace('->', ' ↔ ').replace(/_/g, ' ')]);
   if (entry.end_to_scarp_foot_m !== undefined) rows.push(['Objective end to scarp foot', `${Math.round(entry.end_to_scarp_foot_m)} m`]);
   if (entry.status_consistent === false) rows.push(['File status', `"${entry.claimed_status}" overclaims: terrain evidence supports at most inspection`]);
   return rows;

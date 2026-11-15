@@ -41,10 +41,11 @@ from pipeline.export import write_json
 from pipeline.hazards import collection, hazard_masks, mask_features, uncertainty_area_check
 from pipeline.itinerary import backup_independence, evaluate_mixed, polyline_m
 from pipeline.logging_config import configure_logging, event, operation, traced
-from pipeline.route_audit import ScarpZones, TerrainGrid, audit_file, point_in_polygon, polyline_distance_m, scarp_face
+from pipeline.route_audit import (ScarpZones, TerrainGrid, audit_file, point_in_polygon, polyline_distance_m, scarp_face,
+                                  supercover)
 from pipeline.routing import cost_grid, grid_shortest_path, mars_distance
 from pipeline.slope_mvp import ACQUIRE_HINT, DEFAULT_BOUNDS, DEFAULT_DTM, _activate, window_for_bounds
-from pipeline.terrain import MARS_GEOGRAPHIC, analyze, load_rules, read_terrain, threshold
+from pipeline.terrain import MARS_GEOGRAPHIC, analyze, load_rules, read_terrain, signed_longitude, threshold
 
 SCHEMA_VERSION = "1.0"
 DEFAULT_SITES = Path("pipeline/site/mission_sites.json")
@@ -96,7 +97,7 @@ class Grid:
         ys = [t.f + (r + 0.5) * t.e for r in range(rows)]
         lons, _ = transform_coordinates(self.terrain.crs, MARS_GEOGRAPHIC, xs, [ys[0]] * cols)
         _, lats = transform_coordinates(self.terrain.crs, MARS_GEOGRAPHIC, [xs[0]] * rows, ys)
-        self.lon = np.array([self.terrain.lonlat(0, c)[0] for c in (0,)] and [((v + 180) % 360) - 180 for v in lons])
+        self.lon = np.array([signed_longitude(v) for v in lons])
         self.lat = np.array(lats)
         col, row, width, height = self.inner
         self.inside = np.zeros((rows, cols), bool)
@@ -139,6 +140,8 @@ def scarp_inputs(grid, zones, face_ring, rules):
     edge_d[block] = polyline_distance_m(lons.ravel(), lats.ravel(), zones.edge).reshape(lons.shape)
     foot_d[block] = polyline_distance_m(lons.ravel(), lats.ravel(), zones.foot).reshape(lons.shape)
     face[block] = point_in_polygon(lons.ravel(), lats.ravel(), face_ring).reshape(lons.shape)
+    # Rockfall lands below the face: cells nearer the top edge than the foot are not rockfall terrain.
+    foot_d = np.where(foot_d <= edge_d, foot_d, 1e6)
     buffer = zones.buffer_at(np.broadcast_to(grid.lon[None, :], shape))
     event("scarp_zones_built", evidence="inferred", block_cells=int(lons.size), face_cells=int(face.sum()),
           setback_m=zones.setback_m, rockfall_buffer_m=[float(zones.buffers.min()), float(zones.buffers.max())],
@@ -159,6 +162,17 @@ def disc_mask(grid, centre_cell, radius_m):
     return mask
 
 
+def crossed(grid, path):
+    """Every DTM cell (row, col) the straight segments between path cells cross (audit supercover)."""
+    pixels = grid.audit_grid.to_pixel([grid.lonlat(c) for c in path])
+    out = []
+    for a, b in zip(pixels, pixels[1:]):
+        for (col, row), _ in supercover(a[0], a[1], b[0], b[1]):
+            if not out or out[-1] != (row, col):
+                out.append((row, col))
+    return out
+
+
 def simplify_cells(path):
     """Drop vertices inside straight runs of a 4-neighbour cell path; the line covers exactly the same cells."""
     if len(path) < 3:
@@ -171,14 +185,53 @@ def simplify_cells(path):
     return kept
 
 
+MAX_SHORTCUT_CELLS = 400  # longest straight segment tried when replacing the staircase
+
+
+def shortcut(path, passable, grid):
+    """Replace a 4-neighbour staircase by straight segments whose crossed cells are all passable.
+
+    Each segment joins published (rounded) cell-centre coordinates and is tested with the audit's own
+    supercover traversal, so the audit later crosses exactly the cells checked here. Greedy: from each
+    kept vertex, extend to the farthest path cell before the first blocked segment (bounded lookahead).
+    Returns the kept cells (a subsequence of path, same endpoints).
+    """
+    if len(path) < 3:
+        return list(path)
+    pixels = grid.audit_grid.to_pixel([grid.lonlat(c) for c in path])
+    height, width = passable.shape
+
+    def clear(i, j):
+        for (col, row), _ in supercover(pixels[i][0], pixels[i][1], pixels[j][0], pixels[j][1]):
+            if not (0 <= row < height and 0 <= col < width and passable[row, col]):
+                return False
+        return True
+
+    kept, i = [0], 0
+    while i < len(path) - 1:
+        best = i + 1
+        for j in range(i + 2, min(len(path), i + MAX_SHORTCUT_CELLS)):
+            if not clear(i, j):
+                break
+            best = j
+        kept.append(best)
+        i = best
+    return [path[k] for k in kept]
+
+
 def search(costs, start, end, grid, label_id):
-    """Least-cost 4-neighbour path between cells; logs and returns [] when the terrain leaves none."""
+    """Least-cost 4-neighbour path between cells, straightened over passable cells; [] when none exists."""
     with operation("route_search", route_id=label_id, evidence="nasa_derived"):
         path = grid_shortest_path(costs, start, end, grid.spacing)
     if not path:
         event("route_leg_unavailable", logging.WARNING, route_id=label_id, status="no_viable_route",
               reason="hard_exclusions_or_disconnected")
-    return path
+        return path
+    straight = shortcut(path, np.isfinite(costs), grid)
+    event("route_straightened", route_id=label_id, grid_cells=len(path), vertices=len(straight),
+          staircase_m=round(polyline_m([grid.lonlat(c) for c in path]), 1),
+          straightened_m=round(polyline_m([grid.lonlat(c) for c in straight]), 1))
+    return straight
 
 
 def route_feature(grid, rid, kind, agent, version, status, legs):
@@ -192,7 +245,8 @@ def route_feature(grid, rid, kind, agent, version, status, legs):
         part = [grid.lonlat(c) for c in simplify_cells(path)]
         start = 0 if not coords else len(coords) - 1
         coords += part if not coords else part[1:]
-        cells += path if not cells else path[1:]
+        dense = crossed(grid, path)
+        cells += dense if not cells else dense[1:]
         length = polyline_m(part)
         speed = SCOUT_SPEED_M_MIN if agent == "rover" else SPEEDS_M_MIN[mode]
         minutes += length / speed
@@ -339,18 +393,23 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
         raise RuntimeError("no drive/walk candidate between the reviewed points; publish no_viable_route by hand after review")
 
     # Simulated discovery on the first drive leg; the replanned drive avoids it with a margin.
-    discovery_cell = point_along(drive1, grid, DISCOVERY_FRACTION)
+    dense1 = crossed(grid, drive1)
+    discovery_cell = point_along(dense1, grid, DISCOVERY_FRACTION)
     discovery_point = dict(zip(("lon", "lat"), grid.lonlat(discovery_cell)))
     blocked = disc_mask(grid, discovery_cell, DISCOVERY_RADIUS_M + DISCOVERY_MARGIN_M)
     rover_costs2 = rover_costs.copy()
     rover_costs2[blocked] = np.inf
     drive2 = search(rover_costs2, cells["habitat"], cells["parking"], grid, "rt-crew-main-v2:drive")
     # The scouting rover stops just before the soft ground, then drives the replanned leg and the walk leg.
-    stop = next(i for i, c in enumerate(drive1) if blocked[c]) - 1
-    scout_detour = search(rover_costs2, drive1[stop], cells["parking"], grid, "rt-rover-v2:detour")
+    # The rover drives drive1 up to the last crossed cell before the soft ground, then detours.
+    k = dense1.index(discovery_cell)
+    stop_cell = dense1[max(i for i in range(k) if not blocked[dense1[i]])]
+    vertex_at = {cell: dense1.index(cell) for cell in drive1}
+    scouted = [c for c in drive1 if vertex_at[c] < dense1.index(stop_cell)] + [stop_cell]
+    scout_detour = search(rover_costs2, stop_cell, cells["parking"], grid, "rt-rover-v2:detour")
     # Backup: separate drive and descent where the terrain allows (main corridor penalized, not forbidden).
     corridor_main = np.zeros(blocked.shape, bool)
-    for c in drive2 + walk1:
+    for c in crossed(grid, drive2) + crossed(grid, walk1):
         corridor_main[c] = True
     corridor_main = binary_dilation(corridor_main, iterations=int(BACKUP_CORRIDOR_M))
     rover_costs3, crew_costs3 = rover_costs2.copy(), crew_costs.copy()
@@ -366,7 +425,7 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
                                [("drive", drive2), ("walk", walk1)]) if drive2 else
                  empty_route("rt-crew-main-v2", "main", "crew", "after", "no_viable_route"),
         "rover": route_feature(grid, "rt-rover-v2", "rover_path", "rover", "after", "inspection_required",
-                               [("drive", drive1[:stop + 1] + scout_detour[1:] + walk1[1:])]) if scout_detour else
+                               [("drive", scouted + scout_detour[1:] + walk1[1:])]) if scout_detour else
                  empty_route("rt-rover-v2", "rover_path", "rover", "after", "no_viable_route"),
         "backup": route_feature(grid, "rt-crew-backup-v2", "backup", "crew", "after", "inspection_required",
                                 [("drive", drive_b), ("walk", walk_b)]) if drive_b and walk_b else
@@ -387,7 +446,7 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
         budgets[route["properties"]["id"]] = report
         if reasons:
             route["properties"]["status"] = "backup_unavailable" if key == "backup" else "no_viable_route"
-            route["properties"]["status_reason"] = ", ".join(reasons)
+            route["properties"]["status_reason"] = ", ".join(BUDGET_NAMES.get(r, r) for r in reasons)
             event("route_rejected", logging.WARNING, route_id=route["properties"]["id"], status=route["properties"]["status"],
                   reason="mission_budget", budget_reasons=reasons, round_trip_m=report["round_trip_m"],
                   walk_round_trip_m=report["walk_round_trip_m"], evidence="inferred", crew_clearance="not_established")
@@ -436,7 +495,7 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
     # Coverage: simulated robot coverage only; orbit-only is the published DTM box.
     inner_bounds = grid_bounds(grid)
     rover_cells = np.zeros(blocked.shape, bool)
-    for c in drive1[:stop + 1] + scout_detour + walk1:
+    for c in crossed(grid, scouted) + crossed(grid, scout_detour) + crossed(grid, walk1):
         rover_cells[c] = True
     corridor = distance_transform_edt(~rover_cells, sampling=(terrain.resolution, float(np.median(terrain.column_spacing)))) <= 10.0
     coverage = [feature("cov-orbit-001", "Polygon", [box_ring(inner_bounds)], state="orbit_only", simulated=False, sensor="none")]
@@ -506,3 +565,157 @@ def box_ring(b):
     """Closed [lon, lat] ring of a south/west/north/east box."""
     ring = [[b["west"], b["south"]], [b["east"], b["south"]], [b["east"], b["north"]], [b["west"], b["north"]]]
     return [[round(x, 7), round(y, 7)] for x, y in ring + ring[:1]]
+
+
+def _leg_m(route, mode):
+    """One-way metres of a route's legs in `mode` (0 for a route without a line)."""
+    return sum(l["length_m"] for l in route["properties"].get("legs", []) if l["mode"] == mode)
+
+
+BUDGET_NAMES = {"round_trip_distance_limit": "over the 5 km round-trip rule",
+                "eva_time_limit": "over the EVA time with reserve", "walkback_exceeds_eva": "walkback exceeds the EVA",
+                "hard_excursion_cap": "beyond the excursion cap", "leg_validation_failed": "leg numbers inconsistent"}
+
+
+def _budget_text(report):
+    """Short budget verdict for stage stats: within budget, or which rule fails."""
+    if report is None:
+        return "No route to budget"
+    if not report["applied_reasons"]:
+        return f"Within budget ({report['round_trip_m'] / 1000:.2f} km round trip)"
+    return "Rejected: " + ", ".join(BUDGET_NAMES.get(r, r) for r in report["applied_reasons"])
+
+
+def mission_record(sites, features, budgets, independence, discovery_point, drive1, drive2, rules,
+                   walk_only_m, drive_counts_toward_limit):
+    """mission.json computed from the generated routes; every number on screen comes from them."""
+    points = sites["points"]
+    guess, main2, backup, rover = features["guess"], features["main2"], features["backup"], features["rover"]
+    gp, mp = guess["properties"], main2["properties"]
+    drive_g, walk_g = _leg_m(guess, "drive"), _leg_m(guess, "walk")
+    detour = _leg_m(main2, "drive") - drive_g
+    report_main, report_guess = budgets.get(mp["id"]), budgets.get(gp["id"])
+    has_main = bool(main2["geometry"]["coordinates"])
+    rule_note = ("drive metres counted toward the 5,000 m rule (current rule)" if drive_counts_toward_limit
+                 else "drive metres exempt from the 5,000 m rule (team decision)")
+    stages = [
+        {"id": "orbital", "title": "Orbital planning",
+         "text": (f"From NASA orbital data only: drive the crew rover {drive_g / 1000:.1f} km north across the crater floor to a "
+                  f"parking spot above the scarp's low east end, then walk {walk_g:.0f} m down to the viewpoint below the ice "
+                  f"face. Slope comes from the HiRISE DTM; the scarp edge, foot and rockfall zone are traced from imagery "
+                  f"(inferred). Rocks under 1 m, loose ground and shadow are not assessed."),
+         "stats": {"Detail": "1 m DTM, 25 cm imagery", "Drive + walk (one way)": f"{drive_g / 1000:.2f} km + {walk_g:.0f} m",
+                   "Steepest cell": f"{gp['stats']['max_slope_deg']:.1f}° (drive limit 24°, walk 20°)", "Budget": _budget_text(report_guess)}},
+        {"id": "rover", "title": "Rover reconnaissance",
+         "text": (f"The day before the walk, the simulated rover drives the candidate route. About "
+                  f"{DISCOVERY_FRACTION * drive_g / 1000:.1f} km out it reports soft ground the orbit could not see "
+                  f"(simulated) and stops; the drive is replanned around it ({detour:+.0f} m)."),
+         "stats": {"Underground (U)": "1 found (simulated)", "Replanned drive": f"{detour:+.0f} m",
+                   "Rover path": f"{rover['properties']['stats']['length_m'] / 1000:.1f} km (simulated)"}},
+        {"id": "drone", "title": "Drone inspection",
+         "text": ("The simulated drone images the scarp face from the pit floor and checks the ground around the viewpoints. "
+                  "The rockfall zone shown is the traced-foot rule, not something the drone measured."),
+         "stats": {"Overhead (O)": "Rockfall zone from traced foot (inferred)", "Viewpoints": "Outside the modeled rockfall zone",
+                   "Coverage": "Simulated"}},
+        {"id": "eva", "title": "Astronaut mission review",
+         "text": ("Review the replanned route two astronauts would take to the viewpoint, the evidence behind it and the "
+                  "backup. Budgets use pipeline.itinerary with " + rule_note + ". None of this is crew clearance."),
+         "stats": {"Round trip": (f"{mp['stats']['round_trip_m'] / 1000:.2f} km ({2 * _leg_m(main2, 'walk'):.0f} m walking)"
+                                  if has_main else "No route"),
+                   "Time": f"{report_main['total_min']:.0f} of {report_main['available_min']:.0f} min" if report_main else "n/a",
+                   "Steepest cell": f"{mp['stats']['max_slope_deg']:.1f}° (drive limit 24°, walk 20°)" if has_main else "n/a",
+                   "Budget": _budget_text(report_main)}},
+    ]
+    alerts = {"orbital": ["Candidate from orbit only: not crew clearance"],
+              "rover": ["Simulated: rover stopped, wheel slip 38 percent, requesting input"],
+              "drone": ["Simulated drone concept: rockfall zone traced from imagery, not verified"],
+              "eva": []}
+    for stage, report in (("orbital", report_guess), ("eva", report_main)):
+        if report and report["applied_reasons"]:
+            alerts[stage].append(f"No viable route under the current rules: "
+                                 + ", ".join(BUDGET_NAMES.get(r, r) for r in report["applied_reasons"])
+                                 + f" ({report['round_trip_m'] / 1000:.2f} km incl. drive; walking {report['walk_round_trip_m']:.0f} m)")
+    if backup["properties"]["status"] == "backup_unavailable":
+        alerts["eva"].append("Backup unavailable: " + backup["properties"].get("status_reason", "no independent candidate"))
+    elif independence:
+        alerts["eva"].append(f"Backup shares {independence['shared_m']:.0f} m with the main route")
+    return {
+        "schema_version": SCHEMA_VERSION, "placeholder": False,
+        "site": {"name": "Scarps in Milankovic Crater", "lat": 54.144, "lon": -147.894,
+                 "dtm_id": sites["dtm_id"], "image_id": "ESP_071006_2345"},
+        "sun": {"ls_deg": 101.2, "local_time": "15:26", "elevation_deg": 42, "source": "ESP_071006_2345 metadata"},
+        "endpoints": {k: {"lat": points[k]["lat"], "lon": points[k]["lon"]}
+                      for k in ("habitat", "observation_primary", "observation_backup")},
+        "stages": stages, "alerts": alerts,
+        "drone": {"perch": {"lat": points["drone_perch"]["lat"], "lon": points["drone_perch"]["lon"]},
+                  "view_cone_id": "cov-drone-perch"},
+        "discovery": {
+            "id": "disc-001", "hazard_id": "hz-sim-001", "before_route_id": gp["id"], "after_route_id": mp["id"],
+            "location": {"lat": discovery_point["lat"], "lon": discovery_point["lon"]},
+            "sensor_evidence": {"wheel_slip_pct": 38,
+                                "thermal": "simulated thermal camera: surface cooler than surroundings (possible loose material)",
+                                "orbital_prior": "Looked firm in HiRISE imagery"},
+            "evidence": "simulated", "uncertainty": "high", "decision": "request_input",
+            "options": [
+                {"id": "opt-reroute", "label": "Reroute around the area",
+                 "consequence": f"{detour:+.0f} m drive, {detour / SPEEDS_M_MIN['drive']:+.1f} min each way"},
+                {"id": "opt-drone", "label": "Send the drone to inspect", "consequence": "+15 min, may clear the area (simulated)"},
+                {"id": "opt-continue", "label": "Continue slowly", "consequence": "Risk accepted by crew"}],
+            "chosen_option": ""},
+    }
+
+
+def report_record(sites, grid, cells, checks, features, budgets, independence, walk_only_m, discovery_point,
+                  hazards, audit, zones, drive_counts_toward_limit, rules):
+    """Provenance report: point checks, first-pass discrepancies, budgets, audit statuses, open questions."""
+    points, first = sites["points"], sites.get("first_pass_points", {})
+    discrepancies = {}
+    for name, point in points.items():
+        if name in first:
+            d = mars_distance([point["lon"], point["lat"]], [first[name]["lon"], first[name]["lat"]])
+            discrepancies[name] = {"reviewed": {"lat": point["lat"], "lon": point["lon"]},
+                                   "first_pass": {"lat": first[name]["lat"], "lon": first[name]["lon"]}, "distance_m": round(d, 1)}
+    margin = {k: round(float(polyline_distance_m([points[k]["lon"]], [points[k]["lat"]], zones.foot)[0]
+                             - zones.buffer_at([points[k]["lon"]])[0]), 1)
+              for k in ("observation_primary", "observation_backup")}
+    limit = threshold(rules, "round_trip_limit_m")
+    return {
+        "schema_version": SCHEMA_VERSION, "evidence": "inferred", "terrain_evidence": "nasa_derived",
+        "crew_clearance": "not_established", "dtm": grid.terrain.source, "bounds": grid_bounds(grid),
+        "point_checks": checks, "first_pass_discrepancies": discrepancies,
+        "viewpoint_margin_outside_rockfall_m": margin,
+        "walk_only_reference": {"length_m": None if walk_only_m is None else round(walk_only_m, 1),
+                                "round_trip_m": None if walk_only_m is None else round(2 * walk_only_m, 1),
+                                "within_round_trip_rule": walk_only_m is not None and 2 * walk_only_m < limit},
+        "drive_counts_toward_limit": drive_counts_toward_limit,
+        "routes": {r["properties"]["id"]: {"status": r["properties"]["status"], "reason": r["properties"].get("status_reason"),
+                                           "stats": r["properties"]["stats"]} for r in features.values()},
+        "budgets": budgets, "backup_independence": independence, "discovery_location": discovery_point,
+        "hazard_counts": {c: sum(h["properties"]["category"] == c for h in hazards)
+                          for c in sorted({h["properties"]["category"] for h in hazards})},
+        "not_assessed": ["shadow (no illumination model for the EVA time)", "soft ground (no thermal-inertia layer)",
+                         "rocks under ~1 m (below DTM resolution)", "scarp continuation beyond the traced 1.5 km"],
+        "audit_statuses": {a["id"]: a["audit_status"] for a in audit["routes"]},
+        "open_questions": [
+            "Do crew-rover drive metres count toward the 5,000 m round-trip rule? The current rule says yes.",
+            "Scarp lines and profiles are Yasser's agent's image trace: review before relying on edge/rockfall zones.",
+        ],
+    }
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--dtm", type=Path, default=DEFAULT_DTM)
+    parser.add_argument("--data-dir", type=Path, default=Path("public/data"))
+    parser.add_argument("--sites", type=Path, default=DEFAULT_SITES)
+    parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
+    parser.add_argument("--drive-exempt", action="store_true",
+                        help="exempt drive metres from the 5,000 m round-trip rule (team decision required)")
+    arguments = parser.parse_args()
+    configure_logging()
+    with operation("mission_geography_cli", dataset_id=arguments.dtm.name):
+        result = build(arguments.dtm, arguments.data_dir, arguments.sites, arguments.report,
+                       drive_counts_toward_limit=not arguments.drive_exempt)
+    for rid, route in result["routes"].items():
+        print(f"{rid}: {route['status']} {route['reason'] or ''} | {route['stats']['length_m']} m")
+    print("audit:", result["audit_statuses"])

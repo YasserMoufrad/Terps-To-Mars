@@ -295,10 +295,14 @@ class ScarpZones:
         return np.interp(np.asarray(lons, float), self.lons, self.buffers)
 
     def classify(self, lons, lats):
-        """Boolean arrays (edge_setback, rockfall) for points lons/lats."""
-        edge = polyline_distance_m(lons, lats, self.edge) <= self.setback_m
-        rockfall = polyline_distance_m(lons, lats, self.foot) <= self.buffer_at(lons)
-        return edge, rockfall
+        """Boolean arrays (edge_setback, rockfall) for points lons/lats.
+
+        Rockfall lands below the face: only points nearer the foot than the top edge count, so the
+        plateau behind the edge is not a rockfall zone (it has the edge setback instead).
+        """
+        edge_d = polyline_distance_m(lons, lats, self.edge)
+        foot_d = polyline_distance_m(lons, lats, self.foot)
+        return edge_d <= self.setback_m, (foot_d <= self.buffer_at(lons)) & (foot_d <= edge_d)
 
 
 def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, zones=None):

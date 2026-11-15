@@ -1,0 +1,367 @@
+{
+  "audit_statuses": {
+    "rt-crew-backup-v2": "candidate_requires_inspection",
+    "rt-crew-main-v2": "candidate_requires_inspection",
+    "rt-orbital-guess-v1": "candidate_requires_inspection",
+    "rt-rover-v2": "candidate_requires_inspection"
+  },
+  "backup_independence": {
+    "backup_id": "rt-crew-backup-v2",
+    "backup_m": 2733.5,
+    "common_mode": null,
+    "independent": true,
+    "main_id": "rt-crew-main-v2",
+    "max_shared_fraction": 0.5,
+    "shared_fraction": 0.0,
+    "shared_m": 0
+  },
+  "bounds": {
+    "east": -147.87999999999997,
+    "north": 54.17500316744629,
+    "south": 54.11999992683143,
+    "west": -147.925016041762
+  },
+  "budgets": {
+    "rt-crew-backup-v2": {
+      "accepted_budget": false,
+      "applied_reasons": [
+        "round_trip_distance_limit"
+      ],
+      "available_min": 168.0,
+      "claimed_round_trip_m": 5467.0,
+      "drive_one_way_m": 2207.9,
+      "eva_min": 240,
+      "evidence": "inferred",
+      "leg_problems": [],
+      "one_way_m": 2733.5,
+      "reasons": [
+        "round_trip_distance_limit"
+      ],
+      "reserve_fraction": 0.3,
+      "round_trip_limit_m": 5000,
+      "round_trip_m": 5467.0,
+      "route_id": "rt-crew-backup-v2",
+      "site_min": 20,
+      "speeds_m_min": {
+        "drive": 83.3,
+        "walk": 20.0
+      },
+      "suggested_status": "inspection_required",
+      "total_min": 125.6,
+      "travel_min": 105.6,
+      "walk_one_way_m": 525.6,
+      "walk_round_trip_m": 1051.2,
+      "walkback_min": 136.7,
+      "walkback_state": "walkback_uses_reserve",
+      "walkback_total_min": 209.5
+    },
+    "rt-crew-main-v2": {
+      "accepted_budget": false,
+      "applied_reasons": [
+        "round_trip_distance_limit"
+      ],
+      "available_min": 168.0,
+      "claimed_round_trip_m": 5103.6,
+      "drive_one_way_m": 2145.4,
+      "eva_min": 240,
+      "evidence": "inferred",
+      "leg_problems": [],
+      "one_way_m": 2551.8,
+      "reasons": [
+        "round_trip_distance_limit"
+      ],
+      "reserve_fraction": 0.3,
+      "round_trip_limit_m": 5000,
+      "round_trip_m": 5103.6,
+      "route_id": "rt-crew-main-v2",
+      "site_min": 20,
+      "speeds_m_min": {
+        "drive": 83.3,
+        "walk": 20.0
+      },
+      "suggested_status": "inspection_required",
+      "total_min": 112.2,
+      "travel_min": 92.2,
+      "walk_one_way_m": 406.4,
+      "walk_round_trip_m": 812.8,
+      "walkback_min": 127.6,
+      "walkback_state": "walkback_uses_reserve",
+      "walkback_total_min": 193.7
+    },
+    "rt-orbital-guess-v1": {
+      "accepted_budget": false,
+      "applied_reasons": [
+        "round_trip_distance_limit"
+      ],
+      "available_min": 168.0,
+      "claimed_round_trip_m": 5091.4,
+      "drive_one_way_m": 2139.3,
+      "eva_min": 240,
+      "evidence": "inferred",
+      "leg_problems": [],
+      "one_way_m": 2545.7,
+      "reasons": [
+        "round_trip_distance_limit"
+      ],
+      "reserve_fraction": 0.3,
+      "round_trip_limit_m": 5000,
+      "round_trip_m": 5091.4,
+      "route_id": "rt-orbital-guess-v1",
+      "site_min": 20,
+      "speeds_m_min": {
+        "drive": 83.3,
+        "walk": 20.0
+      },
+      "suggested_status": "inspection_required",
+      "total_min": 112.0,
+      "travel_min": 92.0,
+      "walk_one_way_m": 406.4,
+      "walk_round_trip_m": 812.8,
+      "walkback_min": 127.3,
+      "walkback_state": "walkback_uses_reserve",
+      "walkback_total_min": 193.3
+    }
+  },
+  "crew_clearance": "not_established",
+  "discovery_location": {
+    "lat": 54.1440681,
+    "lon": -147.9040567
+  },
+  "drive_counts_toward_limit": true,
+  "dtm": "DTEEC_071085_2345_071006_2345_A01.IMG",
+  "evidence": "inferred",
+  "first_pass_discrepancies": {
+    "drone_perch": {
+      "distance_m": 214.1,
+      "first_pass": {
+        "lat": 54.16334,
+        "lon": -147.90287
+      },
+      "reviewed": {
+        "lat": 54.166913,
+        "lon": -147.901878
+      }
+    },
+    "habitat": {
+      "distance_m": 59.8,
+      "first_pass": {
+        "lat": 54.12819,
+        "lon": -147.90287
+      },
+      "reviewed": {
+        "lat": 54.12777,
+        "lon": -147.901301
+      }
+    },
+    "observation_backup": {
+      "distance_m": 96.3,
+      "first_pass": {
+        "lat": 54.16524,
+        "lon": -147.89585
+      },
+      "reviewed": {
+        "lat": 54.166137,
+        "lon": -147.893531
+      }
+    },
+    "observation_primary": {
+      "distance_m": 449.6,
+      "first_pass": {
+        "lat": 54.16291,
+        "lon": -147.90546
+      },
+      "reviewed": {
+        "lat": 54.166626,
+        "lon": -147.894135
+      }
+    }
+  },
+  "hazard_counts": {
+    "edge": 2,
+    "rockfall": 1,
+    "slope": 14,
+    "soft_ground": 1
+  },
+  "not_assessed": [
+    "shadow (no illumination model for the EVA time)",
+    "soft ground (no thermal-inertia layer)",
+    "rocks under ~1 m (below DTM resolution)",
+    "scarp continuation beyond the traced 1.5 km"
+  ],
+  "open_questions": [
+    "Do crew-rover drive metres count toward the 5,000 m round-trip rule? The current rule says yes.",
+    "Scarp lines and profiles are Yasser's agent's image trace: review before relying on edge/rockfall zones."
+  ],
+  "point_checks": {
+    "habitat": {
+      "cell": [
+        2805,
+        909
+      ],
+      "cells_checked": 783,
+      "counts": {
+        "artifact": 0,
+        "crew_caution": 1,
+        "edge": 0,
+        "invalid_analysis": 0,
+        "no_data": 0,
+        "rockfall": 0,
+        "slope_exclude": 0,
+        "unresolved_scarp": 0
+      },
+      "crew_clearance": "not_established",
+      "disc_leaves_crop": false,
+      "point_id": "habitat",
+      "radius_m": 15,
+      "status": "no_mapped_exclusion"
+    },
+    "observation_backup": {
+      "cell": [
+        531,
+        1205
+      ],
+      "cells_checked": 783,
+      "counts": {
+        "artifact": 0,
+        "crew_caution": 8,
+        "edge": 0,
+        "invalid_analysis": 0,
+        "no_data": 0,
+        "rockfall": 0,
+        "slope_exclude": 0,
+        "unresolved_scarp": 0
+      },
+      "crew_clearance": "not_established",
+      "disc_leaves_crop": false,
+      "point_id": "observation_backup",
+      "radius_m": 15,
+      "status": "no_mapped_exclusion"
+    },
+    "observation_primary": {
+      "cell": [
+        502,
+        1182
+      ],
+      "cells_checked": 783,
+      "counts": {
+        "artifact": 0,
+        "crew_caution": 32,
+        "edge": 0,
+        "invalid_analysis": 0,
+        "no_data": 0,
+        "rockfall": 0,
+        "slope_exclude": 0,
+        "unresolved_scarp": 0
+      },
+      "crew_clearance": "not_established",
+      "disc_leaves_crop": false,
+      "point_id": "observation_primary",
+      "radius_m": 15,
+      "status": "no_mapped_exclusion"
+    },
+    "parking": {
+      "cell": [
+        743,
+        1170
+      ],
+      "cells_checked": 783,
+      "counts": {
+        "artifact": 0,
+        "crew_caution": 26,
+        "invalid_analysis": 0,
+        "no_data": 0,
+        "rockfall": 0,
+        "slope_exclude": 0,
+        "unresolved_scarp": 0
+      },
+      "crew_clearance": "not_established",
+      "disc_leaves_crop": false,
+      "point_id": "parking",
+      "radius_m": 15,
+      "status": "no_mapped_exclusion"
+    },
+    "parking_crew": {
+      "cell": [
+        743,
+        1170
+      ],
+      "cells_checked": 783,
+      "counts": {
+        "artifact": 0,
+        "crew_caution": 26,
+        "edge": 0,
+        "invalid_analysis": 0,
+        "no_data": 0,
+        "rockfall": 0,
+        "slope_exclude": 0,
+        "unresolved_scarp": 0
+      },
+      "crew_clearance": "not_established",
+      "disc_leaves_crop": false,
+      "point_id": "parking",
+      "radius_m": 15,
+      "status": "no_mapped_exclusion"
+    }
+  },
+  "routes": {
+    "rt-crew-backup-v2": {
+      "reason": "over the 5 km round-trip rule",
+      "stats": {
+        "elevation_gain_m": 55.4,
+        "est_time_min": 105.6,
+        "length_m": 2733.5,
+        "max_slope_deg": 23.7,
+        "round_trip_m": 5467.0,
+        "shared_with_main_m": 0
+      },
+      "status": "backup_unavailable"
+    },
+    "rt-crew-main-v2": {
+      "reason": "over the 5 km round-trip rule",
+      "stats": {
+        "elevation_gain_m": 52.4,
+        "est_time_min": 92.2,
+        "length_m": 2551.8,
+        "max_slope_deg": 23.7,
+        "round_trip_m": 5103.6,
+        "shared_with_main_m": 0
+      },
+      "status": "no_viable_route"
+    },
+    "rt-orbital-guess-v1": {
+      "reason": "over the 5 km round-trip rule",
+      "stats": {
+        "elevation_gain_m": 52.9,
+        "est_time_min": 92.0,
+        "length_m": 2545.7,
+        "max_slope_deg": 23.7,
+        "round_trip_m": 5091.4,
+        "shared_with_main_m": 0
+      },
+      "status": "no_viable_route"
+    },
+    "rt-rover-v2": {
+      "reason": null,
+      "stats": {
+        "elevation_gain_m": 52.0,
+        "est_time_min": 257.2,
+        "length_m": 2571.5,
+        "max_slope_deg": 23.7,
+        "round_trip_m": 2571.5,
+        "shared_with_main_m": 0
+      },
+      "status": "inspection_required"
+    }
+  },
+  "schema_version": "1.0",
+  "terrain_evidence": "nasa_derived",
+  "viewpoint_margin_outside_rockfall_m": {
+    "observation_backup": 16.3,
+    "observation_primary": 32.1
+  },
+  "walk_only_reference": {
+    "length_m": 2526.9,
+    "round_trip_m": 5053.9,
+    "within_round_trip_rule": false
+  }
+}
