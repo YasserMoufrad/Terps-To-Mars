@@ -4,6 +4,7 @@
 import type { HazardProperties, Mission } from '../data/types';
 import { HAZARD_COLORS } from '../map/layerStyles';
 import { detectedBy } from '../map/detectedBy';
+import { ICE_EVIDENCE } from '../content/science';
 
 const TYPE_LABEL = { U: 'Under their feet', O: 'Over their heads', S: 'In shadow' } as const;
 const EVIDENCE_TEXT = {
@@ -50,6 +51,8 @@ export function EvidenceCard({ hazard, isPlaceholder, mission, onClose }: Eviden
         {EVIDENCE_TEXT[hazard.evidence]}
       </p>
       <p><span className="muted">Detected by:</span> {detectedBy(hazard, mission)}</p>
+      {/* The traced cliff faces carry Geury's ice evidence: consistent with ice, not confirmed. */}
+      {hazard.id.includes('scarp-face') && <p className="evidence-kind">{ICE_EVIDENCE}</p>}
       <p><span className="muted">Source:</span> {hazard.source}</p>
       <p>{hazard.note}</p>
     </section>
