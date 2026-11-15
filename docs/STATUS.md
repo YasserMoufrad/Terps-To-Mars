@@ -21,6 +21,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-16 · Yasser (`ui/before-after-nightir`): Step 2 gets a "Before and after scouting" card (`src/map/beforeAfter.ts`: soft ground crossed, share of line rover-checked, distance, time, steepest slope, readiness, orbit-only vs after the rover; logged as `route.before_after`). New optional "Night infrared" layer (THEMIS Night IR controlled mosaic via Mars Trek, off by default, explained as relative firm-vs-loose context at ~100 m/px).
+
 - 2026-11-16 · Yasser (`ui/time-and-conditions`): Step 4 gets a time-budget bar (`TimeBudgetCard`, from `src/map/evaTimeline.ts`: planned trip vs 168 min, vehicle-fails walk home vs 240 min) and a cited "Conditions at the site" card (`src/content/conditions.ts`: season, Phoenix and Viking 2 measured temperatures labelled as nearby landers, north-facing cliff). No site temperature is claimed; a test enforces that every °C names its lander.
 
 - 2026-11-15 · Nic (`ui/mobile-map-cleanup`, Yasser's `src/` area, from a patch Nic supplied): map attribution control hidden (`attributionControl={false}`); "Map view" overlay in `ImageryControls.tsx` collapsible (starts closed at 640 px or narrower) and pinned top-right. Credits remain in code and docs but are no longer on screen; Yasser please decide where to show them (About/credits).

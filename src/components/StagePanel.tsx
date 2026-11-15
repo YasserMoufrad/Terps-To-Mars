@@ -6,6 +6,8 @@ import type { ReactNode } from 'react';
 import type { Mission, StageId, HazardProperties, RouteFeature } from '../data/types';
 import { TimeBudgetCard } from './TimeBudgetCard';
 import { ConditionsCard } from './ConditionsCard';
+import { BeforeAfterCard } from './BeforeAfterCard';
+import type { BeforeAfter } from '../map/beforeAfter';
 import { DiscoveryCard } from './DiscoveryCard';
 import { EvidenceCard } from './EvidenceCard';
 import { alertSeverity } from './alertSeverity';
@@ -24,10 +26,11 @@ interface StagePanelProps {
   summary: StageSummary; // "what this step shows", computed from the data by App
   toggles: ReactNode; // the layer checkboxes, built by App
   mainRoute?: RouteFeature; // the post-scouting crew route (discovery.after_route_id), for the Step 4 time budget
+  comparison?: BeforeAfter | null; // orbit-only route vs route after scouting, for the Step 2 card
 }
 
 export function StagePanel({
-  stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, summary, toggles, mainRoute,
+  stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, summary, toggles, mainRoute, comparison = null,
 }: StagePanelProps) {
   // Purpose: side panel for `stage`: the layer `toggles` first, then the evidence card (if
   // `selectedHazard`), stage stats, the stage `summary`, honest route failures (`routeNotices`),
@@ -62,6 +65,9 @@ export function StagePanel({
       </section>
 
       <StageSummaryCard summary={summary} />
+
+      {/* Step 2: what the robots changed, orbit-only route next to the scouted one. */}
+      {stage === 'rover' && <BeforeAfterCard comparison={comparison} />}
 
       {/* Step 4: the main (post-scouting) route's time budget as a picture. */}
       {stage === 'eva' && <TimeBudgetCard route={mainRoute} />}

@@ -40,9 +40,9 @@ THEMIS infrared sampling is approximately 100 m/pixel ([ASU fact sheet](https://
 
 A single simulated thermal-camera reading does not establish thermal inertia. The demo's primary rover observation is simulated 38% wheel slip; loose/soft ground remains a suspected interpretation. Rover dimensions and obstacle limits must come from Brianna's CAD/sensor model. Day/night context can inform human review without certifying traversability. Color-altimetry previews help locate a scarp, but numeric height must be measured from a validated DTM, not from display colors.
 
-## THEMIS Night IR (candidate layer, not yet in the app)
+## THEMIS Night IR (optional layer, off by default)
 
-The THEMIS Night IR Controlled Mosaic is listed in NASA Mars Trek (100 m/pixel, covers 54°N). The app does not use it yet, and the exact tile URL has not been confirmed to return images; test tile loading in a browser before adding it as a separate toggle. A 2026 study of the controlled mosaics reports roughly 200 m average horizontal absolute location accuracy, so brightness must not be aligned to individual ~1 m HiRISE/DTM cells. USGS describes these mosaics as qualitative imagery, not calibrated thermal inertia. Use it only as a regional background: no meter-scale soft-ground hazards and no bearing-strength interpretation from pixel brightness.
+The THEMIS Night IR Controlled Mosaic (NASA Mars Trek, 100 m/pixel) is the "Night infrared" layer toggle. Tile URL checked 2026-11-16: `https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_NightIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png` returns PNG tiles up to zoom 9 at the site (zoom 10+ is 404, so Leaflet enlarges zoom 9). At this latitude the mosaic is noisy and low in contrast; the toggle's explanation says so. A 2026 study of the controlled mosaics reports roughly 200 m average horizontal absolute location accuracy, so brightness must not be aligned to individual ~1 m HiRISE/DTM cells. USGS describes these mosaics as qualitative imagery, not calibrated thermal inertia. Use it only as a regional background: no meter-scale soft-ground hazards and no bearing-strength interpretation from pixel brightness.
 
 ## Weather context (not implemented)
 

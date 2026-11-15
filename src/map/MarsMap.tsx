@@ -62,6 +62,12 @@ const VIKING_COLOR_URL =
   'https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg';
 const VIKING_COLOR_ATTRIBUTION = 'Color: Viking MDIM 2.1 color mosaic, NASA/USGS via Mars Trek';
 
+// THEMIS night-time infrared controlled mosaic (100 m/px; tiles stop at zoom 9 here, checked 2026-11-16).
+// Night brightness is a relative proxy for how well the ground holds heat (firm vs loose), not a temperature.
+const THEMIS_NIGHT_URL =
+  'https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_NightIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png';
+const THEMIS_NIGHT_ATTRIBUTION = 'THEMIS Night IR: NASA/JPL/ASU via Mars Trek';
+
 const EVIDENCE_LABEL = { nasa_derived: 'NASA-derived', inferred: 'Inferred', simulated: 'Simulated' } as const;
 
 interface MarsMapProps {
@@ -229,6 +235,7 @@ export function MarsMap({
       ctx9: createTileErrorReporter(appLogger, 'ctx_z9'),
       ctx10: createTileErrorReporter(appLogger, 'ctx_z10'),
       color: createTileErrorReporter(appLogger, 'viking_color'),
+      nightIr: createTileErrorReporter(appLogger, 'themis_night_ir'),
     }),
     [],
   );
@@ -379,6 +386,20 @@ export function MarsMap({
                 }}
               />
             )}
+          </Pane>
+        )}
+        {/* Night infrared, above the HiRISE detail (220) and the color (250) but under the slope map (380) and every
+            data layer, so routes and hazards stay readable on top of it. */}
+        {layers.nightIr && (
+          <Pane name="night-ir" style={{ zIndex: 300 }}>
+            <TileLayer
+              url={THEMIS_NIGHT_URL}
+              attribution={THEMIS_NIGHT_ATTRIBUTION}
+              maxNativeZoom={9}
+              maxZoom={MAP_MAX_ZOOM}
+              opacity={0.85}
+              eventHandlers={onTileError(tileErrors.nightIr)}
+            />
           </Pane>
         )}
         <ImageryControls
