@@ -1,7 +1,8 @@
 // Checkboxes for the optional map layers. Pipeline layers that do not exist yet
 // are shown as unavailable instead of disappearing, so nobody wonders where they went.
 
-import { LAYER_LABELS, type LayerVisibility } from '../map/layers';
+import { Fragment } from 'react';
+import { LAYER_EXPLANATIONS, LAYER_LABELS, type LayerVisibility } from '../map/layers';
 
 interface LayerTogglesProps {
   layers: LayerVisibility;
@@ -19,7 +20,8 @@ export function LayerToggles({ layers, available, onChange, notes = {} }: LayerT
     <section className="card toggles">
       <h3>Layers</h3>
       {keys.map((key) => (
-        <label key={key} className={available[key] ? undefined : 'unavailable'}>
+        <Fragment key={key}>
+        <label className={available[key] ? undefined : 'unavailable'}>
           <input
             type="checkbox"
             checked={layers[key] && available[key]}
@@ -30,6 +32,9 @@ export function LayerToggles({ layers, available, onChange, notes = {} }: LayerT
           {!available[key] && <span className="muted"> (waiting for pipeline)</span>}
           {available[key] && notes[key] && <span className="layer-note"> ({notes[key]})</span>}
         </label>
+        {/* How to read the layer, shown under its checkbox only while it is on. */}
+        {layers[key] && available[key] && LAYER_EXPLANATIONS[key] && <p className="layer-explain">{LAYER_EXPLANATIONS[key]}</p>}
+        </Fragment>
       ))}
     </section>
   );
