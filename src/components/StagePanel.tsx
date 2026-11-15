@@ -3,7 +3,9 @@
 // The stage description lives in the step bar; the legend lives on the map.
 
 import type { ReactNode } from 'react';
-import type { Mission, StageId, HazardProperties } from '../data/types';
+import type { Mission, StageId, HazardProperties, RouteFeature } from '../data/types';
+import { TimeBudgetCard } from './TimeBudgetCard';
+import { ConditionsCard } from './ConditionsCard';
 import { DiscoveryCard } from './DiscoveryCard';
 import { EvidenceCard } from './EvidenceCard';
 import { alertSeverity } from './alertSeverity';
@@ -21,10 +23,11 @@ interface StagePanelProps {
   routeNotices: string[];
   summary: StageSummary; // "what this step shows", computed from the data by App
   toggles: ReactNode; // the layer checkboxes, built by App
+  mainRoute?: RouteFeature; // the post-scouting crew route (discovery.after_route_id), for the Step 4 time budget
 }
 
 export function StagePanel({
-  stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, summary, toggles,
+  stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, summary, toggles, mainRoute,
 }: StagePanelProps) {
   // Purpose: side panel for `stage`: the layer `toggles` first, then the evidence card (if
   // `selectedHazard`), stage stats, the stage `summary`, honest route failures (`routeNotices`),
@@ -59,6 +62,12 @@ export function StagePanel({
       </section>
 
       <StageSummaryCard summary={summary} />
+
+      {/* Step 4: the main (post-scouting) route's time budget as a picture. */}
+      {stage === 'eva' && <TimeBudgetCard route={mainRoute} />}
+
+      {/* Step 4: season, nearby-lander temperatures and light at the cliff (cited; no site forecast). */}
+      {stage === 'eva' && <ConditionsCard />}
 
       {/* Why the walk exists (Step 1) and what the crew does at the cliff (Step 4). */}
       {(stage === 'orbital' || stage === 'eva') && <ScienceCard />}

@@ -46,6 +46,8 @@ The THEMIS Night IR Controlled Mosaic is listed in NASA Mars Trek (100 m/pixel, 
 
 ## Weather context (not implemented)
 
+The Step 4 "Conditions at the site" card shows season advice and measured temperatures from the Phoenix and Viking 2 landers, labelled as nearby landers; it is text, not a weather layer, and makes no forecast for this site.
+
 The Mars Climate Database chart (LMD/CNRS with ESA/CNES support) is modeled climatology near Ls 100° at 10 m altitude, not observed weather at this cliff and not simultaneous with the Ls 101.2° HiRISE image. Wind maxima are modeled climatological values, not gust limits. No wind-speed exclusion threshold is justified without a defined drone envelope and an uncertainty model. Any display must carry the scenario and altitude.
 
 ## Imagery resolution
