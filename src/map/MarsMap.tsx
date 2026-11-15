@@ -27,6 +27,7 @@ import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend, type LegendKeys, type LineKey } from './MapLegend';
 import { CoordinateReadout } from './CoordinateReadout';
+import { MarsScaleBar } from './MarsScaleBar';
 import { dronePerchLabel } from './reviewPresentation';
 import { crewFaceTarget } from './scarpTarget';
 import {
@@ -290,6 +291,7 @@ export function MarsMap({
           points={[mission.endpoints.habitat, mission.endpoints.observation_primary, mission.endpoints.observation_backup]}
         />
         <CoordinateReadout />
+        <MarsScaleBar />
         <TerrainClick analysis={analysis} onSelect={setSelection} />
 
         <TileLayer

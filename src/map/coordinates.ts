@@ -19,6 +19,25 @@ export function formatLatLon(p: LatLonPoint, digits = 5): string {
   return `${Math.abs(p.lat).toFixed(digits)}°${ns}, ${signed} (${east.toFixed(digits)}°E)`;
 }
 
+export const MARS_RADIUS_M = 3389500; // mean radius; never Leaflet's Earth radius
+
+export function marsDistanceM(a: LatLonPoint, b: LatLonPoint): number {
+  // Purpose: great-circle metres between two points on the Mars sphere (haversine).
+  const r = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2
+    + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lon - a.lon) * r) / 2) ** 2;
+  return 2 * MARS_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export function niceScale(metresPerPixel: number, maxPx = 110): { metres: number; px: number; label: string } {
+  // Purpose: the largest "round" length (1, 2 or 5 x 10^n m) that fits in `maxPx` pixels at `metresPerPixel`,
+  // with its bar width in pixels and a label in m or km.
+  const maxM = metresPerPixel * maxPx;
+  const pow = 10 ** Math.floor(Math.log10(maxM));
+  const metres = [5, 2, 1].map((k) => k * pow).find((m) => m <= maxM) ?? pow;
+  return { metres, px: Math.round(metres / metresPerPixel), label: metres >= 1000 ? `${metres / 1000} km` : `${metres} m` };
+}
+
 export function copyText(p: LatLonPoint, digits = 5): string {
   // Purpose: plain "lat, lon" (signed, −180..180) for pasting into chat, configs or the {"lat","lon"} JSON.
   return `${p.lat.toFixed(digits)}, ${wrapLon(p.lon).toFixed(digits)}`;

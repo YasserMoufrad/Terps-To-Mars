@@ -93,6 +93,16 @@ button { font: inherit; }
   padding: 5px 8px; font-size: 12px; font-variant-numeric: tabular-nums;
 }
 .coord-pinned { color: var(--warn); margin-top: 2px; }
+.mars-scale {
+  position: absolute; right: 10px; bottom: 78px; z-index: 900; pointer-events: none;
+  background: rgba(16, 19, 24, 0.88); border: 1px solid var(--line); border-radius: 8px;
+  padding: 5px 8px; font-size: 12px; display: flex; flex-direction: column; gap: 3px;
+}
+.mars-scale-bar { height: 6px; border: 2px solid #e6e6e6; border-top: none; }
+.mars-scale-row { display: flex; align-items: flex-end; gap: 8px; }
+.mars-scale-vbar { width: 6px; border: 2px solid #e6e6e6; border-left: none; }
+.mars-scale .muted { font-size: 10px; max-width: 170px; }
+@media (max-width: 640px) { .mars-scale { bottom: 70px; } }
 @media (max-width: 640px) { .coord-readout { bottom: auto; top: 10px; right: auto; left: 50px; } }
 .imagery-controls {
   max-width: min(280px, calc(100vw - 80px)); background: rgba(16, 19, 24, 0.88); border: 1px solid var(--line);
