@@ -6,7 +6,7 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 | Person | Working on | Next |
 | --- | --- | --- |
-| Nic | #16 merged (HiRISE tiles, publishing, drive/walk budgets) | Team call on whether driving counts toward the 5,000 m rule |
+| Nic | #16 and #18 merged (HiRISE tiles, slope map, route audit, scarp navigation) | Team call on the 5,000 m rule; reviewed endpoints so real routes can replace the placeholders |
 | Yasser | Map app PR #8 merged with wording, placeholder evidence and candidate drawing fixes | Branch protection for main; further visual/scientific review |
 | Geury | Exact endpoints: scarp foot, habitat, primary and backup observation points (inside the color strip) | Ice evidence specific to this scarp; evidence panel text |
 | Samar / Yasser's agent | Hazard rules v1 done (in IMPLEMENTATION.md section 5) | Sensor ranges for coverage; decision states; discovery scenario |
@@ -19,7 +19,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
-- 2026-11-14 · Nic: real slope map published (`pipeline.slope_mvp`: NASA HiRISE DTM, one PNG pixel per ~1 m cell, 15/20/24° classes from `hazard_rules.json`, unknown cells patterned) plus `pipeline.route_audit` and `public/data/route_audit.json`; scarp lines from #15 published as `scarp_lines.geojson` (inferred); "Inspect scarp" now targets the traced scarp face, new "Inspect observation point"; route click shows measured diagnostics and an elevation profile (branch `pipeline/slope-map-route-audit`)
+- 2026-11-14 · Nic: PR #18 (NASA DTM slope map, route terrain audit, Inspect scarp on the traced face, Inspect observation point, route diagnostics popup) merged to main as d3b7776 after `frontend`, `pipeline`, `full-suite` and Vercel passed on d48ad92 (198 Python, 67 frontend tests). #14 and #15 stay open; #15 overlaps #18 in `MarsMap.tsx`/`App.tsx` and needs a manual merge
+- 2026-11-14 · Nic: real slope map published (`pipeline.slope_mvp`: NASA HiRISE DTM, one PNG pixel per ~1 m cell, 15/20/24° classes from `hazard_rules.json`, unknown cells patterned) plus `pipeline.route_audit` and `public/data/route_audit.json`; scarp lines from #15 published as `scarp_lines.geojson` (inferred); "Inspect scarp" now targets the traced scarp face, new "Inspect observation point"; route click shows measured diagnostics and an elevation profile (PR #18, merged)
 - 2026-11-14 · Nic: route audit of main's placeholder routes: all six cross terrain excluded under the model or overclaim `ok`; orbital guess ends 258 m from its observation point; main-v2, backup-v1, rover-v1/v2 claimed lengths differ from their lines (e.g. rover-v1 claims 1,810 m, line 464 m). #15's routes (audited read-only, not merged): 1–4 crossed cells just over the drive/walk limits (max 29–31°), backup-v2 starts 36 m from the habitat
 - 2026-11-14 · Nic: PR #16 (HiRISE native imagery and corridor tiles, hardened publishing, loader and imagery states, mixed drive/walk budgets) merged to main as 533696e after `frontend`, `pipeline`, `full-suite` and Vercel passed on 1ab55f8. #14 and #15 stay open and untouched; #15 overlaps #16 in `src/` and needs a manual conflict resolution before it can merge
 - 2026-11-14 · Nic: HiRISE tile sets published to `public/data/hirise-tiles/` (#16): wide 18 tiles / 0.1 MB (z9–11, whole strip), context 346 / 3.5 MB (z12–15, habitat→scarp and surroundings, ~1 m), core 1,238 / 7.5 MB (z16–17, native corridor); 11.1 MB total, the browser fetches only on-screen tiles. Checked in the browser: all on-screen tiles load, no console errors; the mission area no longer depends on Esri's CTX server (which returned HTTP 500 for z9–10 here on 2026-11-14)
