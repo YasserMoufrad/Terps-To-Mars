@@ -45,7 +45,7 @@ ACQUIRE_HINT = ("Download the HiRISE DTM with `python -m pipeline.acquire` (see 
 OUTSIDE, BELOW, CAUTION, CREW_EXCLUDED, ROVER_EXCLUDED, UNKNOWN_A, UNKNOWN_B = range(7)
 PALETTE = {
     OUTSIDE: (0, 0, 0, 0),
-    BELOW: (77, 163, 255, 150),       # blue: below the crew caution threshold
+    BELOW: (77, 163, 255, 35),        # faint blue: below the crew caution threshold (kept subtle)
     CAUTION: (245, 165, 36, 200),     # amber: crew caution
     CREW_EXCLUDED: (229, 72, 77, 220),  # red: crew excluded under the model
     ROVER_EXCLUDED: (142, 78, 198, 235),  # purple: crew and rover excluded under the model
@@ -193,11 +193,11 @@ def _validate_staged(staging, classes, bounds):
         raise ValueError("Staged slope.bounds.json differs from the grid bounds")
 
 
-def _activate(staging, data_dir):
-    """Move staged files into data_dir in LIVE_FILES order; on failure restore the previous set."""
+def _activate(staging, data_dir, names=LIVE_FILES):
+    """Move staged files into data_dir in `names` order (default LIVE_FILES); on failure restore the previous set."""
     backups = []
     try:
-        for name in LIVE_FILES:
+        for name in names:
             live = data_dir / name
             if live.exists():
                 backup = data_dir / f".{name}.previous"

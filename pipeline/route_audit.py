@@ -30,9 +30,14 @@ from pipeline.terrain import MARS_GEOGRAPHIC, analyze, load_rules, read_terrain,
 SCHEMA_VERSION = "1.0"
 PROFILE_POINTS = 240  # elevation-profile samples kept per route in the JSON
 LENGTH_TOLERANCE_M = 15.0  # plus 2 % of the length: claimed stats are rounded
-# Which mission endpoint each route kind is meant to reach (None: no declared objective).
-OBJECTIVE = {"orbital_guess": "observation_primary", "main": "observation_primary",
-             "backup": "observation_backup", "rover_path": None}
+ALGORITHM_VERSION = "route_audit/2"  # bump when the audit logic or the fingerprint format changes
+# Which (start, end) mission endpoints each route kind may join, in either direction; the closest pair wins.
+# A backup is any independent way between the habitat and a viewpoint: a return-home backup from the
+# primary viewpoint is as valid as an outbound route to the backup viewpoint. Rover paths declare none.
+OBJECTIVES = {"orbital_guess": (("habitat", "observation_primary"),),
+              "main": (("habitat", "observation_primary"),),
+              "backup": (("habitat", "observation_backup"), ("habitat", "observation_primary")),
+              "rover_path": ()}
 STATUS_ORDER = ("geometry_invalid", "outside_assessed_terrain", "excluded_terrain", "unassessed_terrain",
                 "endpoint_mismatch", "candidate_requires_inspection")
 
@@ -190,17 +195,160 @@ def traverse(grid, coords, modes=None):
 
 
 def intended_endpoints(feature, mission):
-    """(start, end) [lon, lat] the route is meant to join, or None for an undeclared objective."""
+    """Candidate (name, start, end) objectives the route may join ([lon, lat] each); [] when none is declared."""
     endpoints = mission.get("endpoints", {})
-    objective = OBJECTIVE.get(feature["properties"].get("kind"))
-    habitat = endpoints.get("habitat")
-    if objective is None or habitat is None or objective not in endpoints:
+    pairs = OBJECTIVES.get(feature["properties"].get("kind"), ())
+    return [(f"{a}->{b}", [endpoints[a]["lon"], endpoints[a]["lat"]], [endpoints[b]["lon"], endpoints[b]["lat"]])
+            for a, b in pairs if a in endpoints and b in endpoints]
+
+
+def _fixed(value, digits):
+    """Fixed-decimal text identical to JavaScript Number.prototype.toFixed for the published (pre-rounded) values."""
+    return format(float(value), f".{digits}f")
+
+
+def _digest(text):
+    """Hex SHA-256 of a UTF-8 string."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def route_fingerprint(feature):
+    """SHA-256 over a route's audited properties and exact geometry, reproducible in the browser.
+
+    Text: id|kind|agent|version|status|length .1f|legs mode:from:to;...|coords lon,lat .7f;...
+    The app recomputes this (src/map/auditFreshness.ts); any edit to the line or its claims makes the audit stale.
+    """
+    props = feature.get("properties", {})
+    legs = ";".join(f"{l.get('mode')}:{l.get('from')}:{l.get('to')}" for l in props.get("legs") or [])
+    length = props.get("stats", {}).get("length_m")
+    coords = ";".join(f"{_fixed(c[0], 7)},{_fixed(c[1], 7)}" for c in feature.get("geometry", {}).get("coordinates") or [])
+    head = "|".join(str(props.get(k, "")) for k in ("id", "kind", "agent", "version", "status"))
+    return _digest(f"{head}|{'' if length is None else _fixed(length, 1)}|{legs}|{coords}")
+
+
+def endpoints_fingerprint(mission):
+    """SHA-256 over mission endpoints (sorted names, lat/lon .7f), reproducible in the browser."""
+    endpoints = mission.get("endpoints", {})
+    return _digest(";".join(f"{k}:{_fixed(endpoints[k]['lat'], 7)},{_fixed(endpoints[k]['lon'], 7)}" for k in sorted(endpoints)))
+
+
+def scarp_fingerprint(scarp):
+    """SHA-256 over the traced scarp lines (features sorted by id, lon/lat .7f), or None without scarp lines."""
+    if not scarp:
         return None
-    return [habitat["lon"], habitat["lat"]], [endpoints[objective]["lon"], endpoints[objective]["lat"]]
+    parts = []
+    for feature in sorted(scarp.get("features", []), key=lambda f: str(f["properties"].get("id"))):
+        coords = ",".join(f"{_fixed(c[0], 7)} {_fixed(c[1], 7)}" for c in feature["geometry"]["coordinates"])
+        parts.append(f"{feature['properties'].get('id')}:{coords}")
+    return _digest(";".join(parts))
 
 
-def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
-    """Measure one route feature; returns its diagnostic dict (never modifies the feature)."""
+def file_sha256(path):
+    """SHA-256 of a file: the acquisition manifest's checksum when present, else hashed in 8 MB blocks."""
+    manifest = Path(str(path) + ".json")
+    if manifest.exists():
+        recorded = json.loads(manifest.read_text()).get("sha256")
+        if recorded:
+            return recorded
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(8 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def polyline_distance_m(lons, lats, line):
+    """Vectorised local-tangent-plane distance (metres) from points (arrays lons, lats) to a [lon, lat] polyline."""
+    lons, lats = np.asarray(lons, float), np.asarray(lats, float)
+    k = math.radians(1) * 3_389_500.0
+    scale = np.cos(np.radians(lats)) * k
+    best = np.full(lons.shape, np.inf)
+    for a, b in zip(line, line[1:]):
+        ax, ay = (a[0] - lons) * scale, (a[1] - lats) * k
+        bx, by = (b[0] - lons) * scale, (b[1] - lats) * k
+        vx, vy = bx - ax, by - ay
+        length2 = vx * vx + vy * vy
+        with np.errstate(divide="ignore", invalid="ignore"):
+            t = np.where(length2 > 0, np.clip(-(ax * vx + ay * vy) / length2, 0, 1), 0)
+        best = np.minimum(best, np.hypot(ax + t * vx, ay + t * vy))
+    return best
+
+
+class ScarpZones:
+    """Edge-setback and rockfall tests from the traced scarp lines and per-profile measurements (inferred).
+
+    setback_m: crew edge setback from the traced top edge; profiles: [{lon, height_m, apron_m}], giving a
+    rockfall buffer max(apron, height x factor) interpolated by longitude (nearest profile beyond the ends).
+    """
+
+    def __init__(self, edge, foot, profiles, rules):
+        """edge/foot: [lon, lat] polylines; profiles: per-profile measurements; rules: hazard rules."""
+        self.edge, self.foot = edge, foot
+        self.setback_m = float(threshold(rules, "cliff_setback_m"))
+        factor = float(threshold(rules, "rockfall_height_factor"))
+        ordered = sorted(profiles, key=lambda p: p["lon"])
+        self.lons = np.array([p["lon"] for p in ordered], float)
+        # A profile may carry its own published buffer_m (PR #17's upper scarp); the larger value wins.
+        self.buffers = np.array([max(p["apron_m"], p["height_m"] * factor, p.get("buffer_m", 0.0)) for p in ordered], float)
+
+    def buffer_at(self, lons):
+        """Rockfall buffer (metres) at each longitude."""
+        return np.interp(np.asarray(lons, float), self.lons, self.buffers)
+
+    def classify(self, lons, lats):
+        """Boolean arrays (edge_setback, rockfall) for points lons/lats.
+
+        Rockfall lands below the face: only points nearer the foot than the top edge count, so the
+        plateau behind the edge is not a rockfall zone (it has the edge setback instead).
+        """
+        edge_d = polyline_distance_m(lons, lats, self.edge)
+        foot_d = polyline_distance_m(lons, lats, self.foot)
+        return edge_d <= self.setback_m, (foot_d <= self.buffer_at(lons)) & (foot_d <= edge_d)
+
+
+class ScarpSet:
+    """Several traced scarps checked together: a point is in a zone when it is in that zone of any scarp."""
+
+    def __init__(self, members):
+        """members: non-empty list of ScarpZones (main scarp first)."""
+        self.members = list(members)
+        self.setback_m = self.members[0].setback_m
+        self.buffers = np.concatenate([m.buffers for m in self.members])
+
+    def classify(self, lons, lats):
+        """Boolean arrays (edge_setback, rockfall), OR-ed over every scarp."""
+        edge = rockfall = None
+        for member in self.members:
+            e, r = member.classify(lons, lats)
+            edge, rockfall = (e, r) if edge is None else (edge | e, rockfall | r)
+        return edge, rockfall
+
+
+# (edge id, foot id, mission_sites.json profiles key) for every scarp the zone checks know about.
+SCARPS = (("scarp-edge", "scarp-foot", "scarp_profiles"), ("upper-scarp-edge", "upper-scarp-foot", "upper_scarp_profiles"))
+
+
+def scarp_zone_set(scarp, sites, rules):
+    """ScarpSet for every scarp present in both scarp_lines and mission_sites.json, or None when none is."""
+    lines = {f["properties"].get("id"): f["geometry"]["coordinates"] for f in (scarp or {}).get("features", [])}
+    members = [ScarpZones(lines[e], lines[f], sites[key]["profiles"], rules)
+               for e, f, key in SCARPS if sites and e in lines and f in lines and sites.get(key, {}).get("profiles")]
+    return ScarpSet(members) if members else None
+
+
+def profiles_fingerprint(sites):
+    """SHA-256 of every scarp's profile measurements in mission_sites.json (None without sites)."""
+    if not sites:
+        return None
+    return canonical_sha256({key: sites[key] for _, _, key in SCARPS if key in sites})
+
+
+def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, zones=None):
+    """Measure one route feature; returns its diagnostic dict (never modifies the feature).
+
+    zones: optional ScarpZones or ScarpSet; crossed cells inside the crew edge setback (walk cells) or the rockfall
+    buffer (all cells) are excluded terrain, just like the routing masks.
+    """
     props = feature.get("properties", {})
     coords = feature.get("geometry", {}).get("coordinates") or []
     agent = props.get("agent", "crew")
@@ -221,12 +369,15 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
         result["length_mismatch_m"] = round(measured - claimed, 1)
         if abs(measured - claimed) > LENGTH_TOLERANCE_M + 0.02 * measured:
             reasons.append(f"stats_mismatch: claims {claimed:.0f} m, line measures {measured:.0f} m")
-    intended = intended_endpoints(feature, mission)
-    if intended:
-        forward = (mars_distance(coords[0], intended[0]), mars_distance(coords[-1], intended[1]))
-        reverse = (mars_distance(coords[0], intended[1]), mars_distance(coords[-1], intended[0]))
-        offsets, orientation = (forward, "outbound") if max(forward) <= max(reverse) else (reverse, "return")
-        result.update(start_offset_m=round(offsets[0], 1), end_offset_m=round(offsets[1], 1), orientation=orientation)
+    candidates = []
+    for name, start, end in intended_endpoints(feature, mission):
+        forward = (mars_distance(coords[0], start), mars_distance(coords[-1], end))
+        reverse = (mars_distance(coords[0], end), mars_distance(coords[-1], start))
+        candidates.append((max(forward), name, forward, "outbound"))
+        candidates.append((max(reverse), name, reverse, "return"))
+    if candidates:
+        _, name, offsets, orientation = min(candidates, key=lambda c: c[0])
+        result.update(objective=name, start_offset_m=round(offsets[0], 1), end_offset_m=round(offsets[1], 1), orientation=orientation)
         if max(offsets) > tolerance:
             reasons.append(f"endpoint_mismatch: ends {offsets[1]:.0f} m / starts {offsets[0]:.0f} m from the intended "
                            f"points (tolerance {tolerance:.0f} m)")
@@ -246,9 +397,10 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
                   max_slope_deg=round(float(slopes.max()), 1) if known else None,
                   cells_caution=int((slopes >= grid.caution).sum()), cells_excluded=len(excluded),
                   modes=sorted({c["mode"] for c in cells}))
+    firsts = []  # (distance along, cell, what) of the first crossed cell of each exclusion kind
     if excluded:
         first = excluded[0]
-        result["first_exclusion_at_m"] = round(first["distance_m"], 1)
+        firsts.append((first["distance_m"], first, "slope"))
         by_mode = {m: sum(1 for c in excluded if c["mode"] == m) for m in ("drive", "walk")}
         detail = ", ".join(f"{n} {m} cells ≥ {grid.limits['rover' if m == 'drive' else 'crew']:g}°" for m, n in by_mode.items() if n)
         reasons.append(f"excluded_terrain: {detail} (first {first['distance_m']:.0f} m along, max {result['max_slope_deg']}°)")
@@ -256,12 +408,33 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
         reasons.append(f"outside_assessed_terrain: {len(outside)} crossed cells outside the analysed DTM crop")
     if unknown:
         reasons.append(f"unassessed_terrain: {len(unknown)} crossed cells have no valid DTM slope")
+    inside = [c for c in cells if c["inside"]]
+    centres = [grid.cell_lonlat(c["col"], c["row"]) for c in inside]
+    if zones is not None:
+        if centres:
+            edge, rockfall = zones.classify([p[0] for p in centres], [p[1] for p in centres])
+            edge = edge & np.array([c["mode"] == "walk" for c in inside])
+        else:
+            edge = rockfall = np.zeros(0, bool)
+        result.update(cells_in_edge_setback=int(edge.sum()), cells_in_rockfall_zone=int(rockfall.sum()))
+        for mask, what, text in ((edge, "edge_setback", f"walk cells within the {zones.setback_m:g} m edge setback"),
+                                 (rockfall, "rockfall", "cells inside the inferred rockfall zone")):
+            if mask.any():
+                cell = inside[int(np.argmax(mask))]
+                firsts.append((cell["distance_m"], cell, what))
+                reasons.append(f"excluded_terrain: {int(mask.sum())} {text} (first {cell['distance_m']:.0f} m along)")
     if face:
-        centres = [grid.cell_lonlat(c["col"], c["row"]) for c in cells if c["inside"]]
         hits = point_in_polygon([p[0] for p in centres], [p[1] for p in centres], face) if centres else np.array([])
         result["cells_on_scarp_face"] = int(hits.sum())
         if hits.any():
-            reasons.append(f"excluded_terrain: crosses the traced scarp face ({int(hits.sum())} cells)")
+            cell = inside[int(np.argmax(hits))]
+            firsts.append((cell["distance_m"], cell, "scarp_face"))
+            reasons.append(f"excluded_terrain: crosses the traced scarp face ({int(hits.sum())} cells, first {cell['distance_m']:.0f} m along)")
+    if firsts:
+        distance, cell, what = min(firsts, key=lambda f: f[0])
+        lon, lat = grid.cell_lonlat(cell["col"], cell["row"])
+        result["first_exclusion"] = {"distance_m": round(distance, 1), "lon": round(lon, 7), "lat": round(lat, 7), "kind": what}
+        result["first_exclusion_at_m"] = round(distance, 1)
     step = max(1, math.ceil(len(cells) / PROFILE_POINTS))
     sample = cells[::step] + ([cells[-1]] if (len(cells) - 1) % step else [])
     result["profile"] = [[round(c["distance_m"], 1), None if c["elevation"] is None else round(c["elevation"], 2),
@@ -277,8 +450,12 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
 
 
 @traced("route_audit")
-def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None, rules=None):
-    """Audit every route in routes_path against dtm_path; returns the route_audit.json payload."""
+def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None, rules=None, sites_path=None, grid=None):
+    """Audit every route in routes_path against dtm_path; returns the route_audit.json payload.
+
+    sites_path: optional mission_sites.json whose scarp_profiles enable edge-setback and rockfall checks.
+    grid: optional prebuilt TerrainGrid (the generator passes its own, so audit and routing share one analysis).
+    """
     started = perf_counter()
     rules = rules or load_rules()
     routes_text = Path(routes_path).read_text()
@@ -289,13 +466,17 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
     scarp = json.loads(Path(scarp_path).read_text()) if scarp_path and Path(scarp_path).exists() else None
     face = scarp_face(scarp)
     foot = next((f["geometry"]["coordinates"] for f in (scarp or {}).get("features", []) if f["properties"].get("id") == "scarp-foot"), None)
-    lines = [f for f in routes["features"] if len(f["geometry"].get("coordinates") or []) >= 2]
-    coords = [c for f in lines for c in f["geometry"]["coordinates"]]
-    coords += [[p["lon"], p["lat"]] for p in mission.get("endpoints", {}).values()]
-    grid = load_grid(dtm_path, coords, rules)
+    sites = json.loads(Path(sites_path).read_text(encoding="utf-8")) if sites_path else None
+    zones = scarp_zone_set(scarp, sites, rules)
+    if grid is None:
+        lines = [f for f in routes["features"] if len(f["geometry"].get("coordinates") or []) >= 2]
+        coords = [c for f in lines for c in f["geometry"]["coordinates"]]
+        coords += [[p["lon"], p["lat"]] for p in mission.get("endpoints", {}).values()]
+        grid = load_grid(dtm_path, coords, rules)
     audits = []
     for feature in routes["features"]:
-        audit = audit_route(feature, mission, grid, rules, face, foot)
+        audit = audit_route(feature, mission, grid, rules, face, foot, zones)
+        audit["fingerprint"] = route_fingerprint(feature)
         level = logging.WARNING if audit["audit_status"] != "candidate_requires_inspection" or not audit.get("status_consistent", True) else logging.INFO
         event("route_audited", level, route_id=audit["id"], agent=audit["agent"], audit_status=audit["audit_status"],
               claimed_status=audit["claimed_status"], reasons=audit["reasons"], max_slope_deg=audit.get("max_slope_deg"),
@@ -305,6 +486,12 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
     payload = {
         "schema_version": SCHEMA_VERSION, "evidence": "inferred", "terrain_evidence": "nasa_derived",
         "dtm": Path(dtm_path).name, "routes_sha256": canonical_sha256(routes),
+        "fingerprint": {"algorithm_version": ALGORITHM_VERSION, "dtm_id": Path(dtm_path).stem, "dtm_sha256": file_sha256(dtm_path),
+                        "rules_sha256": canonical_sha256(rules), "endpoints": endpoints_fingerprint(mission),
+                        "scarp": scarp_fingerprint(scarp),
+                        "scarp_profiles_sha256": profiles_fingerprint(sites),
+                        "routes": {a["id"]: a["fingerprint"] for a in audits}},
+        "zone_checks": "edge_setback_and_rockfall" if zones else "not_run: no scarp profiles supplied",
         "mission_placeholder": bool(mission.get("placeholder")), "routes_placeholder": bool(routes.get("placeholder")),
         "scarp_source": Path(scarp_path).name if scarp else None,
         "thresholds_deg": {"crew_caution": grid.caution, "crew_exclude": grid.limits["crew"], "rover_exclude": grid.limits["rover"]},
@@ -326,11 +513,13 @@ if __name__ == "__main__":
     parser.add_argument("--mission", type=Path, default=Path("public/data/mission.json"))
     parser.add_argument("--scarp", type=Path, default=Path("public/data/scarp_lines.geojson"))
     parser.add_argument("--dtm", type=Path, default=DEFAULT_DTM)
+    parser.add_argument("--sites", type=Path, default=Path("pipeline/site/mission_sites.json"),
+                        help="scarp profiles for edge-setback and rockfall checks")
     parser.add_argument("--output", type=Path, help="write route_audit.json here (default: print a summary only)")
     arguments = parser.parse_args()
     configure_logging()
     with operation("route_audit_cli", dataset_id=arguments.dtm.name):
-        result = audit_file(arguments.routes, arguments.mission, arguments.dtm, arguments.scarp)
+        result = audit_file(arguments.routes, arguments.mission, arguments.dtm, arguments.scarp, sites_path=arguments.sites)
     if arguments.output:
         write_json(arguments.output, result)
     for audit in result["routes"]:

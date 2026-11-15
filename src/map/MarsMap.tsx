@@ -28,7 +28,7 @@ import { dronePerchLabel } from './reviewPresentation';
 import { crewFaceTarget, observationTarget, resolveScarpTarget } from './scarpTarget';
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
 import { SlopeLegend } from './SlopeLegend';
-import { auditFor, diagnosticHtml } from './routeAudit';
+import { auditFor, diagnosticHtml, routeRejectedForStyle } from './routeAudit';
 
 // CTX global mosaic: real tiles exist up to zoom 10 here (see docs/MAP_TILES.md).
 // Its server sometimes fails a tile, so THEMIS (from Mars Trek) sits underneath:
@@ -131,6 +131,18 @@ export function MarsMap({
   // Slope overlay: drawn only with valid bounds + metadata; the decoded PNG must have one pixel per DTM cell.
   const slopePublished = slopeAvailable(slopeBounds, slopeMeta);
   const [slopeState, setSlopeState] = useState<SlopeLoadState>(slopePublished ? 'loading' : 'unavailable');
+  const [slopeOpacity, setSlopeOpacity] = useState(0.75);
+  const [slopeAttempt, setSlopeAttempt] = useState(0);
+  const retrySlope = () => {
+    // Purpose: drop a failed slope load and request the image again (new URL, remounted overlay).
+    appLogger.info('map', 'slope.retry', { attempt: slopeAttempt + 1 });
+    setSlopeState('loading');
+    setSlopeAttempt((a) => a + 1);
+  };
+  useEffect(() => {
+    // Switching the layer back on after a failure retries instead of staying silently failed.
+    if (layers.slope && slopeState === 'failed') retrySlope();
+  }, [layers.slope]);
   const setSlope = (next: SlopeLoadState, fields: Record<string, unknown> = {}) => {
     setSlopeState(next);
     if (next === 'failed') appLogger.error('map', 'slope.load_state', { slope_state: next, ...fields });
@@ -194,8 +206,9 @@ export function MarsMap({
         maxZoom={MAP_MAX_ZOOM}
       >
         <FitToMission
-          geometries={[...routes.features, ...hazards.features].map((f) => f.geometry.coordinates)}
-          points={[mission.endpoints.habitat, mission.endpoints.observation_primary]}
+          // Routes and endpoints only: hazard and coverage polygons (DTM-wide slope clusters) would widen the view.
+          geometries={routes.features.map((f) => f.geometry.coordinates)}
+          points={[mission.endpoints.habitat, mission.endpoints.observation_primary, mission.endpoints.observation_backup]}
         />
 
         <TileLayer
@@ -301,9 +314,10 @@ export function MarsMap({
         {slopePublished && slopeBounds && slopeMeta && layers.slope && slopeState !== 'failed' && (
           <Pane name="slope" style={{ zIndex: 380 }}>
             <ImageOverlay
-              url={dataUrl('slope.png')}
+              key={`slope-${slopeAttempt}`}
+              url={slopeAttempt ? `${dataUrl('slope.png')}?retry=${slopeAttempt}` : dataUrl('slope.png')}
               bounds={toCorners(slopeBounds)}
-              opacity={0.75}
+              opacity={slopeOpacity}
               eventHandlers={{
                 load: (e) => {
                   const img = (e.target as L.ImageOverlay).getElement();
@@ -356,20 +370,22 @@ export function MarsMap({
         <GeoJSON
           key={`route-casing-${stage}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => routeCasingStyle(f?.properties as RouteProperties, supersededId)}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeCasingStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
           interactive={false}
         />
         <GeoJSON
           key={`routes-${stage}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => routeStyle(f?.properties as RouteProperties, supersededId)}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
           onEachFeature={(f, layer) => {
             const p = f.properties as DrawnRouteProperties;
+            const entry = auditFor(routeAudit, p.id);
+            const rejected = routeRejectedForStyle(p, entry);
             const label =
               p.id === supersededId
                 ? 'Old route (replaced)'
-                : `${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')})` : ''}`;
-            const entry = auditFor(routeAudit, p.id);
+                : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}` +
+                  `${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`;
             const legs = legSummary(p);
             // Prefer measured numbers from the route audit (#18) over the file's claimed stats; otherwise show the
             // drive/walk legs and walkback from the route data. The popup explains the audit verdict.
@@ -380,6 +396,18 @@ export function MarsMap({
             layer.bindPopup(diagnosticHtml(p, entry, routeAudit), { maxWidth: 320 });
           }}
         />
+
+        {/* Where each drawn route first enters excluded terrain (from the audit). */}
+        {/* One marker per route id (drawnRoutes splits a route into drive/walk legs). */}
+        {drawnRoutes.features.filter((f, i, all) => all.findIndex((g) => g.properties.id === f.properties.id) === i).map((f) => {
+          const first = auditFor(routeAudit, f.properties.id)?.first_exclusion;
+          return first ? (
+            <CircleMarker key={`excl-${f.properties.id}`} center={[first.lat, first.lon]} radius={6}
+              pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
+              <Tooltip direction="top">{`First excluded crossing: ${first.kind.replace(/_/g, ' ')}, ${Math.round(first.distance_m)} m along ${f.properties.id}`}</Tooltip>
+            </CircleMarker>
+          ) : null;
+        })}
 
         <CircleMarker center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
           <Tooltip permanent direction="left" className="map-label">Habitat</Tooltip>
@@ -410,7 +438,7 @@ export function MarsMap({
       </MapContainer>
 
       <MapLegend />
-      {layers.slope && slopeMeta && slopePublished && <SlopeLegend meta={slopeMeta} state={slopeState} />}
+      {layers.slope && slopeMeta && slopePublished && <SlopeLegend meta={slopeMeta} state={slopeState} opacity={slopeOpacity} onOpacity={setSlopeOpacity} onRetry={retrySlope} />}
       {!imageryLoaded && <div className="map-loading">Loading Mars imagery…</div>}
     </div>
   );

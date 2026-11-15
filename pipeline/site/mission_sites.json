@@ -1,0 +1,611 @@
+{
+  "schema_version": "1.0",
+  "description": "Reviewed mission-geography inputs for pipeline.mission_geography. Candidate points only: nothing here is crew clearance.",
+  "review": {
+    "reviewed_by": "Nic",
+    "date": "2026-11-14",
+    "method": "Re-checked by pipeline.mission_geography on the HiRISE DTM: 15 m uncertainty disc against slope, edge-setback and rockfall masks; results in mission_geography_report.json"
+  },
+  "dtm_id": "DTEEC_071085_2345_071006_2345_A01",
+  "points": {
+    "habitat": {
+      "lat": 54.12777,
+      "lon": -147.901301,
+      "role": "mission start and end",
+      "source": "PR #15 data/site/site_points_dtm.geojson (DTM-checked by Yasser's agent)",
+      "note": "Geury's habitat moved 59 m to flat ground (his spot had 24 cells >= 20 deg within 15 m)"
+    },
+    "parking": {
+      "lat": 54.16256,
+      "lon": -147.89445,
+      "role": "crew-rover parking: end of the drive leg, start of the walk leg",
+      "source": "PR #15 data/site/site_points_dtm.geojson (DTM-checked by Yasser's agent)",
+      "note": "High plain just SE of the scarp's east end; reachable by rover (< 24 deg, roughness <= 0.5 m)"
+    },
+    "observation_primary": {
+      "lat": 54.172784,
+      "lon": -147.894109,
+      "role": "primary viewpoint",
+      "source": "PR #15 data/site/site_points_dtm.geojson (DTM-checked by Yasser's agent)",
+      "note": "Faces the second (upper) scarp, bluish in HiRISE color (Geury ice_upper_band): face 44 m tall here, viewpoint 229 m from its foot (rockfall zone 85 m). Moved from the east-end bench: that spot faced the non-bluish east end and sat 20 m from the second scarp's edge"
+    },
+    "observation_backup": {
+      "lat": 54.17111413463595,
+      "lon": -147.89250737253616,
+      "role": "backup viewpoint",
+      "source": "PR #15 data/site/site_points_dtm.geojson (DTM-checked by Yasser's agent)",
+      "note": "Faces the same bluish second scarp; 112 m from the primary (independent), 629 m walk from parking"
+    },
+    "drone_perch": {
+      "lat": 54.166913,
+      "lon": -147.901878,
+      "role": "drone perch (drone access only)",
+      "source": "PR #15 data/site/site_points_dtm.geojson (DTM-checked by Yasser's agent)",
+      "note": "Pit floor facing the tallest part of the face (70 m), 131 m from the foot; drone access only"
+    }
+  },
+  "first_pass_points": {
+    "habitat": {
+      "lat": 54.12819,
+      "lon": -147.90287,
+      "source": "Geury's first-pass site_points.geojson (PR #15 data/site/site_points.geojson), not DTM-checked"
+    },
+    "scarp_foot": {
+      "lat": 54.16211,
+      "lon": -147.90546,
+      "source": "Geury's first-pass site_points.geojson (PR #15 data/site/site_points.geojson), not DTM-checked"
+    },
+    "observation_primary": {
+      "lat": 54.16291,
+      "lon": -147.90546,
+      "source": "Geury's first-pass site_points.geojson (PR #15 data/site/site_points.geojson), not DTM-checked"
+    },
+    "observation_backup": {
+      "lat": 54.16524,
+      "lon": -147.89585,
+      "source": "Geury's first-pass site_points.geojson (PR #15 data/site/site_points.geojson), not DTM-checked"
+    },
+    "drone_perch": {
+      "lat": 54.16334,
+      "lon": -147.90287,
+      "source": "Geury's first-pass site_points.geojson (PR #15 data/site/site_points.geojson), not DTM-checked"
+    },
+    "plan_b_drill": {
+      "lat": 54.15921,
+      "lon": -147.90553,
+      "source": "Geury's first-pass site_points.geojson (PR #15 data/site/site_points.geojson), not DTM-checked"
+    }
+  },
+  "scarp_profiles": {
+    "source": "PR #15 data/site/scarp_measurements.json (per-profile DTM measurements across the traced scarp lines, Yasser's agent; unreviewed)",
+    "method": "Per traced profile (data/site/scarp_lines.geojson): top_z = median elevation 15 m south of the edge, floor_z = 15 m north of the foot, height = top_z - floor_z, apron = distance north of the foot until slope stays < 15 deg for 10 m (rough pit floor inflates it in the west). Rockfall zone per profile = max(apron, 1 x height) from the foot.",
+    "profiles": [
+      {
+        "lon": -147.917532,
+        "edge_lat": 54.163452,
+        "foot_lat": 54.164941,
+        "height_m": 41.2,
+        "apron_m": 252.1,
+        "face_max_slope_deg": 70.7
+      },
+      {
+        "lon": -147.916745,
+        "edge_lat": 54.163463,
+        "foot_lat": 54.164952,
+        "height_m": 47.1,
+        "apron_m": 268.1,
+        "face_max_slope_deg": 68.0
+      },
+      {
+        "lon": -147.915957,
+        "edge_lat": 54.163473,
+        "foot_lat": 54.164962,
+        "height_m": 52.1,
+        "apron_m": 95.7,
+        "face_max_slope_deg": 69.5
+      },
+      {
+        "lon": -147.91517,
+        "edge_lat": 54.163515,
+        "foot_lat": 54.164477,
+        "height_m": 59.3,
+        "apron_m": 69.8,
+        "face_max_slope_deg": 66.9
+      },
+      {
+        "lon": -147.914382,
+        "edge_lat": 54.163541,
+        "foot_lat": 54.164401,
+        "height_m": 55.3,
+        "apron_m": 158.5,
+        "face_max_slope_deg": 68.7
+      },
+      {
+        "lon": -147.913595,
+        "edge_lat": 54.163587,
+        "foot_lat": 54.164351,
+        "height_m": 50.0,
+        "apron_m": 108.6,
+        "face_max_slope_deg": 67.5
+      },
+      {
+        "lon": -147.912807,
+        "edge_lat": 54.163667,
+        "foot_lat": 54.164351,
+        "height_m": 48.5,
+        "apron_m": 2.0,
+        "face_max_slope_deg": 69.9
+      },
+      {
+        "lon": -147.91202,
+        "edge_lat": 54.163714,
+        "foot_lat": 54.164351,
+        "height_m": 51.7,
+        "apron_m": 91.7,
+        "face_max_slope_deg": 66.3
+      },
+      {
+        "lon": -147.910445,
+        "edge_lat": 54.163739,
+        "foot_lat": 54.165072,
+        "height_m": 54.7,
+        "apron_m": 349.8,
+        "face_max_slope_deg": 67.2
+      },
+      {
+        "lon": -147.909657,
+        "edge_lat": 54.163739,
+        "foot_lat": 54.165106,
+        "height_m": 58.7,
+        "apron_m": 195.3,
+        "face_max_slope_deg": 67.6
+      },
+      {
+        "lon": -147.90887,
+        "edge_lat": 54.163739,
+        "foot_lat": 54.165106,
+        "height_m": 61.8,
+        "apron_m": 181.4,
+        "face_max_slope_deg": 71.7
+      },
+      {
+        "lon": -147.908083,
+        "edge_lat": 54.163701,
+        "foot_lat": 54.165101,
+        "height_m": 66.5,
+        "apron_m": 88.7,
+        "face_max_slope_deg": 70.5
+      },
+      {
+        "lon": -147.907295,
+        "edge_lat": 54.16365,
+        "foot_lat": 54.165072,
+        "height_m": 70.7,
+        "apron_m": 187.4,
+        "face_max_slope_deg": 70.6
+      },
+      {
+        "lon": -147.906508,
+        "edge_lat": 54.163646,
+        "foot_lat": 54.164882,
+        "height_m": 72.1,
+        "apron_m": 28.9,
+        "face_max_slope_deg": 69.4
+      },
+      {
+        "lon": -147.90572,
+        "edge_lat": 54.163642,
+        "foot_lat": 54.164874,
+        "height_m": 69.7,
+        "apron_m": 25.9,
+        "face_max_slope_deg": 70.3
+      },
+      {
+        "lon": -147.904933,
+        "edge_lat": 54.163621,
+        "foot_lat": 54.164874,
+        "height_m": 71.8,
+        "apron_m": 33.9,
+        "face_max_slope_deg": 71.7
+      },
+      {
+        "lon": -147.904145,
+        "edge_lat": 54.163595,
+        "foot_lat": 54.164844,
+        "height_m": 72.6,
+        "apron_m": 4.0,
+        "face_max_slope_deg": 74.8
+      },
+      {
+        "lon": -147.903358,
+        "edge_lat": 54.163574,
+        "foot_lat": 54.164844,
+        "height_m": 70.4,
+        "apron_m": 4.0,
+        "face_max_slope_deg": 68.5
+      },
+      {
+        "lon": -147.90257,
+        "edge_lat": 54.163545,
+        "foot_lat": 54.164696,
+        "height_m": 71.7,
+        "apron_m": 18.9,
+        "face_max_slope_deg": 69.5
+      },
+      {
+        "lon": -147.901783,
+        "edge_lat": 54.163532,
+        "foot_lat": 54.164696,
+        "height_m": 70.5,
+        "apron_m": 8.0,
+        "face_max_slope_deg": 66.9
+      },
+      {
+        "lon": -147.900995,
+        "edge_lat": 54.16352,
+        "foot_lat": 54.16462,
+        "height_m": 68.7,
+        "apron_m": 0.0,
+        "face_max_slope_deg": 66.8
+      },
+      {
+        "lon": -147.900208,
+        "edge_lat": 54.16352,
+        "foot_lat": 54.164599,
+        "height_m": 65.7,
+        "apron_m": 6.0,
+        "face_max_slope_deg": 69.7
+      },
+      {
+        "lon": -147.899421,
+        "edge_lat": 54.16352,
+        "foot_lat": 54.164582,
+        "height_m": 63.1,
+        "apron_m": 6.0,
+        "face_max_slope_deg": 67.7
+      },
+      {
+        "lon": -147.898633,
+        "edge_lat": 54.163541,
+        "foot_lat": 54.164582,
+        "height_m": 59.1,
+        "apron_m": 40.9,
+        "face_max_slope_deg": 68.5
+      },
+      {
+        "lon": -147.897846,
+        "edge_lat": 54.163549,
+        "foot_lat": 54.164561,
+        "height_m": 57.9,
+        "apron_m": 14.9,
+        "face_max_slope_deg": 67.7
+      },
+      {
+        "lon": -147.897058,
+        "edge_lat": 54.163587,
+        "foot_lat": 54.164528,
+        "height_m": 56.9,
+        "apron_m": 9.0,
+        "face_max_slope_deg": 67.9
+      },
+      {
+        "lon": -147.896271,
+        "edge_lat": 54.163604,
+        "foot_lat": 54.164448,
+        "height_m": 54.3,
+        "apron_m": 14.0,
+        "face_max_slope_deg": 71.8
+      },
+      {
+        "lon": -147.895483,
+        "edge_lat": 54.163612,
+        "foot_lat": 54.164325,
+        "height_m": 46.7,
+        "apron_m": 220.3,
+        "face_max_slope_deg": 71.5
+      },
+      {
+        "lon": -147.894696,
+        "edge_lat": 54.163612,
+        "foot_lat": 54.164247,
+        "height_m": 34.9,
+        "apron_m": 132.6,
+        "face_max_slope_deg": 64.7
+      },
+      {
+        "lon": -147.893908,
+        "edge_lat": 54.163612,
+        "foot_lat": 54.164169,
+        "height_m": 23.3,
+        "apron_m": 100.7,
+        "face_max_slope_deg": 68.3
+      }
+    ]
+  },
+  "upper_scarp_profiles": {
+    "source": "data/site/scarp_measurements.json upper_scarp (PR #17, tools/site/second_scarp_viewpoints.py)",
+    "method": "Second north-facing scarp on the lobe's north-east margin. Apron capped at 100 m (rough floor). The old east-end viewpoint sat 20.0 m from its edge. buffer_m is PR #17's published rockfall buffer; the zone uses max(apron, height x factor, buffer_m).",
+    "profiles": [
+      {
+        "lon": -147.898335,
+        "edge_lat": 54.166441,
+        "foot_lat": 54.168178,
+        "height_m": 10.7,
+        "apron_m": 11.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.898125,
+        "edge_lat": 54.166171,
+        "foot_lat": 54.168634,
+        "height_m": 10.4,
+        "apron_m": 11.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.897915,
+        "edge_lat": 54.16612,
+        "foot_lat": 54.168145,
+        "height_m": 10.3,
+        "apron_m": 16.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.897705,
+        "edge_lat": 54.166036,
+        "foot_lat": 54.168128,
+        "height_m": 12.0,
+        "apron_m": 39.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.897495,
+        "edge_lat": 54.166036,
+        "foot_lat": 54.167942,
+        "height_m": 12.0,
+        "apron_m": 29.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.897285,
+        "edge_lat": 54.166002,
+        "foot_lat": 54.167942,
+        "height_m": 16.8,
+        "apron_m": 26.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.897075,
+        "edge_lat": 54.16612,
+        "foot_lat": 54.167976,
+        "height_m": 18.5,
+        "apron_m": 7.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.896865,
+        "edge_lat": 54.166154,
+        "foot_lat": 54.168499,
+        "height_m": 23.6,
+        "apron_m": 7.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.896655,
+        "edge_lat": 54.166086,
+        "foot_lat": 54.168499,
+        "height_m": 24.0,
+        "apron_m": 23.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.896445,
+        "edge_lat": 54.166052,
+        "foot_lat": 54.167875,
+        "height_m": 25.5,
+        "apron_m": 41.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.896235,
+        "edge_lat": 54.16612,
+        "foot_lat": 54.167588,
+        "height_m": 27.6,
+        "apron_m": 11.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.896025,
+        "edge_lat": 54.166137,
+        "foot_lat": 54.167622,
+        "height_m": 33.2,
+        "apron_m": 9.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.895815,
+        "edge_lat": 54.166052,
+        "foot_lat": 54.167757,
+        "height_m": 33.2,
+        "apron_m": 12.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.895605,
+        "edge_lat": 54.166036,
+        "foot_lat": 54.167892,
+        "height_m": 34.7,
+        "apron_m": 9.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.895395,
+        "edge_lat": 54.166052,
+        "foot_lat": 54.167892,
+        "height_m": 37.0,
+        "apron_m": 6.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.895185,
+        "edge_lat": 54.166052,
+        "foot_lat": 54.168128,
+        "height_m": 40.4,
+        "apron_m": 6.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.894975,
+        "edge_lat": 54.166002,
+        "foot_lat": 54.168128,
+        "height_m": 42.2,
+        "apron_m": 5.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.894765,
+        "edge_lat": 54.166002,
+        "foot_lat": 54.168077,
+        "height_m": 44.0,
+        "apron_m": 6.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.894555,
+        "edge_lat": 54.166036,
+        "foot_lat": 54.168027,
+        "height_m": 45.5,
+        "apron_m": 14.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.894345,
+        "edge_lat": 54.166019,
+        "foot_lat": 54.168027,
+        "height_m": 45.5,
+        "apron_m": 21.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.894135,
+        "edge_lat": 54.166964,
+        "foot_lat": 54.168904,
+        "height_m": 43.8,
+        "apron_m": 81.7,
+        "buffer_m": 81.7
+      },
+      {
+        "lon": -147.893925,
+        "edge_lat": 54.167014,
+        "foot_lat": 54.168938,
+        "height_m": 42.2,
+        "apron_m": 65.8,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.893715,
+        "edge_lat": 54.167048,
+        "foot_lat": 54.168954,
+        "height_m": 38.8,
+        "apron_m": 56.8,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.893505,
+        "edge_lat": 54.167132,
+        "foot_lat": 54.168988,
+        "height_m": 34.7,
+        "apron_m": 71.8,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.893295,
+        "edge_lat": 54.167149,
+        "foot_lat": 54.168954,
+        "height_m": 32.2,
+        "apron_m": 80.7,
+        "buffer_m": 80.7
+      },
+      {
+        "lon": -147.893085,
+        "edge_lat": 54.1672,
+        "foot_lat": 54.168971,
+        "height_m": 29.1,
+        "apron_m": 55.8,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.892875,
+        "edge_lat": 54.167234,
+        "foot_lat": 54.168954,
+        "height_m": 25.8,
+        "apron_m": 54.8,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.892665,
+        "edge_lat": 54.167284,
+        "foot_lat": 54.168954,
+        "height_m": 23.2,
+        "apron_m": 45.8,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.892455,
+        "edge_lat": 54.167301,
+        "foot_lat": 54.168954,
+        "height_m": 22.1,
+        "apron_m": 42.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.892245,
+        "edge_lat": 54.167335,
+        "foot_lat": 54.168988,
+        "height_m": 20.6,
+        "apron_m": 27.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.892035,
+        "edge_lat": 54.167419,
+        "foot_lat": 54.168904,
+        "height_m": 17.5,
+        "apron_m": 28.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.891825,
+        "edge_lat": 54.167436,
+        "foot_lat": 54.168904,
+        "height_m": 14.9,
+        "apron_m": 17.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.891615,
+        "edge_lat": 54.167503,
+        "foot_lat": 54.168904,
+        "height_m": 14.7,
+        "apron_m": 19.9,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.891405,
+        "edge_lat": 54.16752,
+        "foot_lat": 54.168904,
+        "height_m": 9.9,
+        "apron_m": 12.0,
+        "buffer_m": 72.6
+      },
+      {
+        "lon": -147.891195,
+        "edge_lat": 54.167554,
+        "foot_lat": 54.168954,
+        "height_m": 8.2,
+        "apron_m": 13.0,
+        "buffer_m": 72.6
+      }
+    ]
+  }
+}

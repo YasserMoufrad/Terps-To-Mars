@@ -115,6 +115,8 @@ button { font: inherit; }
 .line-backup { border-top: 4px dashed var(--good); }
 .line-rover { border-top: 4px dotted #ffffff; }
 .line-unverified { border-top: 4px dashed var(--warn); }
+.line-candidate { border-top: 4px dashed #b4b9c2; }
+.line-rejected { border-top: 3px dotted #8a9099; }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-left: 6px; }
 .swatch:first-child { margin-left: 0; }
 
@@ -235,3 +237,7 @@ button { font: inherit; }
 @media (max-width: 640px) {
   .slope-legend { max-width: 200px; }
 }
+
+.slope-retry { margin-left: 6px; font: inherit; padding: 1px 8px; border-radius: 4px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
+.slope-opacity { display: flex; align-items: center; gap: 6px; }
+.slope-opacity input { flex: 1; min-width: 80px; }

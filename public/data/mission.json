@@ -1,93 +1,53 @@
 {
-  "schema_version": "1.1",
-  "placeholder": true,
-  "site": {
-    "name": "Scarps in Milankovic Crater",
-    "lat": 54.164,
-    "lon": -147.899,
-    "dtm_id": "DTEEC_071085_2345_071006_2345_A01",
-    "image_id": "ESP_071006_2345"
-  },
-  "sun": {
-    "ls_deg": 101.2,
-    "local_time": "15:26",
-    "elevation_deg": 42,
-    "source": "ESP_071006_2345 metadata"
-  },
-  "endpoints": {
-    "habitat": {
-      "lat": 54.12777,
-      "lon": -147.901301
-    },
-    "observation_primary": {
-      "lat": 54.172784,
-      "lon": -147.894109
-    },
-    "observation_backup": {
-      "lat": 54.17111413463595,
-      "lon": -147.89250737253616
-    }
-  },
-  "stages": [
-    {
-      "id": "orbital",
-      "title": "Orbital planning",
-      "text": "A first route from NASA orbital data. Large slopes and the rockfall zone are visible; small hazards are not.",
-      "stats": {
-        "Detail": "1 m terrain, 25 cm imagery",
-        "Ice cliff": "59 m tall (median), 64-75 degree face",
-        "Route": "Unverified"
-      }
-    },
-    {
-      "id": "rover",
-      "title": "Rover reconnaissance",
-      "text": "In the sols before the walk, the rover drives the crew-rover route out and checks the walking paths. It finds soft ground the orbit could not see and the drive is replanned.",
-      "stats": {
-        "Underground (U)": "1 found",
-        "In shadow (S)": "1 flagged",
-        "Routes checked": "2"
-      }
-    },
-    {
-      "id": "drone",
-      "title": "Drone inspection",
-      "text": "The simulated drone perches on the pit floor facing the tallest part of the ice cliff (about 70 m), which the crew cannot reach on this EVA, and images the face and rockfall zone.",
-      "stats": {
-        "Overhead (O)": "Rockfall zone mapped (simulated)",
-        "Observation point": "Outside mapped rockfall zone",
-        "Coverage": "Simulated"
-      }
-    },
-    {
-      "id": "eva",
-      "title": "Astronaut mission review",
-      "text": "Review the proposed trip: two astronauts drive the crew rover 2.3 km to a parking point on the plain, then walk about 730 m around the cliffs to a viewpoint facing a bluish, ice-consistent cliff face. None of this is crew clearance.",
-      "stats": {
-        "Drive (crew rover)": "2.34 km each way, assumed 5 km/h",
-        "Walk": "730 m each way at 20 m/min",
-        "Travel time": "129 min round trip + 20 min at the site",
-        "Budget": "Within modeled budget (149 of 168 min)",
-        "Walkback": "117 min on foot if the crew rover fails; 238 of 240 min EVA",
-        "View": "Bluish cliff 44 m tall here, viewpoint 229 m from its foot (rockfall zone 85 m)",
-        "Route status": "Needs inspection: budgets fit, but the crew-rover drive is not yet modeled"
-      }
-    }
-  ],
   "alerts": {
-    "orbital": [
-      "Plan unverified: small hazards are below orbital resolution"
-    ],
-    "rover": [
-      "Rover stopped: wheel slip 38 percent, requesting input"
-    ],
     "drone": [
-      "Simulated drone concept: rockfall zone suspected, not verified"
+      "Simulated drone concept: rockfall zone traced from imagery, not verified"
     ],
     "eva": [
-      "Simulated overwatch: no rockfall observed",
-      "Backup route available for review"
+      "Backup unavailable: over the EVA time with reserve, walkback exceeds the EVA"
+    ],
+    "orbital": [
+      "Candidate from orbit only: not crew clearance"
+    ],
+    "rover": [
+      "Simulated: rover stopped, wheel slip 38 percent, requesting input"
     ]
+  },
+  "discovery": {
+    "after_route_id": "rt-crew-main-v2",
+    "before_route_id": "rt-orbital-guess-v1",
+    "chosen_option": "",
+    "decision": "request_input",
+    "evidence": "simulated",
+    "hazard_id": "hz-sim-001",
+    "id": "disc-001",
+    "location": {
+      "lat": 54.1440681,
+      "lon": -147.9040567
+    },
+    "options": [
+      {
+        "consequence": "+6 m drive, +0.1 min each way",
+        "id": "opt-reroute",
+        "label": "Reroute around the area"
+      },
+      {
+        "consequence": "+15 min, may clear the area (simulated)",
+        "id": "opt-drone",
+        "label": "Send the drone to inspect"
+      },
+      {
+        "consequence": "Risk accepted by crew",
+        "id": "opt-continue",
+        "label": "Continue slowly"
+      }
+    ],
+    "sensor_evidence": {
+      "orbital_prior": "Looked firm in HiRISE imagery",
+      "thermal": "simulated thermal camera: surface cooler than surroundings (possible loose material)",
+      "wheel_slip_pct": 38
+    },
+    "uncertainty": "high"
   },
   "drone": {
     "perch": {
@@ -96,40 +56,77 @@
     },
     "view_cone_id": "cov-drone-perch"
   },
-  "discovery": {
-    "id": "disc-001",
-    "hazard_id": "hz-sim-001",
-    "before_route_id": "rt-crew-main-v1",
-    "after_route_id": "rt-crew-main-v2",
-    "location": {
-      "lat": 54.143427,
-      "lon": -147.904975
+  "endpoints": {
+    "habitat": {
+      "lat": 54.12777,
+      "lon": -147.901301
     },
-    "sensor_evidence": {
-      "wheel_slip_pct": 38,
-      "thermal": "simulated thermal camera: surface cooler than surroundings (possible loose material)",
-      "orbital_prior": "Looked firm in HiRISE imagery"
+    "observation_backup": {
+      "lat": 54.17111413463595,
+      "lon": -147.89250737253616
     },
-    "evidence": "simulated",
-    "uncertainty": "high",
-    "decision": "request_input",
-    "options": [
-      {
-        "id": "opt-reroute",
-        "label": "Reroute around the area",
-        "consequence": "+72 m of driving, +0.9 min each way"
+    "observation_primary": {
+      "lat": 54.172784,
+      "lon": -147.894109
+    }
+  },
+  "placeholder": false,
+  "schema_version": "1.0",
+  "site": {
+    "dtm_id": "DTEEC_071085_2345_071006_2345_A01",
+    "image_id": "ESP_071006_2345",
+    "lat": 54.144,
+    "lon": -147.894,
+    "name": "Scarps in Milankovic Crater"
+  },
+  "stages": [
+    {
+      "id": "orbital",
+      "stats": {
+        "Budget": "Within budget (5.94 km round trip)",
+        "Detail": "1 m DTM, 25 cm imagery",
+        "Drive + walk (one way)": "2.14 km + 832 m",
+        "Steepest cell": "23.7\u00b0 (drive limit 24\u00b0, walk 20\u00b0)"
       },
-      {
-        "id": "opt-drone",
-        "label": "Send the drone to inspect",
-        "consequence": "+15 min, may clear the area"
+      "text": "From NASA orbital data only: drive the crew rover 2.1 km north across the crater floor to a parking spot above the scarp's low east end, then walk 832 m down to the viewpoint below the ice face. Slope comes from the HiRISE DTM; the scarp edge, foot and rockfall zone are traced from imagery (inferred). Rocks under 1 m, loose ground and shadow are not assessed.",
+      "title": "Orbital planning"
+    },
+    {
+      "id": "rover",
+      "stats": {
+        "Replanned drive": "+6 m",
+        "Rover path": "3.0 km (simulated)",
+        "Underground (U)": "1 found (simulated)"
       },
-      {
-        "id": "opt-continue",
-        "label": "Continue slowly",
-        "consequence": "Risk accepted by crew"
-      }
-    ],
-    "chosen_option": ""
+      "text": "The day before the walk, the simulated rover drives the candidate route. About 1.0 km out it reports soft ground the orbit could not see (simulated) and stops; the drive is replanned around it (+6 m).",
+      "title": "Rover reconnaissance"
+    },
+    {
+      "id": "drone",
+      "stats": {
+        "Coverage": "Simulated",
+        "Overhead (O)": "Rockfall zone from traced foot (inferred)",
+        "Viewpoints": "Outside the modeled rockfall zone"
+      },
+      "text": "The simulated drone images the scarp face from the pit floor and checks the ground around the viewpoints. The rockfall zone shown is the traced-foot rule, not something the drone measured.",
+      "title": "Drone inspection"
+    },
+    {
+      "id": "eva",
+      "stats": {
+        "Budget": "Within budget (5.95 km round trip)",
+        "Round trip": "5.95 km (1664 m walking)",
+        "Steepest cell": "23.7\u00b0 (drive limit 24\u00b0, walk 20\u00b0)",
+        "Time": "155 of 168 min"
+      },
+      "text": "Review the replanned route two astronauts would take to the viewpoint, the evidence behind it and the backup. Budgets use pipeline.itinerary with 5,000 m rule on walking distance only (team decision 2026-11-14). None of this is crew clearance.",
+      "title": "Astronaut mission review"
+    }
+  ],
+  "sun": {
+    "elevation_deg": 42,
+    "local_time": "15:26",
+    "ls_deg": 101.2,
+    "source": "ESP_071006_2345 metadata"
   }
 }

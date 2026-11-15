@@ -13,6 +13,7 @@ import {
   type SlopeMeta, type ScarpLines, type RouteAudit,
 } from './types.ts';
 import { silentLogger, type Logger } from '../lib/logger.ts';
+import { checkAuditFreshness } from '../map/auditFreshness.ts';
 
 export interface LoadIssue {
   file: string;
@@ -458,7 +459,17 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     fetchOptional(baseUrl, 'route_audit.json', issues),
   ]);
   const scarpLines = checkScarpLines(scarpRaw, 'scarp_lines.geojson', issues);
-  const routeAudit = checkRouteAudit(auditRaw, 'route_audit.json', issues);
+  let routeAudit = checkRouteAudit(auditRaw, 'route_audit.json', issues);
+  if (routeAudit && routes) {
+    // A stale audit describes other lines than the ones drawn: withhold all of its diagnostics, visibly.
+    const freshness = await checkAuditFreshness(routeAudit, routes.features, mission, scarpLines, slopeMeta);
+    if (!freshness.fresh) {
+      issues.push({ file: 'route_audit.json', severity: 'error',
+        message: `Route audit is stale and was not used (${freshness.problems.join('; ')}). Re-run pipeline.mission_geography or pipeline.route_audit.` });
+      logger.error('safety', 'route_audit.stale', { problems: freshness.problems, stale_routes: freshness.staleRoutes });
+      routeAudit = null;
+    }
+  }
   if (routeAudit && routes) {
     const audited = new Set(routeAudit.routes.map((r) => r.id));
     const missing = routes.features.map((f) => f.properties.id).filter((id) => !audited.has(id));

@@ -4,13 +4,26 @@
 import type { SlopeMeta } from '../data/types';
 import { SLOPE_SOURCE_TEXT, slopeStatusText, type SlopeLoadState } from './slopeLayer';
 
-export function SlopeLegend({ meta, state }: { meta: SlopeMeta; state: SlopeLoadState }) {
+interface SlopeLegendProps {
+  meta: SlopeMeta;
+  state: SlopeLoadState;
+  opacity: number; // overlay opacity 0.2-1
+  onOpacity: (value: number) => void;
+  onRetry: () => void; // re-requests slope.png after a failure
+}
+
+export function SlopeLegend({ meta, state, opacity, onOpacity, onRetry }: SlopeLegendProps) {
   // Purpose: `meta` supplies the class labels and colours; `state` reports whether the PNG really decoded.
-  // The failure line stays visible even when the key is collapsed.
+  // The failure line (with Retry) stays visible even when the key is collapsed.
   const narrow = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 900px)').matches;
   return (
     <div className="slope-legend" aria-label="Slope legend">
-      {state !== 'loaded' && <div className={`legend-row slope-state slope-${state}`} role="status">{slopeStatusText(state)}</div>}
+      {state !== 'loaded' && (
+        <div className={`legend-row slope-state slope-${state}`} role="status">
+          {slopeStatusText(state)}
+          {state === 'failed' && <button type="button" className="slope-retry" onClick={onRetry}>Retry</button>}
+        </div>
+      )}
       <details open={!narrow}>
         <summary className="slope-legend-title">Slope (degrees)</summary>
         {meta.legend.map((entry) => (
@@ -22,6 +35,11 @@ export function SlopeLegend({ meta, state }: { meta: SlopeMeta; state: SlopeLoad
             {entry.label}
           </div>
         ))}
+        <label className="legend-row slope-opacity">
+          Opacity
+          <input type="range" min={0.2} max={1} step={0.05} value={opacity} aria-label="Slope map opacity"
+            onChange={(e) => onOpacity(Number(e.target.value))} />
+        </label>
         <div className="legend-row muted">{SLOPE_SOURCE_TEXT}</div>
         <div className="legend-row muted">Does not resolve sub-metre rocks, overhangs, loose soil or surface instability.</div>
       </details>

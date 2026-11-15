@@ -52,6 +52,9 @@ test('route notices never claim clearance', () => {
   assert.match(routeReviewNotice(route({ status: 'no_viable_route' }, [])), /No viable route/);
   assert.match(routeReviewNotice(route({ status: 'backup_unavailable' }, [])), /No independent/);
   assert.match(routeReviewNotice(route({ kind: 'orbital_guess' })), /unverified/);
+  const rejected = routeReviewNotice(route({ status: 'no_viable_route', status_reason: 'over the 5 km round-trip rule' }));
+  assert.match(rejected, /over the 5 km round-trip rule/);
+  assert.match(rejected, /rejected candidate/);
   assert.equal(routeReviewNotice(route({})), null);
 });
 

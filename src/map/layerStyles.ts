@@ -51,13 +51,19 @@ export function coverageStyle(p: CoverageProperties): PathOptions {
 }
 
 export const DRIVE_COLOR = '#7cc4ff';
+export const CANDIDATE_GREY = '#b4b9c2';
+export const REJECTED_GREY = '#8a9099';
 
-export function routeStyle(p: RouteProperties & { leg_mode?: 'drive' | 'walk' }, supersededId: string | null): PathOptions {
+export function routeStyle(p: RouteProperties & { leg_mode?: 'drive' | 'walk' }, supersededId: string | null, rejected = false): PathOptions {
   // Purpose: Leaflet style for one route by p.kind. `supersededId` is the crew route
   // replaced by the discovery (drawn faded gray); a route that is not "ok" but still
-  // has a line (e.g. the unverified orbital guess) is drawn amber and dashed.
-  // `p.leg_mode` is set on split routes: a crew-rover drive leg is drawn light blue.
-  if (p.id === supersededId) return { color: '#b4b9c2', weight: 4, dashArray: '8 8', opacity: 0.8 };
+  // has a line is drawn amber and dashed. `p.leg_mode` is set on split routes: a
+  // crew-rover drive leg is drawn light blue. No route is ever red:
+  // `rejected` (no viable route, or the terrain audit rejects the line) is a thin grey dotted line, never route-like;
+  // the orbital candidate the robots will scout is grey and dashed.
+  if (p.id === supersededId) return { color: CANDIDATE_GREY, weight: 4, dashArray: '8 8', opacity: 0.8 };
+  if (rejected) return { color: REJECTED_GREY, weight: 3, dashArray: '2 9', opacity: 0.95, lineCap: 'round' };
+  if (p.kind === 'orbital_guess') return { color: CANDIDATE_GREY, weight: 4, dashArray: p.leg_mode === 'drive' ? '1 9' : '10 8', opacity: 0.95, lineCap: 'round' };
   // Not "ok": amber. A drive leg is short amber dots so drive and walk stay distinguishable.
   if (p.status !== 'ok' && p.leg_mode === 'drive') return { color: '#f5a524', weight: 5, dashArray: '1 9', opacity: 1, lineCap: 'round' };
   if (p.status !== 'ok') return { color: '#f5a524', weight: 5, dashArray: '12 8', opacity: 1 };
@@ -71,14 +77,12 @@ export function routeStyle(p: RouteProperties & { leg_mode?: 'drive' | 'walk' },
       return { color: '#3ddc97', weight: 4, dashArray: '12 8', opacity: 1 };
     case 'rover_path':
       return { color: '#ffffff', weight: 4, dashArray: '2 8', opacity: 1, lineCap: 'round' };
-    case 'orbital_guess':
-      return { color: '#ffffff', weight: 5, dashArray: '12 8', opacity: 1 };
   }
 }
 
-export function routeCasingStyle(p: RouteProperties, supersededId: string | null): PathOptions {
+export function routeCasingStyle(p: RouteProperties, supersededId: string | null, rejected = false): PathOptions {
   // Purpose: dark outline drawn under a route, 4 px wider than the route itself,
   // so the line stands out on gray terrain.
-  const width = routeStyle(p, supersededId).weight ?? 4;
+  const width = routeStyle(p, supersededId, rejected).weight ?? 4;
   return { color: '#0b0d10', weight: width + 4, opacity: 0.75, lineCap: 'round' };
 }

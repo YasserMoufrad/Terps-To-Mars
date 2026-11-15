@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { checkRouteAudit } from '../src/data/loadMissionData.ts';
-import { AUDIT_STATUS_TEXT, auditFor, diagnosticHtml, diagnosticRows, escapeHtml, profileSvg } from '../src/map/routeAudit.ts';
+import { AUDIT_STATUS_TEXT, auditFor, diagnosticHtml, diagnosticRows, escapeHtml, isRejected, profileSvg, routeRejectedForStyle } from '../src/map/routeAudit.ts';
+import { routeStyle } from '../src/map/layerStyles.ts';
 
 const dataDir = new URL('../public/data/', import.meta.url);
 const read = (file) => JSON.parse(readFileSync(new URL(file, dataDir), 'utf8'));
@@ -23,43 +24,59 @@ test('every published route has an audit entry and none says ok', () => {
   }
 });
 
-// The published routes (PR #17, DTM least-cost paths) no longer have the old placeholder's endpoint gap,
-// length mismatch or "ok" overclaim, so those display cases are checked on modified copies of real entries.
-const withChanges = (id, changes) => ({ ...structuredClone(auditFor(audit, id)), ...changes });
-
-test('the preliminary orbital route is shown as rejected (crosses the scarp face)', () => {
-  const entry = auditFor(audit, 'rt-orbital-guess-v1');
-  assert.equal(entry.audit_status, 'excluded_terrain');
-  const html = diagnosticHtml(routes.features[0].properties, entry, audit);
-  assert.match(html, /Crosses excluded terrain/);
-  assert.match(html, /from the intended points/);
-  assert.match(html, /not crew clearance/);
+test('generated routes pass their own terrain audit; budget-rejected ones still read as rejected', () => {
+  for (const f of routes.features) {
+    const entry = auditFor(audit, f.properties.id);
+    assert.equal(entry.audit_status, 'candidate_requires_inspection', f.properties.id);
+    assert.equal(entry.cells_excluded, 0);
+    assert.equal(entry.cells_in_rockfall_zone, 0);
+    assert.equal(entry.cells_on_scarp_face, 0);
+    assert.ok(Math.abs(entry.length_m - f.properties.stats.length_m) < 1, 'claimed length equals the audited line');
+    const rejected = isRejected(f.properties, entry);
+    assert.equal(rejected, f.properties.status === 'no_viable_route' || f.properties.status === 'backup_unavailable');
+  }
+  const orbital = routes.features.find((f) => f.properties.kind === 'orbital_guess');
+  // In orbital planning the candidate is a scouting line: grey unless the terrain audit rejects it.
+  assert.equal(routeRejectedForStyle(orbital.properties, auditFor(audit, orbital.properties.id)), false);
+  assert.equal(routeRejectedForStyle(orbital.properties, { audit_status: 'excluded_terrain' }), true);
+  assert.equal(routeStyle(orbital.properties, null, false).color, '#b4b9c2');
+  // No route is ever red: a rejected one (here the backup, over the EVA budget) is a thin grey dotted line.
+  const backup = routes.features.find((f) => f.properties.id === 'rt-crew-backup-v2');
+  assert.equal(backup.properties.status, 'backup_unavailable');
+  const style = routeStyle(backup.properties, null, routeRejectedForStyle(backup.properties, auditFor(audit, backup.properties.id)));
+  assert.equal(style.color, '#8a9099');
+  assert.equal(style.dashArray, '2 9');
+  for (const f of routes.features) assert.notEqual(routeStyle(f.properties, null, true).color, '#e5484d');
 });
 
-test('an endpoint gap is shown in the popup', () => {
-  const entry = withChanges('rt-orbital-guess-v1', { end_offset_m: 250,
-    reasons: [...auditFor(audit, 'rt-orbital-guess-v1').reasons, 'endpoint_mismatch: ends 250 m / starts 0 m from the intended points (tolerance 15 m)'] });
-  assert.match(Object.fromEntries(diagnosticRows(entry))['Start / end offset'], /250 m from the intended points/);
+test('a terrain-rejected line is rejected and its first excluded crossing is listed', () => {
+  const entry = { id: 'x', agent: 'crew', kind: 'main', claimed_status: 'inspection_required', audit_status: 'excluded_terrain',
+    reasons: ['excluded_terrain: 3 walk cells ≥ 20°'], cells_excluded: 3,
+    first_exclusion: { distance_m: 412.4, lon: -147.9, lat: 54.16, kind: 'scarp_face' } };
+  assert.ok(isRejected({ id: 'x', status: 'inspection_required' }, entry));
+  const rows = Object.fromEntries(diagnosticRows(entry));
+  assert.match(rows['First excluded crossing'], /scarp face at 412 m along/);
+  assert.match(diagnosticHtml({ id: 'x', agent: 'crew', kind: 'main' }, entry, audit), /Crosses excluded terrain/);
+  assert.ok(!isRejected({ id: 'y', status: 'inspection_required' }, { ...entry, audit_status: 'candidate_requires_inspection' }));
 });
 
 test('claimed vs measured length is shown only when they disagree', () => {
-  const real = auditFor(audit, 'rt-crew-main-v2');
-  assert.equal(Object.fromEntries(diagnosticRows(real))['Claimed length'], undefined); // published stats match the line
-  const off = withChanges('rt-crew-main-v2', { claimed_length_m: real.length_m + 500, length_mismatch_m: 500,
-    reasons: [...real.reasons, 'stats_mismatch: claimed length differs from the measured line'] });
-  assert.match(Object.fromEntries(diagnosticRows(off))['Claimed length'], /differs by 500 m/);
+  const base = { id: 'x', agent: 'crew', kind: 'main', claimed_status: 'inspection_required', audit_status: 'candidate_requires_inspection',
+    length_m: 1140, claimed_length_m: 940, length_mismatch_m: 200 };
+  assert.match(Object.fromEntries(diagnosticRows({ ...base, reasons: ['stats_mismatch: claims 940 m, line measures 1140 m'] }))['Claimed length'], /differs by/);
+  assert.equal(Object.fromEntries(diagnosticRows({ ...base, reasons: [] }))['Claimed length'], undefined);
 });
 
-test('a file status of ok is called an overclaim, and the published routes make no such claim', () => {
-  for (const r of audit.routes) assert.notEqual(r.claimed_status, 'ok', r.id);
-  const entry = withChanges('rt-crew-main-v1', { claimed_status: 'ok', status_consistent: false });
+test('a file status of ok is called an overclaim', () => {
+  const entry = { id: 'x', agent: 'crew', kind: 'main', claimed_status: 'ok', audit_status: 'candidate_requires_inspection',
+    status_consistent: false, reasons: [] };
   assert.match(Object.fromEntries(diagnosticRows(entry))['File status'], /overclaims/);
 });
 
 test('profile SVG draws elevation and marks steep cells; unaudited routes say so', () => {
   const svg = profileSvg(auditFor(audit, 'rt-orbital-guess-v1').profile, 15, 20);
   assert.match(svg, /^<svg/);
-  assert.match(svg, /#e5484d/); // excluded cells are marked red
+  assert.match(profileSvg([[0, 10, 5], [10, 12, 25], [20, 14, 5]], 15, 20), /#e5484d/); // excluded cells are marked red
   assert.equal(profileSvg([], 15, 20), '');
   const html = diagnosticHtml({ id: 'rt-x', agent: 'crew', kind: 'main' }, null, audit);
   assert.match(html, /No terrain audit/);
@@ -76,5 +93,5 @@ test('no viable route: an audit with zero routes still loads and nothing is draw
   const issues = [];
   const empty = { ...audit, routes: [] };
   assert.ok(checkRouteAudit(empty, 'route_audit.json', issues));
-  assert.equal(auditFor(empty, 'rt-crew-main-v1'), null);
+  assert.equal(auditFor(empty, 'rt-crew-main-v2'), null);
 });
