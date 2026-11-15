@@ -29,7 +29,7 @@ export const LAYER_EXPLANATIONS: Partial<Record<keyof LayerVisibility, string>> 
 };
 
 // Night-IR display stretch: the 2nd and 98th percentile of tile brightness (0-255) around the mission area, measured
-// 2026-11-16 from the zoom-9 THEMIS Night IR tiles (3,060 pixels). Values outside clip to the ramp ends.
+// 2026-11-15 from the zoom-9 THEMIS Night IR tiles (3,060 pixels). Values outside clip to the ramp ends.
 export const NIGHT_IR_STRETCH = { low: 78, high: 168 };
 
 // Color ramp from cools fast (loose, blue) to stays warm (firm, orange), as [r, g, b] in 0..1; used by the SVG

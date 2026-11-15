@@ -30,6 +30,7 @@ import { MapLegend, type LegendKeys, type LineKey } from './MapLegend';
 import { CoordinateReadout } from './CoordinateReadout';
 import { MarsScaleBar } from './MarsScaleBar';
 import { MeasureButton, MeasureLayer } from './MeasureTool';
+import { CTX_ATTRIBUTION, THEMIS_ATTRIBUTION, THEMIS_NIGHT_ATTRIBUTION, VIKING_COLOR_ATTRIBUTION } from '../content/credits';
 import { dronePerchLabel } from './reviewPresentation';
 import { crewFaceTarget } from './scarpTarget';
 import {
@@ -49,10 +50,9 @@ import type { AnalysisResults } from '../data/analysis';
 // a missing CTX tile then shows coarser real terrain instead of a black hole.
 // Both use the same grid (origin -180/90, level 0 = 2 x 1 tiles), so they line up.
 const CTX_URL = 'https://astro.arcgis.com/arcgis/rest/services/OnMars/CTX/MapServer/tile/{z}/{y}/{x}';
-const CTX_ATTRIBUTION = 'CTX: NASA/JPL/MSSS, Caltech Murray Lab, Esri';
+// Attribution strings live in src/content/credits.ts (also listed in the About box, since the credit bar is hidden).
 const THEMIS_URL =
   'https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_DayIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png';
-const THEMIS_ATTRIBUTION = 'THEMIS: NASA/JPL/ASU via Mars Trek';
 
 // Real Mars color from the Viking MDIM 2.1 global color mosaic (232 m/px, via Mars Trek).
 // It is coarse (tiles stop at zoom 7 here), so it is blended with CSS `mix-blend-mode:
@@ -61,13 +61,11 @@ const THEMIS_ATTRIBUTION = 'THEMIS: NASA/JPL/ASU via Mars Trek';
 // first but is fully gray at this site.)
 const VIKING_COLOR_URL =
   'https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg';
-const VIKING_COLOR_ATTRIBUTION = 'Color: Viking MDIM 2.1 color mosaic, NASA/USGS via Mars Trek';
 
-// THEMIS night-time infrared controlled mosaic (100 m/px; tiles stop at zoom 9 here, checked 2026-11-16).
+// THEMIS night-time infrared controlled mosaic (100 m/px; tiles stop at zoom 9 here, checked 2026-11-15).
 // Night brightness is a relative proxy for how well the ground holds heat (firm vs loose), not a temperature.
 const THEMIS_NIGHT_URL =
   'https://trek.nasa.gov/tiles/Mars/EQ/THEMIS_NightIR_ControlledMosaics_100m_v2_oct2018/1.0.0/default/default028mm/{z}/{y}/{x}.png';
-const THEMIS_NIGHT_ATTRIBUTION = 'THEMIS Night IR: NASA/JPL/ASU via Mars Trek';
 
 const EVIDENCE_LABEL = { nasa_derived: 'NASA-derived', inferred: 'Inferred', simulated: 'Simulated' } as const;
 

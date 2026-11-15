@@ -17,6 +17,7 @@
 .leaflet-tooltip.measure-label{background:#0b0d10;color:#62ddff;border:1px solid #62ddff;font-weight:600}
 .leaflet-container.measuring{cursor:crosshair}
 .ir-key{margin:2px 0 4px 24px}.ir-key-bar{height:10px;border-radius:3px;border:1px solid var(--line)}.ir-key-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:2px}
+.brief-credits{margin:12px 0;font-size:13px}.brief-credits summary{cursor:pointer;font-weight:600}.brief-credits ul{padding-left:18px;margin:6px 0}.brief-credits li{margin:3px 0;line-height:1.4}.brief-credits a{color:#9cc9ff}
 .layer-explain{display:block;margin:0 0 8px 24px;font-size:11px;line-height:1.4;color:var(--muted)}
 .time-budget .tb-row{margin:8px 0}.tb-title{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}.tb-fit{color:#a7f0cf}.tb-over{color:#ffb3b5}
 .tb-track{position:relative;display:flex;height:14px;background:#2a303a;border-radius:4px;overflow:visible}.tb-seg{height:100%}.tb-seg:first-child{border-radius:4px 0 0 4px}
