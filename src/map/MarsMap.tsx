@@ -10,6 +10,7 @@ import { createTileErrorReporter, type TileCoords } from './tileErrors';
 import type {
   StageId, Mission, HazardCollection, RouteCollection, CoverageCollection,
   HazardProperties, RouteProperties, CoverageProperties, LatLon, OverlayBounds, HiriseMeta, HiriseTiles,
+  SlopeMeta, ScarpLines, RouteAudit,
 } from '../data/types';
 import { MAP_MAX_ZOOM, imageryAttribution } from './imagery';
 import { ImageryControls } from './ImageryControls';
@@ -23,6 +24,10 @@ import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
 import { dronePerchLabel } from './reviewPresentation';
+import { observationTarget, resolveScarpTarget } from './scarpTarget';
+import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
+import { SlopeLegend } from './SlopeLegend';
+import { auditFor, diagnosticHtml } from './routeAudit';
 
 // CTX global mosaic: real tiles exist up to zoom 10 here (see docs/MAP_TILES.md).
 // Its server sometimes fails a tile, so THEMIS (from Mars Trek) sits underneath:
@@ -55,6 +60,9 @@ interface MarsMapProps {
   hiriseMeta: HiriseMeta | null;
   hiriseTiles: HiriseTiles[];
   slopeBounds: OverlayBounds | null;
+  slopeMeta?: SlopeMeta | null; // legend, thresholds and grid size for slope.png
+  scarpLines?: ScarpLines | null; // traced scarp edge/foot: the "Inspect scarp" target
+  routeAudit?: RouteAudit | null; // measured diagnostics shown when a route is clicked
   layers: LayerVisibility;
   onSelectHazard: (hazard: HazardProperties) => void;
   onImageryState?: (state: ImageryLoadState) => void; // reports the HiRISE load state to the layer toggles
@@ -82,7 +90,7 @@ function dataUrl(file: string): string {
 
 export function MarsMap({
   stage, mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, hiriseTiles, slopeBounds, layers, onSelectHazard,
-  onImageryState,
+  onImageryState, slopeMeta = null, scarpLines = null, routeAudit = null,
 }: MarsMapProps) {
   // `hiriseTiles`: published HiRISE tile sets (context ring first, native corridor last).
   // Purpose: draw the basemap and every data layer for the current `stage`.
@@ -103,6 +111,27 @@ export function MarsMap({
   const hdState = combinedState(Object.values(hdLoads), hdPublished, layers.hirise);
   const hdEvent = (key: string, kind: 'loading' | 'load' | 'tileload' | 'error') =>
     setHdLoads((prev) => ({ ...prev, [key]: applyLoadEvent(prev[key] ?? EMPTY_LOAD, kind) }));
+
+  // "Inspect scarp" goes to the traced scarp face, and only if native HiRISE covers it.
+  const nativeCoverage = [
+    ...(hiriseBounds ? [hiriseBounds] : []),
+    ...hiriseTiles.filter((t) => t.role === 'core').map((t) => t.bounds),
+  ];
+  const scarpTarget = useMemo(() => resolveScarpTarget(scarpLines, nativeCoverage), [scarpLines, hiriseBounds, hiriseTiles]);
+  useEffect(() => {
+    // Log the resolved target once per data load: which source drives navigation, or why it is disabled.
+    if (scarpTarget.target) appLogger.info('map', 'scarp_target.resolved', { target: scarpTarget.target, source: scarpTarget.source, evidence: 'inferred' });
+    else appLogger.warn('map', 'scarp_target.unavailable', { reason: scarpTarget.reason });
+  }, [scarpTarget]);
+
+  // Slope overlay: drawn only with valid bounds + metadata; the decoded PNG must have one pixel per DTM cell.
+  const slopePublished = slopeAvailable(slopeBounds, slopeMeta);
+  const [slopeState, setSlopeState] = useState<SlopeLoadState>(slopePublished ? 'loading' : 'unavailable');
+  const setSlope = (next: SlopeLoadState, fields: Record<string, unknown> = {}) => {
+    setSlopeState(next);
+    if (next === 'failed') appLogger.error('map', 'slope.load_state', { slope_state: next, ...fields });
+    else appLogger.info('map', 'slope.load_state', { slope_state: next, ...fields });
+  };
 
   // Report and log the HiRISE state once per attempt and state (pans that reload tiles do not re-log).
   useEffect(() => {
@@ -254,13 +283,31 @@ export function MarsMap({
             points: [mission.endpoints.habitat, mission.endpoints.observation_primary],
           }}
           hiriseBounds={hiriseBounds}
-          inspectCandidates={[mission.endpoints.observation_primary, mission.site]}
+          scarp={scarpTarget}
+          observation={observationTarget(mission.endpoints.observation_primary)}
           state={sizeMismatch && hiriseTiles.length === 0 ? 'failed' : hdState}
           registration={registrationNote(hiriseMeta)}
           onRetry={retryImagery}
         />
-        {slopeBounds && layers.slope && (
-          <ImageOverlay url={dataUrl('slope.png')} bounds={toCorners(slopeBounds)} opacity={0.6} />
+        {/* Slope raster in its own pane under the vector overlays (overlayPane is 400), so route lines,
+            hazard outlines and markers always stay on top. Toggling it never moves the map. */}
+        {slopePublished && slopeBounds && slopeMeta && layers.slope && slopeState !== 'failed' && (
+          <Pane name="slope" style={{ zIndex: 380 }}>
+            <ImageOverlay
+              url={dataUrl('slope.png')}
+              bounds={toCorners(slopeBounds)}
+              opacity={0.75}
+              eventHandlers={{
+                load: (e) => {
+                  const img = (e.target as L.ImageOverlay).getElement();
+                  const natural: [number, number] = [img?.naturalWidth ?? 0, img?.naturalHeight ?? 0];
+                  const next = slopeDecodedState(natural, slopeMeta);
+                  setSlope(next, { decoded: natural, expected: slopeMeta.grid.pixels });
+                },
+                error: () => setSlope('failed', { reason: 'image_error' }),
+              }}
+            />
+          </Pane>
         )}
 
         {/* `key` makes React rebuild a layer when the stage changes; Leaflet's GeoJSON
@@ -311,7 +358,12 @@ export function MarsMap({
               p.id === supersededId
                 ? 'Old route (replaced)'
                 : `${p.agent} ${p.kind.replace('_', ' ')}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')})` : ''}`;
-            layer.bindTooltip(`${label}: ${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip, steepest ${p.stats.max_slope_deg}°`);
+            const entry = auditFor(routeAudit, p.id);
+            // Prefer measured numbers over the file's claimed stats; the popup explains the verdict.
+            layer.bindTooltip(entry && entry.length_m !== undefined
+              ? `${label}: measured ${(entry.length_m / 1000).toFixed(2)} km one way, steepest crossed ${entry.max_slope_deg ?? '?'}° · click for diagnostics`
+              : `${label}: ${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip (claimed, not audited)`);
+            layer.bindPopup(diagnosticHtml(p, entry, routeAudit), { maxWidth: 320 });
           }}
         />
 
@@ -338,6 +390,7 @@ export function MarsMap({
       </MapContainer>
 
       <MapLegend />
+      {layers.slope && slopeMeta && slopePublished && <SlopeLegend meta={slopeMeta} state={slopeState} />}
       {!imageryLoaded && <div className="map-loading">Loading Mars imagery…</div>}
     </div>
   );
