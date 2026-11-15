@@ -651,9 +651,9 @@ def mission_record(sites, features, budgets, independence, discovery_point, driv
                  else "5,000 m rule on walking distance only (team decision 2026-11-14)")
     stages = [
         {"id": "orbital", "title": "Orbital planning",
-         "text": (f"From NASA orbital data only: drive the crew rover {drive_g / 1000:.1f} km north across the crater floor to a "
-                  f"parking spot above the scarp's low east end, then walk {walk_g:.0f} m down to the viewpoint below the ice "
-                  f"face. Slope comes from the HiRISE DTM; the scarp edge, foot and rockfall zone are traced from imagery "
+         "text": (f"From NASA orbital data only: drive the crew vehicle {drive_g / 1000:.1f} km north across the crater floor to a "
+                  f"parking spot on the plain beside the main cliff's east end, then walk {walk_g:.0f} m around it and down to the "
+                  f"viewpoint facing the bluish second cliff. Slope comes from the HiRISE DTM; the cliff edges, feet and rockfall zones are traced from imagery "
                   f"(inferred). Rocks under 1 m, loose ground and shadow are not assessed."),
          "stats": {"Detail": "1 m DTM, 25 cm imagery", "Drive + walk (one way)": f"{drive_g / 1000:.2f} km + {walk_g:.0f} m",
                    "Steepest cell": f"{gp['stats']['max_slope_deg']:.1f}° (drive limit 24°, walk 20°)", "Budget": _budget_text(report_guess)}},
