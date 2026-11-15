@@ -24,7 +24,7 @@ import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
 import { dronePerchLabel } from './reviewPresentation';
-import { observationTarget, resolveScarpTarget } from './scarpTarget';
+import { DEFAULT_SCIENCE_TARGETS, activeScienceTarget, resolveScienceTarget, pointInspection, type InspectionTarget } from './scienceTargets';
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
 import { SlopeLegend } from './SlopeLegend';
 import { auditFor, diagnosticHtml } from './routeAudit';
@@ -117,12 +117,15 @@ export function MarsMap({
     ...(hiriseBounds ? [hiriseBounds] : []),
     ...hiriseTiles.filter((t) => t.role === 'core').map((t) => t.bounds),
   ];
-  const scarpTarget = useMemo(() => resolveScarpTarget(scarpLines, nativeCoverage), [scarpLines, hiriseBounds, hiriseTiles]);
-  useEffect(() => {
-    // Log the resolved target once per data load: which source drives navigation, or why it is disabled.
-    if (scarpTarget.target) appLogger.info('map', 'scarp_target.resolved', { target: scarpTarget.target, source: scarpTarget.source, evidence: 'inferred' });
-    else appLogger.warn('map', 'scarp_target.unavailable', { reason: scarpTarget.reason });
-  }, [scarpTarget]);
+  const targets = useMemo(() => {
+    // Catalog entries reference published geometry only; unresolved science selection stays visible.
+    const scarps = DEFAULT_SCIENCE_TARGETS.targets.map(t => resolveScienceTarget(t, scarpLines, nativeCoverage));
+    return [activeScienceTarget(DEFAULT_SCIENCE_TARGETS, scarps), ...scarps,
+      pointInspection('observation', 'Observation point (candidate)', mission.endpoints.observation_primary, 'mission.json', 'inferred'),
+      pointInspection('discovery', 'Rover incident (simulated)', mission.discovery.location, 'mission.json', 'simulated')];
+  }, [scarpLines, hiriseBounds, hiriseTiles, mission]);
+  const [inspectedTarget, setInspectedTarget] = useState<InspectionTarget | null>(null);
+  const [slopeOpacity, setSlopeOpacity] = useState(0.45);
 
   // Slope overlay: drawn only with valid bounds + metadata; the decoded PNG must have one pixel per DTM cell.
   const slopePublished = slopeAvailable(slopeBounds, slopeMeta);
@@ -279,12 +282,15 @@ export function MarsMap({
         )}
         <ImageryControls
           overview={{
-            geometries: [...routes.features, ...hazards.features].map((f) => f.geometry.coordinates),
+            geometries: [...stageRoutes.features, ...visibleHazards.features].map((f) => f.geometry.coordinates),
             points: [mission.endpoints.habitat, mission.endpoints.observation_primary],
           }}
           hiriseBounds={hiriseBounds}
-          scarp={scarpTarget}
-          observation={observationTarget(mission.endpoints.observation_primary)}
+          targets={targets}
+          stage={stage}
+          onInspect={setInspectedTarget}
+          slopeOpacity={slopeOpacity}
+          onOpacity={setSlopeOpacity}
           state={sizeMismatch && hiriseTiles.length === 0 ? 'failed' : hdState}
           registration={registrationNote(hiriseMeta)}
           onRetry={retryImagery}
@@ -296,7 +302,7 @@ export function MarsMap({
             <ImageOverlay
               url={dataUrl('slope.png')}
               bounds={toCorners(slopeBounds)}
-              opacity={0.75}
+              opacity={slopeOpacity}
               eventHandlers={{
                 load: (e) => {
                   const img = (e.target as L.ImageOverlay).getElement();
@@ -386,6 +392,10 @@ export function MarsMap({
             <Tooltip permanent direction="right" className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
           </CircleMarker>
         )}
+        {inspectedTarget?.geometry && <GeoJSON key={inspectedTarget.id} data={asGeoJson(inspectedTarget.geometry)}
+          style={{color:'#62ddff',weight:5,opacity:0.95}} interactive={false}/>}
+        {inspectedTarget?.target && <CircleMarker center={toLatLng(inspectedTarget.target)} radius={14}
+          pathOptions={{color:'#62ddff',weight:3,fillOpacity:0}}><Tooltip permanent>{inspectedTarget.name}</Tooltip></CircleMarker>}
       </MapContainer>
 
       <MapLegend />
