@@ -14,6 +14,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
+- 2026-11-14 · Nic: new isolated ui/science-target-results branch from main 65c1514; integrating science-target navigation, offline results and route/segment/waypoint inspection; initial audit/plan checkpoint, no changes to other active worktrees
+
 - Nic: PR #5 merged after explicit approval and exact-head green checks; PR #6 conflicts resolved against reviewed main; PR #8 remains with Yasser; separate UI follow-up requested
 - 2026-11-14 · Nic: logging policy PR #7 merged with all checks passing; open pipeline PRs being corrected and instrumented before merge; frontend logging gaps handed to Yasser
 
