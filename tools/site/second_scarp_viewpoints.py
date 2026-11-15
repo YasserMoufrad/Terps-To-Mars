@@ -41,6 +41,26 @@ def rc(lon, lat):
     return int(round(r)), int(round(c))
 
 
+def fix_corners(cells, ok):
+    """Remove corner-cutting: where a diagonal step passes the shared corner of a cell that `ok` rejects,
+    insert the passable orthogonal neighbour, so the stored line only touches allowed cells (route_audit
+    walks every cell a line touches). Returns (cells, unfixed_count)."""
+    out, unfixed = [tuple(int(v) for v in cells[0])], 0
+    for a, b in zip(cells, cells[1:]):
+        a, b = tuple(int(v) for v in a), tuple(int(v) for v in b)
+        dr, dc = b[0] - a[0], b[1] - a[1]
+        if dr and dc:
+            c1, c2 = (a[0] + dr, a[1]), (a[0], a[1] + dc)
+            if not (ok(c1) and ok(c2)):
+                pick = c1 if ok(c1) else (c2 if ok(c2) else None)
+                if pick is None:
+                    unfixed += 1
+                else:
+                    out.append(pick)
+        out.append(b)
+    return np.array(out), unfixed
+
+
 # ---- 1. Trace the upper scarp ----
 upper = []
 for c in np.where((col_lon >= -147.9005) & (col_lon <= -147.8910))[0]:
@@ -97,7 +117,8 @@ flat =~maximum_filter((slope >= EXCLUDE) | ~np.isfinite(slope), footprint=FOOT17
 # ---- 3. Viewpoint candidates facing bluish faces ----
 up_ext = (col_lon >= up_lon[real].min()) & (col_lon <= up_lon[real].max())
 # Face only the bluish part: Geury's ice_upper_band spans -147.8998 to -147.8916; keep ~60 m inside its east end.
-up_ext &= (col_lon >= -147.8998) & (col_lon <= -147.8925)
+facing_wide = up_ext & (col_lon >= -147.8976) & (col_lon <= -147.8934)  # Geury: 25-43% bluish (backup)
+up_ext &= (col_lon >= -147.8962) & (col_lon <= -147.8941)  # Geury: bluest stretch, 29-43% (primary)
 facing_up = up_ext[None, :] & (LAT >= (f_up + (b_up + 15) / DEG_M)[None, :]) & (LAT <= (f_up + 250 / DEG_M)[None, :])
 wm = (col_lon >= -147.916) & (col_lon <= -147.9002)  # Geury's bluish west/middle of the main face
 facing_main = wm[None, :] & (LAT >= (f_main + (b_main + 15) / DEG_M)[None, :]) & (LAT <= (f_main + 250 / DEG_M)[None, :])
@@ -158,7 +179,8 @@ prim = rc(res_out["upper_scarp__current_parking"]["lon"], res_out["upper_scarp__
 rr, cc = np.mgrid[0:H, 0:W]
 sep = np.hypot((rr - prim[0]) * res, (cc - prim[1]) * EW)
 walk_m = from_park * res
-cand = facing_up & flat & (sep >= 100) & (walk_m <= 760)
+facing_up_wide = facing_wide[None, :] & (LAT >= (f_up + (b_up + 15) / DEG_M)[None, :]) & (LAT <= (f_up + 250 / DEG_M)[None, :])
+cand = facing_up_wide & flat & (sep >= 100) & (walk_m <= 760)
 if cand.any():
     vals = np.where(cand, walk_m, np.inf)
     br, bc = np.unravel_index(np.argmin(vals), vals.shape)
@@ -168,10 +190,10 @@ else:
     res_out["backup_facing_upper"] = None
 mcp = MCP_Geometric(walk_cost)
 mcp.find_costs([park], [prim])
-cells = np.array(mcp.traceback(prim))
+cells, res_out["main_walk_unfixed_corners"] = fix_corners(np.array(mcp.traceback(prim)), lambda c: bool(np.isfinite(slope[c]) and slope[c] < EXCLUDE and not nogo[c]))
 res_out["primary_walk"] = {"length_m": round(float(np.hypot(np.diff(cells[:, 0]) * res, np.diff(cells[:, 1]) * EW).sum()), 1),
                            "max_slope_deg": round(float(np.nanmax(slope[cells[:, 0], cells[:, 1]])), 1),
-                           "coords": [[round(float(col_lon[c]), 6), round(float(row_lat[r]), 6)] for r, c in cells[::8]] + [[round(float(col_lon[prim[1]]), 6), round(float(row_lat[prim[0]]), 6)]]}
+                           "coords": [[round(float(col_lon[c]), 6), round(float(row_lat[r]), 6)] for r, c in cells]}  # every DTM cell: no simplification (route_audit checks every cell)
 i = int(np.argmin(np.abs(up_lon - col_lon[prim[1]])))
 res_out["primary_view"] = {"face_height_m": round(float(up_h[i]), 1), "foot_lat": round(float(up_foot[i]), 5),
                            "distance_from_foot_m": round(float((row_lat[prim[0]] - up_foot[i]) * DEG_M), 1), "rockfall_buffer_m": round(float(up_buffer[i]), 1),
@@ -182,20 +204,37 @@ res_out["_upper_lines"] = up_lines
 json.dump(res_out, open(out_path, "w"), indent=1)
 print(json.dumps({k2: res_out[k2] for k2 in ("backup_facing_upper", "primary_view")}, indent=1))
 print(json.dumps({k2: v for k2, v in res_out["primary_walk"].items() if k2 != "coords"}))
-# ---- Backup walk (independent way back from the primary to parking) and full upper profiles ----
+# ---- Backup viewpoint (fallback if the search found none) ----
+if res_out["backup_facing_upper"] is None and len(sys.argv) > 7:
+    # Fallback backup (argv[7] = "lat,lon"): a previously checked viewpoint, re-verified here.
+    blat, blon = map(float, sys.argv[7].split(","))
+    br0, bc0 = rc(blon, blat)
+    # Snap to the nearest flat cell within 6 m (grid rounding can tip the exact cell over the 17 m rule).
+    w6 = int(math.ceil(6 / res))
+    near_cells = [(math.hypot(dr * res, dc * EW), br0 + dr, bc0 + dc) for dr in range(-w6, w6 + 1) for dc in range(-w6, w6 + 1)
+                  if flat[br0 + dr, bc0 + dc] and math.hypot(dr * res, dc * EW) <= 6]
+    if not near_cells:
+        raise ValueError("fallback backup has no flat cell within 6 m")
+    _, br0, bc0 = min(near_cells)
+    blon, blat = float(col_lon[bc0]), float(row_lat[br0])
+    res_out["backup_facing_upper"] = {"lat": blat, "lon": blon, "walk_m": round(float(walk_m[br0, bc0]), 1),
+                                      "separation_m": round(float(sep[br0, bc0]), 1), "elevation_m": round(float(z[br0, bc0]), 1),
+                                      "note": "fallback: earlier checked viewpoint facing the weaker-blue east stretch (~16%)"}
+bk = rc(res_out["backup_facing_upper"]["lon"], res_out["backup_facing_upper"]["lat"])
+# ---- Backup route: an independent walk between the BACKUP viewpoint and the parked rover (route_audit objective) ----
 near = np.zeros_like(slope, dtype=bool)
 g = int(25 / res)
 for r, c in cells:
     near[max(0, r - g):r + g, max(0, c - g):c + g] = True
-alt = np.where(walk_cost > 0, np.where(near, 6.0, 1.0), -1.0)
+# Shortest legal walk to the backup viewpoint (a different destination, so sharing the first stretch is fine).
+alt = np.where(walk_cost > 0, 1.0, -1.0)
 mcp2 = MCP_Geometric(alt)
-mcp2.find_costs([prim], [park])
-cells2 = np.array(mcp2.traceback(park))
+mcp2.find_costs([bk], [park])
+cells2, res_out["backup_walk_unfixed_corners"] = fix_corners(np.array(mcp2.traceback(park)), lambda c: bool(np.isfinite(slope[c]) and slope[c] < EXCLUDE and not nogo[c]))
 res_out["backup_walk"] = {"length_m": round(float(np.hypot(np.diff(cells2[:, 0]) * res, np.diff(cells2[:, 1]) * EW).sum()), 1),
                           "max_slope_deg": round(float(np.nanmax(slope[cells2[:, 0], cells2[:, 1]])), 1),
                           "fraction_within_25m_of_main": round(float(near[cells2[:, 0], cells2[:, 1]].mean()), 2),
-                          "coords": [[round(float(col_lon[c]), 6), round(float(row_lat[r]), 6)] for r, c in cells2[::8]] + [[round(float(col_lon[park[1]]), 6), round(float(row_lat[park[0]]), 6)]]}
-bk = rc(res_out["backup_facing_upper"]["lon"], res_out["backup_facing_upper"]["lat"])
+                          "coords": [[round(float(col_lon[c]), 6), round(float(row_lat[r]), 6)] for r, c in cells2]}
 res_out["upper_profiles"] = [{"lon": round(float(up_lon[i]), 6), "edge_lat": round(float(up_edge[i]), 6), "foot_lat": round(float(up_foot[i]), 6),
                               "height_m": round(float(up_h[i]), 1), "apron_m": round(float(min(up_ap[i], 100)), 1), "buffer_m": round(float(up_buffer_draw[i]), 1), "routing_buffer_m": round(float(up_buffer[i]), 1)}
                              for i in range(0, len(up_lon), 8) if real[i]]

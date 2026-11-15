@@ -42,15 +42,15 @@
    "properties": {
     "id": "observation_primary",
     "name": "Viewpoint",
-    "where": "Faces the second (upper) scarp, bluish in HiRISE color (Geury ice_upper_band): face 22 m tall here, viewpoint 126 m from its foot (rockfall zone 85 m). Moved from the east-end bench: that spot faced the non-bluish east end and sat 20 m from the second scarp's edge",
-    "elevation_m": -4065.3,
+    "where": "Faces the second (upper) scarp, bluish in HiRISE color (Geury ice_upper_band): face 44 m tall here, viewpoint 229 m from its foot (rockfall zone 85 m). Moved from the east-end bench: that spot faced the non-bluish east end and sat 20 m from the second scarp's edge",
+    "elevation_m": -4058.7,
     "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
    },
    "geometry": {
     "type": "Point",
     "coordinates": [
-     -147.892507,
-     54.171114
+     -147.894109,
+     54.172784
     ]
    }
   },
@@ -59,15 +59,15 @@
    "properties": {
     "id": "observation_backup",
     "name": "Backup viewpoint",
-    "where": "Faces the same bluish second scarp; 100 m from the primary (independent), 723 m walk from parking",
-    "elevation_m": -4060.2,
+    "where": "Faces the same bluish second scarp; 112 m from the primary (independent), 629 m walk from parking",
+    "elevation_m": -4065.3,
     "source": "Checked on HiRISE DTM DTEEC_071085_2345_071006_2345_A01 by Yasser's agent (pipeline slope code); 0 cells >= 20 deg in the 15 m uncertainty disc"
    },
    "geometry": {
     "type": "Point",
     "coordinates": [
-     -147.893347,
-     54.172717
+     -147.89250737253616,
+     54.17111413463595
     ]
    }
   },

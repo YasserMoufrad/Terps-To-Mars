@@ -354,17 +354,17 @@
    "max_slope_deg": 14.8
   },
   "drive_v2": {
-   "length_m": 2325.1,
+   "length_m": 2337.1,
    "max_slope_deg": 14.8
   },
   "walk_main": {
-   "length_m": 610.8,
-   "max_slope_deg": 19.5
+   "length_m": 729.1,
+   "max_slope_deg": 19.8
   },
   "walk_backup": {
-   "length_m": 775.3,
-   "max_slope_deg": 20.0,
-   "fraction_within_25m_of_main": 0.07
+   "length_m": 621.4,
+   "max_slope_deg": 19.9,
+   "fraction_within_25m_of_main": 0.73
   }
  },
  "upper_scarp": {

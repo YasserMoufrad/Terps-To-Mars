@@ -1,5 +1,5 @@
 {
-  "_note": "Walking part of drive-then-walk: 'habitat' here is the crew-rover PARKING point. Drive 2325 m each way (55.8 min round trip at 5 km/h) is not audited here; eva_minutes = (168 - 55.8) / 0.7 so the audit's 70% matches what is left after the drive.",
+  "_note": "Walking part of drive-then-walk: 'habitat' here is the crew-rover PARKING point. Drive 2337 m each way (56.1 min round trip at 5 km/h) is not audited here; eva_minutes = (168 - 56.1) / 0.7 so the audit's 70% matches what is left after the drive.",
   "window_latlon": {
     "south": 54.158,
     "west": -147.905,
@@ -12,15 +12,15 @@
       "lon": -147.89445
     },
     "observation_primary": {
-      "lat": 54.171114,
-      "lon": -147.892507
+      "lat": 54.172784,
+      "lon": -147.894109
     },
     "observation_backup": {
-      "lat": 54.172717,
-      "lon": -147.893347
+      "lat": 54.17111413463595,
+      "lon": -147.89250737253616
     }
   },
-  "eva_minutes": 160,
+  "eva_minutes": 159,
   "dtm": "pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG",
   "speed_m_min": 20,
   "observation_minutes": 20,

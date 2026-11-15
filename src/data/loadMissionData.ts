@@ -346,7 +346,10 @@ export function checkSlopeMeta(raw: unknown, bounds: OverlayBounds | null, file:
   if (raw === null) return null;
   const m = raw as Partial<SlopeMeta>;
   const reasons: string[] = [];
-  if (m.schema_version !== SCHEMA_VERSION) reasons.push(`schema_version ${String(m.schema_version)} is not ${SCHEMA_VERSION}`);
+  // 1.1 changed only route legs, so slope metadata written as "1.0" stays valid.
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(m.schema_version)) {
+    reasons.push(`schema_version ${String(m.schema_version)} is not one of ${SUPPORTED_SCHEMA_VERSIONS.join(', ')}`);
+  }
   if (m.evidence !== 'nasa_derived') reasons.push('evidence must be nasa_derived (no synthetic slope maps)');
   const px = m.grid?.pixels;
   if (!Array.isArray(px) || px.length !== 2 || !px.every((v) => Number.isInteger(v) && v > 0 && v <= 16384)) {

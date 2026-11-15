@@ -24,8 +24,10 @@ Geury's color check (`ice_zone_v2.geojson`) showed the east end of the main face
 
 | Point | Position | Why |
 | --- | --- | --- |
-| Viewpoint | 54.171114°N, −147.892507 | Faces a 22 m bluish section of the second scarp, 126 m from its foot; 0 cells ≥ 20° within 17 m; 611 m walk from parking (steepest 19.5°) |
-| Backup viewpoint | 54.172717°N, −147.893347 | Faces the same bluish scarp, 100 m from the primary (independent); just north of #16's 0.25 m crop (no independent flat spot fits inside it) |
+| Viewpoint | 54.172784°N, −147.894109 | Faces the bluest stretch of the second scarp (Geury: 29–43% bluish, −147.8962 to −147.8941), ~44 m face, 229 m from its foot; 0 cells ≥ 20° within 17 m; ~730 m walk from parking (steepest < 20°) |
+| Backup viewpoint | 54.171114°N, −147.892507 | The earlier checked viewpoint, 112 m from the primary; faces the weaker-blue stretch (~16%); ~620 m walk |
+
+Update (#18 integration): routes are stored at every 1 m DTM cell with diagonal corner-cuts across steep cells removed, the backup route runs between the backup viewpoint and the habitat (`pipeline.route_audit` objective for kind `backup`), and `public/data/route_audit.json` was regenerated: every crew and rover route is `candidate_requires_inspection`; the orbital guess is `excluded_terrain` (crosses the scarp face, as intended). Budget 149 of 168 min; walkback 238 of 240 min (tight).
 
 The second scarp's rockfall zone uses the pipeline's single site-wide height (72.6 m, the main face's tallest profile), and routing keeps a further 12 m margin (85 m), so `pipeline.feasibility` agrees with the map; per-scarp heights would loosen it. Budget 135 of 168 min, walkback 221 of 240 min. Nic's audit from parking: `candidate_requires_inspection`, all points `no_mapped_exclusion`. Scripts: `tools/site/second_scarp_viewpoints.py` (args: DTM, site_report, final, out, routing buffer floor 85, drawn buffer floor 72.6), `merge_second_scarp.py`, `site_files_second_scarp.py`.
 

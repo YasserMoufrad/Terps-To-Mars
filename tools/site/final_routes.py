@@ -61,17 +61,39 @@ drive_cost = np.where(slope < CAUTION, 1.0, 2.0)
 drive_cost[(slope >= ROVER) | ~np.isfinite(slope) | nogo | ~(rough <= ROUGH)] = -1
 
 
-def route(cost, a, b):
+def fix_corners(cells, ok):
+    """Remove corner-cutting: where a diagonal step passes the shared corner of a cell that `ok` rejects,
+    insert the passable orthogonal neighbour, so the stored line only touches allowed cells (route_audit
+    walks every cell a line touches). Returns (cells, unfixed_count)."""
+    out, unfixed = [tuple(int(v) for v in cells[0])], 0
+    for a, b in zip(cells, cells[1:]):
+        a, b = tuple(int(v) for v in a), tuple(int(v) for v in b)
+        dr, dc = b[0] - a[0], b[1] - a[1]
+        if dr and dc:
+            c1, c2 = (a[0] + dr, a[1]), (a[0], a[1] + dc)
+            if not (ok(c1) and ok(c2)):
+                pick = c1 if ok(c1) else (c2 if ok(c2) else None)
+                if pick is None:
+                    unfixed += 1
+                else:
+                    out.append(pick)
+        out.append(b)
+    return np.array(out), unfixed
+
+
+def route(cost, a, b, limit=None):
     """Least-cost cell path a->b (row, col); returns (cells, metres, max slope)."""
     mcp = MCP_Geometric(cost)
     mcp.find_costs([a], [b])
     cells = np.array(mcp.traceback(b))
+    if limit is not None:  # crew walk 20 deg / rover drive 24 deg, outside no-go zones
+        cells, _ = fix_corners(cells, lambda c: bool(np.isfinite(slope[c]) and slope[c] < limit and not nogo[c]))
     steps = np.diff(cells, axis=0)
     metres = float(np.hypot(steps[:, 0] * res, steps[:, 1] * EW).sum())
     return cells, metres, round(float(np.nanmax(slope[cells[:, 0], cells[:, 1]])), 1)
 
 
-def thin(cells, every_m=12.0):
+def thin(cells, every_m=0.0):
     """Cells to [lon, lat] vertices about every_m apart (ends kept)."""
     out, last = [ll(*cells[0])], cells[0]
     for cell in cells[1:-1]:
@@ -105,20 +127,21 @@ for min_sep, max_walk in ((60, 500), (40, 800), (30, 1200)):
         break
 print("viewpoint cells reachable within 1200 m walk of parking:", int((view_mask & (walk_from_park * res <= 1200)).sum()), file=sys.stderr)
 
-drive1, d1, s1 = route(drive_cost, hab, park)
+drive1, d1, s1 = route(drive_cost, hab, park, ROVER)
 sim = tuple(drive1[int(len(drive1) * 0.45)])
 blocked = drive_cost.copy()
-h = int(100 / res)
-blocked[max(0, sim[0] - h):sim[0] + h, max(0, sim[1] - h):sim[1] + h] = -1
-drive2, d2, s2 = route(blocked, hab, park)
-walk1, w1, ws1 = route(walk_cost, park, obs)
+h = int(100 / res)  # drawn soft-ground box half-width
+hb = int(106 / res)  # routed around with a 6 m margin so the drawn box is never touched
+blocked[max(0, sim[0] - hb):sim[0] + hb, max(0, sim[1] - hb):sim[1] + hb] = -1
+drive2, d2, s2 = route(blocked, hab, park, ROVER)
+walk1, w1, ws1 = route(walk_cost, park, obs, EXCLUDE)
 near = np.zeros_like(slope, dtype=bool)
 g = int(25 / res)
 for r, c in walk1:
     near[max(0, r - g):r + g, max(0, c - g):c + g] = True
 alt = walk_cost.copy()
 alt[near & (alt > 0)] *= 6
-walk2, w2, ws2 = route(alt, obs, park)
+walk2, w2, ws2 = route(alt, obs, park, EXCLUDE)
 shared = float(near[walk2[:, 0], walk2[:, 1]].mean())
 sim_box = [ll(sim[0] + h, sim[1] - h), ll(sim[0] - h, sim[1] + h)]  # [SW, NE] corners
 

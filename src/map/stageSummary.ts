@@ -146,7 +146,7 @@ function eva({ mission, routes, hazards }: SummaryData): StageSummary {
     const sharesDrive = shared > 0.5 * backup.properties.stats.length_m;
     rows.push({
       label: 'Backup',
-      value: `${walk > 0 ? `A different ${walk.toFixed(0)} m walk back to the crew rover` : 'Alternative way back'} from the primary viewpoint` +
+      value: `${walk > 0 ? `A ${walk.toFixed(0)} m walk between the backup viewpoint and the crew rover` : 'Alternative way to the backup viewpoint'}` +
         (sharesDrive ? `; it shares ${km(shared)} of driving with the main route, so if the drive is blocked the fallback is walking home (walkback)` : ''),
       tone: sharesDrive ? 'caution' : statusTone(backup.properties.status),
     });

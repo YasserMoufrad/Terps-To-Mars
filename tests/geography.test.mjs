@@ -51,9 +51,9 @@ test('crew routes start at the habitat and end at the primary observation point'
   const backup = route('rt-crew-backup-v2').geometry.coordinates;
   assert.ok(marsDistance(main[0], at('habitat')) <= TOLERANCE_M);
   assert.ok(marsDistance(main.at(-1), at('observation_primary')) <= TOLERANCE_M);
-  // The backup is drawn scarp-first and is an alternative path to the PRIMARY point; it does not end at the
-  // backup observation point. Pinned so a change is deliberate (see STATUS open question).
-  assert.ok(marsDistance(backup[0], at('observation_primary')) <= TOLERANCE_M);
+  // The backup route serves the BACKUP viewpoint (pipeline.route_audit's objective for kind "backup", #18):
+  // drawn viewpoint-first (return orientation) back to the habitat. Changed deliberately in PR #17.
+  assert.ok(marsDistance(backup[0], at('observation_backup')) <= TOLERANCE_M);
   assert.ok(marsDistance(backup.at(-1), at('habitat')) <= TOLERANCE_M);
 });
 
@@ -71,12 +71,16 @@ test('documented expectation: habitat ~2 km south; #16\'s native crop covers the
   assert.ok(habitatToScarp > 1900 && habitatToScarp < 4500, `${habitatToScarp.toFixed(0)} m`);
   const crop = { s: 54.1548789, n: 54.1721222, w: -147.917929, e: -147.8910703 };
   const inCrop = ([lon, lat]) => lat >= crop.s && lat <= crop.n && lon >= crop.w && lon <= crop.e;
-  for (const id of ['observation_primary', 'drone_perch', 'parking']) assert.ok(inCrop(at(id)), id);
+  for (const id of ['drone_perch', 'parking', 'observation_backup']) assert.ok(inCrop(at(id)), id);
   assert.ok(!inCrop(at('habitat')));
-  // The backup viewpoint (moved in PR #17 to face the second, bluish scarp) sits ~60 m north of the crop's
-  // north edge: no independent (>= 60 m apart) flat backup facing the bluish band fits inside the crop.
-  // It is on the DTM and CTX; extending the HiRISE crop north would cover it (integration note for Nic).
-  assert.ok(!inCrop(at('observation_backup')) && at('observation_backup')[1] < crop.n + 0.002, 'backup expected just north of the crop');
+  // The primary viewpoint (moved in PR #17 to face the bluest stretch of the second scarp, per Geury's color
+  // check) sits ~70 m north of the 4K crop. #18's HiRISE "context" tiles (~1 m, 54.110-54.185 N) cover it.
+  assert.ok(!inCrop(at('observation_primary')) && at('observation_primary')[1] < crop.n + 0.002, 'primary expected just north of the 4K crop');
+  const context = JSON.parse(readFileSync(new URL('../public/data/hirise-tiles/context/tiles.json', import.meta.url), 'utf8')).bounds;
+  for (const id of ['habitat', 'parking', 'observation_primary', 'observation_backup', 'drone_perch']) {
+    const [lon, lat] = at(id);
+    assert.ok(lat >= context.south && lat <= context.north && lon >= context.west && lon <= context.east, `${id} inside HiRISE context tiles`);
+  }
 });
 
 test('no crew route reads "ok" while it breaks the 5,000 m rule or shares most of its length with the main route', () => {

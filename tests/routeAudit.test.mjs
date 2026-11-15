@@ -23,25 +23,36 @@ test('every published route has an audit entry and none says ok', () => {
   }
 });
 
-test('the preliminary orbital route is shown as rejected with its endpoint gap', () => {
+// The published routes (PR #17, DTM least-cost paths) no longer have the old placeholder's endpoint gap,
+// length mismatch or "ok" overclaim, so those display cases are checked on modified copies of real entries.
+const withChanges = (id, changes) => ({ ...structuredClone(auditFor(audit, id)), ...changes });
+
+test('the preliminary orbital route is shown as rejected (crosses the scarp face)', () => {
   const entry = auditFor(audit, 'rt-orbital-guess-v1');
   assert.equal(entry.audit_status, 'excluded_terrain');
-  assert.ok(entry.end_offset_m > 200, `end offset ${entry.end_offset_m}`);
   const html = diagnosticHtml(routes.features[0].properties, entry, audit);
   assert.match(html, /Crosses excluded terrain/);
   assert.match(html, /from the intended points/);
   assert.match(html, /not crew clearance/);
 });
 
-test('claimed vs measured length is shown only when they disagree', () => {
-  const rows = (id) => Object.fromEntries(diagnosticRows(auditFor(audit, id)));
-  assert.match(rows('rt-crew-main-v2')['Claimed length'], /differs by/);
-  assert.equal(rows('rt-crew-main-v1')['Claimed length'], undefined);
+test('an endpoint gap is shown in the popup', () => {
+  const entry = withChanges('rt-orbital-guess-v1', { end_offset_m: 250,
+    reasons: [...auditFor(audit, 'rt-orbital-guess-v1').reasons, 'endpoint_mismatch: ends 250 m / starts 0 m from the intended points (tolerance 15 m)'] });
+  assert.match(Object.fromEntries(diagnosticRows(entry))['Start / end offset'], /250 m from the intended points/);
 });
 
-test('a file status of ok is called an overclaim', () => {
-  const entry = auditFor(audit, 'rt-crew-main-v1');
-  assert.equal(entry.claimed_status, 'ok');
+test('claimed vs measured length is shown only when they disagree', () => {
+  const real = auditFor(audit, 'rt-crew-main-v2');
+  assert.equal(Object.fromEntries(diagnosticRows(real))['Claimed length'], undefined); // published stats match the line
+  const off = withChanges('rt-crew-main-v2', { claimed_length_m: real.length_m + 500, length_mismatch_m: 500,
+    reasons: [...real.reasons, 'stats_mismatch: claimed length differs from the measured line'] });
+  assert.match(Object.fromEntries(diagnosticRows(off))['Claimed length'], /differs by 500 m/);
+});
+
+test('a file status of ok is called an overclaim, and the published routes make no such claim', () => {
+  for (const r of audit.routes) assert.notEqual(r.claimed_status, 'ok', r.id);
+  const entry = withChanges('rt-crew-main-v1', { claimed_status: 'ok', status_consistent: false });
   assert.match(Object.fromEntries(diagnosticRows(entry))['File status'], /overclaims/);
 });
 

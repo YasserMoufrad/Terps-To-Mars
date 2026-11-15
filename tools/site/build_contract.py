@@ -59,10 +59,11 @@ guess = {"type": "Feature", "properties": {"id": "rt-orbital-guess-v1", "kind": 
          "geometry": {"type": "LineString", "coordinates": guess_coords}}
 sim = F["sim_discovery"]["center"]
 i_sim = min(range(len(d1)), key=lambda i: mars_distance(d1[i], sim))
-rover = lambda rid, version, c: {"type": "Feature", "properties": {"id": rid, "kind": "rover_path", "agent": "rover", "version": version, "status": "ok",
+rover = lambda rid, version, c: {"type": "Feature", "properties": {"id": rid, "kind": "rover_path", "agent": "rover", "version": version, "status": "inspection_required",
     "stats": {"length_m": round(length(c), 3), "round_trip_m": round(length(c), 3), "est_time_min": round(length(c) / 2.5, 1),
               "elevation_gain_m": 120, "max_slope_deg": 15, "shared_with_main_m": 0}}, "geometry": {"type": "LineString", "coordinates": c}}
-rover_v2 = d2 + w1[1:] + w2[1:] + d2[::-1][1:]
+# Scout: drive out, walk path to the primary and back, backup walk out and back, drive home (continuous).
+rover_v2 = d2 + w1[1:] + w1[::-1][1:] + w2[::-1][1:] + w2[1:] + d2[::-1][1:]
 routes = [guess, main_v1, main_v2, backup, rover("rt-rover-v1", "before", d1[:i_sim + 1]), rover("rt-rover-v2", "after", rover_v2)]
 
 # ---- Hazards from the measured scarp ----
