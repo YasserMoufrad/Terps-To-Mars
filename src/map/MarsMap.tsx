@@ -27,7 +27,7 @@ import { dronePerchLabel } from './reviewPresentation';
 import { observationTarget, resolveScarpTarget } from './scarpTarget';
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
 import { SlopeLegend } from './SlopeLegend';
-import { auditFor, diagnosticHtml, isRejected } from './routeAudit';
+import { auditFor, diagnosticHtml, routeRejectedForStyle } from './routeAudit';
 
 // CTX global mosaic: real tiles exist up to zoom 10 here (see docs/MAP_TILES.md).
 // Its server sometimes fails a tile, so THEMIS (from Mars Trek) sits underneath:
@@ -359,17 +359,17 @@ export function MarsMap({
         <GeoJSON
           key={`route-casing-${stage}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => { const p = f?.properties as RouteProperties; return routeCasingStyle(p, supersededId, isRejected(p, auditFor(routeAudit, p.id))); }}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeCasingStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
           interactive={false}
         />
         <GeoJSON
           key={`routes-${stage}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, isRejected(p, auditFor(routeAudit, p.id))); }}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
           onEachFeature={(f, layer) => {
             const p = f.properties as RouteProperties;
             const entry = auditFor(routeAudit, p.id);
-            const rejected = isRejected(p, entry);
+            const rejected = routeRejectedForStyle(p, entry);
             const label =
               p.id === supersededId
                 ? 'Old route (replaced)'

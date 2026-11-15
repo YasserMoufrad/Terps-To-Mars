@@ -9,11 +9,11 @@ export function routeReviewNotice(route: RouteFeature): string | null {
   const drawn = hasLine(route.geometry.coordinates);
   if (status === 'no_viable_route') {
     return reason
-      ? `No viable route under the mission rules: ${reason}.${drawn ? ' The red dotted line is the rejected candidate.' : ''}`
+      ? `No viable route under the mission rules: ${reason}.${drawn ? ' The drawn line is the rejected candidate.' : ''}`
       : 'No viable route was found in the modeled terrain.';
   }
   if (status === 'backup_unavailable') {
-    return reason ? `No usable backup: ${reason}.${drawn ? ' The red dotted line is the rejected candidate.' : ''}`
+    return reason ? `No usable backup: ${reason}.${drawn ? ' The drawn line is the rejected candidate.' : ''}`
       : 'No independent, budgeted backup route was found.';
   }
   if (status === 'inspection_required') {

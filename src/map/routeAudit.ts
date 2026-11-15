@@ -22,6 +22,17 @@ export function isRejected(p: RouteProperties, entry: RouteAuditEntry | null): b
   return p.status === 'no_viable_route' || p.status === 'backup_unavailable' || (entry !== null && REJECTING_AUDIT.has(entry.audit_status));
 }
 
+export function terrainRejected(entry: RouteAuditEntry | null): boolean {
+  // Purpose: true only when the terrain audit itself rejects the line (not a budget or status verdict).
+  return entry !== null && REJECTING_AUDIT.has(entry.audit_status);
+}
+
+export function routeRejectedForStyle(p: RouteProperties, entry: RouteAuditEntry | null): boolean {
+  // Purpose: the orbital candidate is a scouting line (drawn grey) unless the terrain audit rejects it;
+  // other routes read as rejected for any no-route status too.
+  return p.kind === 'orbital_guess' ? terrainRejected(entry) : isRejected(p, entry);
+}
+
 export function escapeHtml(text: string): string {
   // Purpose: make pipeline text safe to place inside a Leaflet popup's HTML.
   return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);

@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { checkRouteAudit } from '../src/data/loadMissionData.ts';
-import { AUDIT_STATUS_TEXT, auditFor, diagnosticHtml, diagnosticRows, escapeHtml, isRejected, profileSvg } from '../src/map/routeAudit.ts';
+import { AUDIT_STATUS_TEXT, auditFor, diagnosticHtml, diagnosticRows, escapeHtml, isRejected, profileSvg, routeRejectedForStyle } from '../src/map/routeAudit.ts';
+import { routeStyle } from '../src/map/layerStyles.ts';
 
 const dataDir = new URL('../public/data/', import.meta.url);
 const read = (file) => JSON.parse(readFileSync(new URL(file, dataDir), 'utf8'));
@@ -35,6 +36,12 @@ test('generated routes pass their own terrain audit; budget-rejected ones still 
     assert.equal(rejected, f.properties.status === 'no_viable_route' || f.properties.status === 'backup_unavailable');
   }
   const orbital = routes.features.find((f) => f.properties.kind === 'orbital_guess');
+  // In orbital planning the candidate is a scouting line: grey unless the terrain audit rejects it.
+  assert.equal(routeRejectedForStyle(orbital.properties, auditFor(audit, orbital.properties.id)), false);
+  assert.equal(routeRejectedForStyle(orbital.properties, { audit_status: 'excluded_terrain' }), true);
+  assert.equal(routeStyle(orbital.properties, null, false).color, '#b4b9c2');
+  const main = routes.features.find((f) => f.properties.id === 'rt-crew-main-v2');
+  assert.equal(routeStyle(main.properties, null, routeRejectedForStyle(main.properties, auditFor(audit, 'rt-crew-main-v2'))).color, '#e5484d');
   assert.equal(orbital.properties.status, 'no_viable_route');
   assert.match(orbital.properties.status_reason, /round-trip/);
 });

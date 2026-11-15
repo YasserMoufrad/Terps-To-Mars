@@ -57,6 +57,8 @@ export function routeStyle(p: RouteProperties, supersededId: string | null, reje
   // `rejected` (no viable route, or the terrain audit rejects the line): thin red broken line, never route-like.
   if (p.id === supersededId) return { color: '#b4b9c2', weight: 4, dashArray: '8 8', opacity: 0.8 };
   if (rejected) return { color: '#e5484d', weight: 3, dashArray: '2 9', opacity: 0.95, lineCap: 'round' };
+  // The orbital candidate is what the robots will scout: grey and dashed, never route-green.
+  if (p.kind === 'orbital_guess') return { color: '#b4b9c2', weight: 4, dashArray: '10 8', opacity: 0.95 };
   if (p.status !== 'ok') return { color: '#f5a524', weight: 5, dashArray: '12 8', opacity: 1 };
   switch (p.kind) {
     case 'main':
@@ -65,8 +67,6 @@ export function routeStyle(p: RouteProperties, supersededId: string | null, reje
       return { color: '#3ddc97', weight: 4, dashArray: '12 8', opacity: 1 };
     case 'rover_path':
       return { color: '#ffffff', weight: 4, dashArray: '2 8', opacity: 1, lineCap: 'round' };
-    case 'orbital_guess':
-      return { color: '#ffffff', weight: 5, dashArray: '12 8', opacity: 1 };
   }
 }
 

@@ -113,6 +113,8 @@ button { font: inherit; }
 .line-backup { border-top: 4px dashed var(--good); }
 .line-rover { border-top: 4px dotted #ffffff; }
 .line-unverified { border-top: 4px dashed var(--warn); }
+.line-candidate { border-top: 4px dashed #b4b9c2; }
+.line-rejected { border-top: 3px dotted #e5484d; }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-left: 6px; }
 .swatch:first-child { margin-left: 0; }
 

@@ -11,6 +11,8 @@ export function MapLegend() {
         <span className="line line-backup" /> Backup
         <span className="line line-rover" /> Rover
         <span className="line line-unverified" /> Unverified
+        <span className="line line-candidate" /> To scout
+        <span className="line line-rejected" /> Rejected
       </div>
       <div className="legend-row">
         <span className="swatch" style={{ background: HAZARD_COLORS.U }} /> Under feet
