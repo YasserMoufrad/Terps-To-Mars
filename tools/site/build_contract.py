@@ -91,6 +91,22 @@ hazards = [
        "Simulated: rover wheel slip of 38 percent on ground that looked firm from orbit.",
        [[[sw[0], sw[1]], [ne[0], sw[1]], [ne[0], ne[1]], [sw[0], ne[1]], [sw[0], sw[1]]]]),
 ]
+# Second (upper) scarp, traced on the DTM where Geury found a second bluish band (ice_zone_v2 ice_upper_band).
+if F.get("upper_profiles"):
+    up = sorted(F["upper_profiles"], key=lambda p: p["lon"])
+    u_edge = [[p["lon"], p["edge_lat"]] for p in up]
+    u_foot = [[p["lon"], p["foot_lat"]] for p in up]
+    u_setback = [[p["lon"], p["edge_lat"] - 20 / DEG_M] for p in up]
+    u_buffer = [[p["lon"], p["foot_lat"] + p["buffer_m"] / DEG_M] for p in up]
+    uh = sorted(p["height_m"] for p in up)
+    hazards += [
+        hz("hz-face-002", "U", "slope", "exclude", "nasa_derived", "orbital", DTM + "; band found bluish by Geury in HiRISE color (ice_zone_v2)",
+           f"Second north-facing ice-consistent scarp: {uh[0]:.0f}-{uh[-1]:.0f} m tall on the DTM, faces up to about 64-67 degrees.", band(u_edge, u_foot)),
+        hz("hz-edge-002", "U", "edge", "exclude", "inferred", "orbital", "20 m cliff setback rule applied to the second scarp's traced edge",
+           "Cliff-top setback of the second scarp: edge collapse risk within 20 m of its top.", band(u_setback, u_edge)),
+        hz("hz-rockfall-002", "O", "rockfall", "exclude", "inferred", "orbital", "Rockfall rule max(apron, 1 x height) from the second scarp's foot (apron capped at 100 m)",
+           "Rockfall zone below the second scarp.", band(u_foot, u_buffer)),
+    ]
 old = json.load(open(data / "hazards.geojson"))
 keep = [f for f in old["features"] if f["properties"]["id"] == "hz-slope-003"]  # Geury's southern scarp (inferred)
 json.dump({"type": "FeatureCollection", "schema_version": "1.1", "placeholder": True, "features": hazards + keep}, open(data / "hazards.geojson", "w"), indent=2)
@@ -134,8 +150,10 @@ st["rover"]["text"] = ("In the sols before the walk, the rover drives the crew-r
                        "It finds soft ground the orbit could not see and the drive is replanned.")
 st["drone"]["text"] = ("The simulated drone perches on the pit floor facing the tallest part of the ice cliff (about 70 m), which the crew cannot "
                        "reach on this EVA, and images the face and rockfall zone.")
-st["eva"]["text"] = ("Review the proposed trip: two astronauts drive the crew rover 2.3 km to a parking point on the plain, then walk about "
-                     "300 m down around the cliff's east end to a viewpoint facing the ice. None of this is crew clearance.")
+walk_one_way = sum(l["length_m"] for l in main_v2["properties"]["legs"] if l["mode"] == "walk")
+st["eva"]["text"] = (f"Review the proposed trip: two astronauts drive the crew rover 2.3 km to a parking point on the plain, then walk about "
+                     f"{round(walk_one_way, -1):.0f} m around the cliffs to a viewpoint facing a bluish, ice-consistent cliff face. "
+                     "None of this is crew clearance.")
 legsum = lambda p, mode, key: sum(l[key] for l in p["legs"] if l["mode"] == mode)
 travel = v2p["stats"]["est_time_min"]
 walkback_total = legsum(v2p, "drive", "est_time_min") + 2 * legsum(v2p, "walk", "est_time_min") + WORK + v2p["walkback_min"]
@@ -146,7 +164,7 @@ st["eva"]["stats"] = {
     "Travel time": f"{travel:.0f} min round trip + {WORK} min at the site",
     "Budget": f"Within modeled budget ({travel + WORK:.0f} of {TRAVEL:.0f} min)" if travel + WORK <= TRAVEL else f"Exceeds modeled budget ({travel + WORK:.0f} of {TRAVEL:.0f} min)",
     "Walkback": f"{v2p['walkback_min']:.0f} min on foot if the crew rover fails; {walkback_total:.0f} of {EVA} min EVA",
-    "View": f"Ice cliff {fp['height_m']:.0f} m tall here, viewpoint {F['view']['distance_from_foot_m']:.0f} m from its foot (rockfall zone {F['view']['rockfall_buffer_m']:.0f} m)",
+    "View": f"Bluish cliff {F['view'].get('face_height_m', fp['height_m']):.0f} m tall here, viewpoint {F['view']['distance_from_foot_m']:.0f} m from its foot (rockfall zone {F['view']['rockfall_buffer_m']:.0f} m)",
     "Route status": "Needs inspection: budgets fit, but the crew-rover drive is not yet modeled",
 }
 st["orbital"]["stats"] = {"Detail": "1 m terrain, 25 cm imagery", "Ice cliff": f"{R['scarp_height_m_median']:.0f} m tall (median), 64-75 degree face", "Route": "Unverified"}

@@ -15,8 +15,12 @@ pts = [
     feat("habitat", "Habitat", P["habitat"]["lon"], P["habitat"]["lat"], "Geury's habitat moved 59 m to flat ground (his spot had 24 cells >= 20 deg within 15 m)", P["habitat"]["elevation_m"]),
     feat("parking", "Crew-rover parking", P["parking"]["lon"], P["parking"]["lat"], "High plain just SE of the scarp's east end; reachable by rover (< 24 deg, roughness <= 0.5 m)", P["parking"]["elevation_m"]),
     feat("observation_primary", "Viewpoint", P["observation_primary"]["lon"], P["observation_primary"]["lat"],
-         f"Bench facing the scarp's east end (face {F['view']['face_height_m']:.0f} m tall), {F['view']['distance_from_foot_m']:.0f} m from the foot; rockfall zone {F['view']['rockfall_buffer_m']:.0f} m", P["observation_primary"]["elevation_m"]),
-    feat("observation_backup", "Backup viewpoint", P["observation_backup"]["lon"], P["observation_backup"]["lat"], "Same bench, separate approach; 261 m walk from parking", P["observation_backup"]["elevation_m"]),
+         (f"Faces the {F['view'].get('target', 'scarp')}: face {F['view']['face_height_m']:.0f} m tall here, viewpoint {F['view']['distance_from_foot_m']:.0f} m from its foot "
+          f"(rockfall zone {F['view']['rockfall_buffer_m']:.0f} m). Moved from the east-end bench: that spot faced the non-bluish east end and sat 20 m from the second scarp's edge"),
+         P["observation_primary"]["elevation_m"]),
+    feat("observation_backup", "Backup viewpoint", P["observation_backup"]["lon"], P["observation_backup"]["lat"],
+         (f"Faces the same bluish second scarp; {F['backup_view']['separation_m']:.0f} m from the primary (independent), {F['backup_view']['walk_from_parking_m']:.0f} m walk from parking"
+          if F.get("backup_view") else "Same bench, separate approach"), P["observation_backup"]["elevation_m"]),
     feat("drone_perch", "Drone perch", perch["lon"], perch["lat"], f"Pit floor facing the tallest part of the face ({perch['scarp_height_here_m']:.0f} m), {perch['distance_from_foot_m']:.0f} m from the foot; drone access only", perch["elevation_m"]),
 ]
 json.dump({"type": "FeatureCollection", "name": "site_points_dtm", "description": "DTM-checked candidate points (replace Geury's first pass). Candidates only; nothing here is crew clearance.",
@@ -39,7 +43,7 @@ walk_only = {"_note": "Habitat -> viewpoints walking the whole way (expected inf
 drive_min = round(2 * F["drive_v2"]["length_m"] / (5000 / 60), 1)
 from_parking = {"_note": f"Walking part of drive-then-walk: 'habitat' here is the crew-rover PARKING point. Drive {F['drive_v2']['length_m']:.0f} m each way "
                          f"({drive_min} min round trip at 5 km/h) is not audited here; eva_minutes = (168 - {drive_min}) / 0.7 so the audit's 70% matches what is left after the drive.",
-                "window_latlon": {"south": 54.158, "west": -147.905, "north": 54.172, "east": -147.885},
+                "window_latlon": {"south": 54.158, "west": -147.905, "north": 54.176, "east": -147.885},
                 "points": {"habitat": pt("parking"), "observation_primary": pt("observation_primary"), "observation_backup": pt("observation_backup")},
                 "eva_minutes": int((168 - drive_min) / 0.7), **base}
 json.dump(walk_only, open(site / "feasibility_audit.json", "w"), indent=2)

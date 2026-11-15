@@ -55,8 +55,14 @@ def main(config_path, out_dir):
     shape = terrain.elevation.shape
     # Anisotropic sampling: rows are `resolution` metres, columns are the latitude-corrected spacing.
     sampling = (terrain.resolution, float(np.median(terrain.column_spacing)))
-    edge = line_cells(terrain, lines["scarp-edge"], shape)
-    foot = line_cells(terrain, lines["scarp-foot"], shape)
+    # Every traced scarp (main and second/upper): union of all edge lines and of all foot lines.
+    edge = np.zeros(shape, dtype=bool)
+    foot = np.zeros(shape, dtype=bool)
+    for line_id, coords in lines.items():
+        if line_id.endswith("scarp-edge"):
+            edge |= line_cells(terrain, coords, shape)
+        elif line_id.endswith("scarp-foot"):
+            foot |= line_cells(terrain, coords, shape)
     if not edge.any() or not foot.any():
         raise ValueError("Traced scarp lines do not fall inside this config's crop")
     edge_distance = distance_transform_edt(~edge, sampling=sampling).astype(np.float32)
@@ -67,8 +73,8 @@ def main(config_path, out_dir):
     out.mkdir(parents=True, exist_ok=True)
     for name, array in (("edge_distance", edge_distance), ("foot_distance", foot_distance), ("scarp_risk", scarp_risk)):
         np.save(out / f"{name}.npy", array, allow_pickle=False)
-    profiles = measurements["profiles"]
-    # One site-wide value each (the pipeline takes scalars): conservative tallest height, median apron.
+    profiles = measurements["profiles"] + measurements.get("upper_scarp", {}).get("profiles", [])
+    # One site-wide value each (the pipeline takes scalars): conservative tallest height of either scarp, median apron.
     scarp_height = max(p["height_m"] for p in profiles)
     apron = float(np.median([p["apron_m"] for p in profiles]))
     updated = {**config, "window": list(window), "edge_distance": str(out / "edge_distance.npy"),

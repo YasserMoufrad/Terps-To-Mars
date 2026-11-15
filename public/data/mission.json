@@ -20,12 +20,12 @@
       "lon": -147.901301
     },
     "observation_primary": {
-      "lat": 54.166626,
-      "lon": -147.894135
+      "lat": 54.171114,
+      "lon": -147.892507
     },
     "observation_backup": {
-      "lat": 54.166137,
-      "lon": -147.893531
+      "lat": 54.172717,
+      "lon": -147.893347
     }
   },
   "stages": [
@@ -62,14 +62,14 @@
     {
       "id": "eva",
       "title": "Astronaut mission review",
-      "text": "Review the proposed trip: two astronauts drive the crew rover 2.3 km to a parking point on the plain, then walk about 300 m down around the cliff's east end to a viewpoint facing the ice. None of this is crew clearance.",
+      "text": "Review the proposed trip: two astronauts drive the crew rover 2.3 km to a parking point on the plain, then walk about 610 m around the cliffs to a viewpoint facing a bluish, ice-consistent cliff face. None of this is crew clearance.",
       "stats": {
         "Drive (crew rover)": "2.26 km each way, assumed 5 km/h",
-        "Walk": "290 m each way at 20 m/min",
-        "Travel time": "83 min round trip + 20 min at the site",
-        "Budget": "Within modeled budget (103 of 168 min)",
-        "Walkback": "113 min on foot if the crew rover fails; 189 of 240 min EVA",
-        "View": "Ice cliff 23 m tall here, viewpoint 145 m from its foot (rockfall zone 101 m)",
+        "Walk": "605 m each way at 20 m/min",
+        "Travel time": "115 min round trip + 20 min at the site",
+        "Budget": "Within modeled budget (135 of 168 min)",
+        "Walkback": "113 min on foot if the crew rover fails; 221 of 240 min EVA",
+        "View": "Bluish cliff 22 m tall here, viewpoint 126 m from its foot (rockfall zone 85 m)",
         "Route status": "Needs inspection: budgets fit, but the crew-rover drive is not yet modeled"
       }
     }

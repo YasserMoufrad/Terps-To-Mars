@@ -3,7 +3,7 @@
   "window_latlon": {
     "south": 54.158,
     "west": -147.905,
-    "north": 54.172,
+    "north": 54.176,
     "east": -147.885
   },
   "points": {
@@ -12,12 +12,12 @@
       "lon": -147.89445
     },
     "observation_primary": {
-      "lat": 54.166626,
-      "lon": -147.894135
+      "lat": 54.171114,
+      "lon": -147.892507
     },
     "observation_backup": {
-      "lat": 54.166137,
-      "lon": -147.893531
+      "lat": 54.172717,
+      "lon": -147.893347
     }
   },
   "eva_minutes": 160,
