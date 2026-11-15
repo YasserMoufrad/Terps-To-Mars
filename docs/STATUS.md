@@ -21,6 +21,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## Done
 
+- 2026-11-16 · Yasser (`ui/soft-ground-color`): soft-ground hazards (the rover's simulated find) drawn with a magenta dotted outline and the loose-ground blue of the night-IR ramp (`SOFT_GROUND_FILL` from `NIGHT_IR_RAMP[0]`), with a matching legend entry and evidence-card border.
+
 - 2026-11-16 · Yasser (`ui/measure-tool`): map measuring tool (ruler button under the zoom buttons): click two points for the Mars great-circle distance (`measureText` in `src/map/coordinates.ts`, Mars radius 3,389.5 km) and straight-line walking time at 20 m/min. While on, clicks never open the terrain inspector, routes or hazards; logged as `measure.toggle` / `measure.distance`.
 
 - 2026-11-16 · Yasser (`ui/before-after-nightir`): Step 2 gets a "Before and after scouting" card (`src/map/beforeAfter.ts`: soft ground crossed, share of line rover-checked, distance, time, steepest slope, readiness, orbit-only vs after the rover; logged as `route.before_after`). New optional "Night infrared" layer (THEMIS Night IR controlled mosaic via Mars Trek, off by default, explained as relative firm-vs-loose context at ~100 m/px).

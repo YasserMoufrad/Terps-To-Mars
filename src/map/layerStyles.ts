@@ -5,6 +5,7 @@ import type { PathOptions } from 'leaflet';
 import type {
   HazardProperties, RouteProperties, CoverageProperties, HazardType, Evidence, CoverageState,
 } from '../data/types';
+import { NIGHT_IR_RAMP } from './layers.ts';
 
 export const HAZARD_COLORS: Record<HazardType, string> = {
   U: '#d98a3d', // under their feet
@@ -26,9 +27,19 @@ export const COVERAGE_COLORS: Record<CoverageState, string> = {
   inspection_required: '#f5a524',
 };
 
+// Loose (soft) ground gets its own look: filled with the "cools fast, looser" end of the night-infrared ramp, so it
+// reads the same as loose ground on that layer, with a magenta outline no other map feature uses.
+const toHex = (c: number[]) => `#${c.map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('')}`;
+export const SOFT_GROUND_FILL = toHex(NIGHT_IR_RAMP[0]);
+export const SOFT_GROUND_OUTLINE = '#ff4fd8';
+
 export function hazardStyle(p: HazardProperties): PathOptions {
   // Purpose: Leaflet style for one hazard. Color = p.type (U/O/S), outline pattern =
   // p.evidence, fill strength = p.severity (exclude is stronger than caution).
+  // Soft ground (p.category) uses the loose-ground blue fill and magenta outline instead of the type color.
+  if (p.category === 'soft_ground') {
+    return { color: SOFT_GROUND_OUTLINE, weight: 3, dashArray: EVIDENCE_DASH[p.evidence], fillColor: SOFT_GROUND_FILL, fillOpacity: 0.6 };
+  }
   return {
     color: HAZARD_COLORS[p.type],
     weight: 2,
