@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { beforeAfter } from '../src/map/beforeAfter.ts';
 import { readinessFor } from '../src/map/routeReadiness.ts';
-import { DEFAULT_LAYERS, LAYER_EXPLANATIONS, LAYER_LABELS } from '../src/map/layers.ts';
+import { DEFAULT_LAYERS, LAYER_EXPLANATIONS, LAYER_LABELS, NIGHT_IR_RAMP } from '../src/map/layers.ts';
+import { EVIDENCE_DASH, HAZARD_COLORS, SOFT_GROUND_OUTLINE, hazardStyle } from '../src/map/layerStyles.ts';
 
 const read = (f) => JSON.parse(readFileSync(new URL(`../public/data/${f}`, import.meta.url), 'utf8'));
 const routes = read('routes.geojson'), coverage = read('coverage.geojson'), hazards = read('hazards.geojson');
@@ -41,6 +42,18 @@ test('distances and times are the route files\' own numbers', () => {
 test('no comparison when a route is missing', () => {
   const noAfter = { ...routes, features: routes.features.filter((f) => f.properties.id !== mission.discovery.after_route_id) };
   assert.equal(beforeAfter(mission, noAfter, coverage, hazards, audit), null);
+});
+
+test('soft ground is filled with the loose end of the night-IR ramp, outlined in a color no hazard type uses, and stays dotted', () => {
+  const sim = hazards.features.find((h) => h.properties.id === mission.discovery.hazard_id).properties;
+  const s = hazardStyle(sim);
+  const [r, g, b] = NIGHT_IR_RAMP[0].map((v) => Math.round(v * 255));
+  assert.equal(s.fillColor, `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`);
+  assert.equal(s.color, SOFT_GROUND_OUTLINE);
+  assert.ok(!Object.values(HAZARD_COLORS).includes(s.color));
+  assert.equal(s.dashArray, EVIDENCE_DASH.simulated); // simulated evidence keeps its dotted outline
+  const slope = hazards.features.find((h) => h.properties.category === 'slope').properties;
+  assert.equal(hazardStyle(slope).fillColor, HAZARD_COLORS[slope.type]); // other hazards unchanged
 });
 
 test('night infrared is off by default and explained as relative, coarse context', () => {

@@ -2,7 +2,7 @@
 // This is what lets a judge check our map instead of trusting it.
 
 import type { HazardProperties, Mission } from '../data/types';
-import { HAZARD_COLORS } from '../map/layerStyles';
+import { HAZARD_COLORS, SOFT_GROUND_OUTLINE } from '../map/layerStyles';
 import { detectedBy } from '../map/detectedBy';
 import { ICE_EVIDENCE } from '../content/science';
 
@@ -25,7 +25,7 @@ export function EvidenceCard({ hazard, isPlaceholder, mission, onClose }: Eviden
   // class in plain words, source and note. `isPlaceholder` adds a warning that the
   // shape is hypothetical even when it names a NASA dataset. `onClose` hides the card.
   return (
-    <section className="card evidence-card" style={{ borderColor: HAZARD_COLORS[hazard.type] }}>
+    <section className="card evidence-card" style={{ borderColor: hazard.category === 'soft_ground' ? SOFT_GROUND_OUTLINE : HAZARD_COLORS[hazard.type] }}>
       <div className="card-head">
         <h3>
           {hazard.type} · {hazard.category.replace('_', ' ')}

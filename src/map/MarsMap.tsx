@@ -306,7 +306,7 @@ export function MarsMap({
     else if (!go) legendKeys.lines.add(p.leg_mode === 'drive' ? 'candidate-drive' : 'candidate');
     else legendKeys.lines.add(p.leg_mode === 'drive' ? 'drive' : p.kind === 'backup' ? 'backup' : 'walk');
   }
-  if (layers.hazards) for (const h of visibleHazards.features) legendKeys.hazards.add(h.properties.type);
+  if (layers.hazards) for (const h of visibleHazards.features) legendKeys.hazards.add(h.properties.category === 'soft_ground' ? 'soft' : h.properties.type);
   for (const c of shownCoverage.features) if (c.properties.state !== 'orbit_only') legendKeys.coverage.add(c.properties.state);
 
   return (
