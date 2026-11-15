@@ -4,12 +4,10 @@
       "Simulated drone concept: rockfall zone traced from imagery, not verified"
     ],
     "eva": [
-      "No viable route under the current rules: over the 5 km round-trip rule (5.10 km incl. drive; walking 813 m)",
-      "Backup unavailable: over the 5 km round-trip rule"
+      "Backup unavailable: over the EVA time with reserve, walkback exceeds the EVA"
     ],
     "orbital": [
-      "Candidate from orbit only: not crew clearance",
-      "No viable route under the current rules: over the 5 km round-trip rule (5.09 km incl. drive; walking 813 m)"
+      "Candidate from orbit only: not crew clearance"
     ],
     "rover": [
       "Simulated: rover stopped, wheel slip 38 percent, requesting input"
@@ -64,12 +62,12 @@
       "lon": -147.901301
     },
     "observation_backup": {
-      "lat": 54.166137,
-      "lon": -147.893531
+      "lat": 54.17111413463595,
+      "lon": -147.89250737253616
     },
     "observation_primary": {
-      "lat": 54.166626,
-      "lon": -147.894135
+      "lat": 54.172784,
+      "lon": -147.894109
     }
   },
   "placeholder": false,
@@ -85,19 +83,19 @@
     {
       "id": "orbital",
       "stats": {
-        "Budget": "Rejected: over the 5 km round-trip rule",
+        "Budget": "Within budget (5.94 km round trip)",
         "Detail": "1 m DTM, 25 cm imagery",
-        "Drive + walk (one way)": "2.14 km + 406 m",
+        "Drive + walk (one way)": "2.14 km + 832 m",
         "Steepest cell": "23.7\u00b0 (drive limit 24\u00b0, walk 20\u00b0)"
       },
-      "text": "From NASA orbital data only: drive the crew rover 2.1 km north across the crater floor to a parking spot above the scarp's low east end, then walk 406 m down to the viewpoint below the ice face. Slope comes from the HiRISE DTM; the scarp edge, foot and rockfall zone are traced from imagery (inferred). Rocks under 1 m, loose ground and shadow are not assessed.",
+      "text": "From NASA orbital data only: drive the crew rover 2.1 km north across the crater floor to a parking spot above the scarp's low east end, then walk 832 m down to the viewpoint below the ice face. Slope comes from the HiRISE DTM; the scarp edge, foot and rockfall zone are traced from imagery (inferred). Rocks under 1 m, loose ground and shadow are not assessed.",
       "title": "Orbital planning"
     },
     {
       "id": "rover",
       "stats": {
         "Replanned drive": "+6 m",
-        "Rover path": "2.6 km (simulated)",
+        "Rover path": "3.0 km (simulated)",
         "Underground (U)": "1 found (simulated)"
       },
       "text": "The day before the walk, the simulated rover drives the candidate route. About 1.0 km out it reports soft ground the orbit could not see (simulated) and stops; the drive is replanned around it (+6 m).",
@@ -116,12 +114,12 @@
     {
       "id": "eva",
       "stats": {
-        "Budget": "Rejected: over the 5 km round-trip rule",
-        "Round trip": "5.10 km (813 m walking)",
+        "Budget": "Within budget (5.95 km round trip)",
+        "Round trip": "5.95 km (1664 m walking)",
         "Steepest cell": "23.7\u00b0 (drive limit 24\u00b0, walk 20\u00b0)",
-        "Time": "112 of 168 min"
+        "Time": "155 of 168 min"
       },
-      "text": "Review the replanned route two astronauts would take to the viewpoint, the evidence behind it and the backup. Budgets use pipeline.itinerary with drive metres counted toward the 5,000 m rule (current rule). None of this is crew clearance.",
+      "text": "Review the replanned route two astronauts would take to the viewpoint, the evidence behind it and the backup. Budgets use pipeline.itinerary with 5,000 m rule on walking distance only (team decision 2026-11-14). None of this is crew clearance.",
       "title": "Astronaut mission review"
     }
   ],

@@ -1,0 +1,28 @@
+{
+  "_note": "Habitat -> viewpoints walking the whole way (expected infeasible: ~4 km straight-line round trip). DTM-checked points.",
+  "window_latlon": {
+    "south": 54.12,
+    "west": -147.925,
+    "north": 54.172,
+    "east": -147.885
+  },
+  "points": {
+    "habitat": {
+      "lat": 54.12777,
+      "lon": -147.901301
+    },
+    "observation_primary": {
+      "lat": 54.172784,
+      "lon": -147.894109
+    },
+    "observation_backup": {
+      "lat": 54.17111413463595,
+      "lon": -147.89250737253616
+    }
+  },
+  "eva_minutes": 240,
+  "dtm": "pipeline/raw/DTEEC_071085_2345_071006_2345_A01.IMG",
+  "speed_m_min": 20,
+  "observation_minutes": 20,
+  "position_uncertainty_m": 15
+}

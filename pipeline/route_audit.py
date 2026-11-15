@@ -288,7 +288,8 @@ class ScarpZones:
         factor = float(threshold(rules, "rockfall_height_factor"))
         ordered = sorted(profiles, key=lambda p: p["lon"])
         self.lons = np.array([p["lon"] for p in ordered], float)
-        self.buffers = np.array([max(p["apron_m"], p["height_m"] * factor) for p in ordered], float)
+        # A profile may carry its own published buffer_m (PR #17's upper scarp); the larger value wins.
+        self.buffers = np.array([max(p["apron_m"], p["height_m"] * factor, p.get("buffer_m", 0.0)) for p in ordered], float)
 
     def buffer_at(self, lons):
         """Rockfall buffer (metres) at each longitude."""
@@ -305,10 +306,47 @@ class ScarpZones:
         return edge_d <= self.setback_m, (foot_d <= self.buffer_at(lons)) & (foot_d <= edge_d)
 
 
+class ScarpSet:
+    """Several traced scarps checked together: a point is in a zone when it is in that zone of any scarp."""
+
+    def __init__(self, members):
+        """members: non-empty list of ScarpZones (main scarp first)."""
+        self.members = list(members)
+        self.setback_m = self.members[0].setback_m
+        self.buffers = np.concatenate([m.buffers for m in self.members])
+
+    def classify(self, lons, lats):
+        """Boolean arrays (edge_setback, rockfall), OR-ed over every scarp."""
+        edge = rockfall = None
+        for member in self.members:
+            e, r = member.classify(lons, lats)
+            edge, rockfall = (e, r) if edge is None else (edge | e, rockfall | r)
+        return edge, rockfall
+
+
+# (edge id, foot id, mission_sites.json profiles key) for every scarp the zone checks know about.
+SCARPS = (("scarp-edge", "scarp-foot", "scarp_profiles"), ("upper-scarp-edge", "upper-scarp-foot", "upper_scarp_profiles"))
+
+
+def scarp_zone_set(scarp, sites, rules):
+    """ScarpSet for every scarp present in both scarp_lines and mission_sites.json, or None when none is."""
+    lines = {f["properties"].get("id"): f["geometry"]["coordinates"] for f in (scarp or {}).get("features", [])}
+    members = [ScarpZones(lines[e], lines[f], sites[key]["profiles"], rules)
+               for e, f, key in SCARPS if sites and e in lines and f in lines and sites.get(key, {}).get("profiles")]
+    return ScarpSet(members) if members else None
+
+
+def profiles_fingerprint(sites):
+    """SHA-256 of every scarp's profile measurements in mission_sites.json (None without sites)."""
+    if not sites:
+        return None
+    return canonical_sha256({key: sites[key] for _, _, key in SCARPS if key in sites})
+
+
 def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, zones=None):
     """Measure one route feature; returns its diagnostic dict (never modifies the feature).
 
-    zones: optional ScarpZones; crossed cells inside the crew edge setback (walk cells) or the rockfall
+    zones: optional ScarpZones or ScarpSet; crossed cells inside the crew edge setback (walk cells) or the rockfall
     buffer (all cells) are excluded terrain, just like the routing masks.
     """
     props = feature.get("properties", {})
@@ -428,9 +466,8 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
     scarp = json.loads(Path(scarp_path).read_text()) if scarp_path and Path(scarp_path).exists() else None
     face = scarp_face(scarp)
     foot = next((f["geometry"]["coordinates"] for f in (scarp or {}).get("features", []) if f["properties"].get("id") == "scarp-foot"), None)
-    edge = next((f["geometry"]["coordinates"] for f in (scarp or {}).get("features", []) if f["properties"].get("id") == "scarp-edge"), None)
-    sites = json.loads(Path(sites_path).read_text()) if sites_path else None
-    zones = ScarpZones(edge, foot, sites["scarp_profiles"]["profiles"], rules) if sites and edge and foot else None
+    sites = json.loads(Path(sites_path).read_text(encoding="utf-8")) if sites_path else None
+    zones = scarp_zone_set(scarp, sites, rules)
     if grid is None:
         lines = [f for f in routes["features"] if len(f["geometry"].get("coordinates") or []) >= 2]
         coords = [c for f in lines for c in f["geometry"]["coordinates"]]
@@ -452,7 +489,7 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
         "fingerprint": {"algorithm_version": ALGORITHM_VERSION, "dtm_id": Path(dtm_path).stem, "dtm_sha256": file_sha256(dtm_path),
                         "rules_sha256": canonical_sha256(rules), "endpoints": endpoints_fingerprint(mission),
                         "scarp": scarp_fingerprint(scarp),
-                        "scarp_profiles_sha256": canonical_sha256(sites["scarp_profiles"]) if sites else None,
+                        "scarp_profiles_sha256": profiles_fingerprint(sites),
                         "routes": {a["id"]: a["fingerprint"] for a in audits}},
         "zone_checks": "edge_setback_and_rockfall" if zones else "not_run: no scarp profiles supplied",
         "mission_placeholder": bool(mission.get("placeholder")), "routes_placeholder": bool(routes.get("placeholder")),

@@ -16,6 +16,6 @@ The full contract is section 4 of [docs/IMPLEMENTATION.md](../../docs/IMPLEMENTA
 | `scarp_lines.geojson` | **Inferred** (2026-11-14): traced scarp edge and foot from PR #15 (`data/site/scarp_lines.geojson`, Yasser's agent's HiRISE trace, unreviewed); drives "Inspect scarp" |
 | `route_audit.json` | **Real measurement** (Nic, 2026-11-14): `pipeline.route_audit` on the current `routes.geojson` (placeholder lines) against the real DTM; re-run whenever routes change (the `routes_sha256` field must match); now written by `pipeline.mission_geography` with a `fingerprint` (routes, endpoints, scarp, DTM, rules, algorithm) the app recomputes and rejects when stale |
 
-Placeholder files carry `"placeholder": true`. Their shapes are positioned near the real site (54.144°N, −147.894) but are not derived from data. The pipeline overwrites them with real outputs in the same format and drops the `placeholder` flag.
+Placeholder files carry `"placeholder": true`. Their shapes sit around the real scarp (about 54.16°N, −147.905) but are not derived from data. The pipeline overwrites them with real outputs in the same format and drops the `placeholder` flag.
 
 Reminders: GeoJSON coordinates are `[longitude, latitude]`; longitudes are −180..180; every feature has a stable `id`; every file has `schema_version`.

@@ -20,15 +20,30 @@ export function hazardsFor(stage: StageId, hazards: HazardCollection): HazardCol
 
 export function coverageFor(stage: StageId, coverage: CoverageCollection, mission: Mission): CoverageCollection {
   // Purpose: coverage zones shown at `stage`. Robot coverage appears once its robot
-  // has scouted; the drone's view cone (mission.drone.view_cone_id) only during the EVA.
+  // has scouted; the drone's view cone (mission.drone.view_cone_id) from the drone stage on.
   return keep(coverage, (f) => {
     const p = f.properties;
-    if (p.id === mission.drone.view_cone_id) return stage === 'eva';
+    if (p.id === mission.drone.view_cone_id) return stage === 'drone' || stage === 'eva';
     if (p.state === 'rover_checked') return STAGE_INDEX[stage] >= STAGE_INDEX.rover;
     if (p.state === 'drone_checked') return STAGE_INDEX[stage] >= STAGE_INDEX.drone;
     // "orbit_only" is the default for the whole map, so drawing it adds only clutter.
     if (p.state === 'orbit_only') return false;
     return true; // unscouted, inspection_required: always shown
+  });
+}
+
+export function highlightCoverageFor(stage: StageId, coverage: CoverageCollection, mission: Mission): CoverageCollection {
+  // Purpose: the one coverage story each stage tells, drawn even when the coverage toggle is off,
+  // so the stages look different: orbital = unscouted ground, rover = rover-checked corridors,
+  // drone = planned drone footprint and view cone, eva = nothing extra (the routes tell it).
+  return keep(coverageFor(stage, coverage, mission), (f) => {
+    const p = f.properties;
+    switch (stage) {
+      case 'orbital': return p.state === 'unscouted';
+      case 'rover': return p.state === 'rover_checked';
+      case 'drone': return p.state === 'drone_checked' || p.id === mission.drone.view_cone_id;
+      case 'eva': return false;
+    }
   });
 }
 

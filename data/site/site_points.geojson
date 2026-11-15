@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "name": "site_points",
+  "description": "Geury's first-pass key mission points, picked on low-roughness ground in HiRISE color (ESP_071006_2345); about +/-15 m. Nic should snap each to the nearest flat DTM cell. Rebuilt from the table in Geury's site pack.",
+  "source": "Geury, Terps To Mars site and data pack, 2026-11-14",
+  "crs_note": "GeoJSON [longitude, latitude], longitude -180..180 (147.9 W = -147.9)",
+  "features": [
+    { "type": "Feature", "properties": { "id": "habitat", "name": "Habitat", "where": "Smooth plain ~2.0 km south of the scarp foot" },
+      "geometry": { "type": "Point", "coordinates": [-147.90287, 54.12819] } },
+    { "type": "Feature", "properties": { "id": "scarp_foot", "name": "Scarp foot (Plan A work site)", "where": "North base of the main ice band" },
+      "geometry": { "type": "Point", "coordinates": [-147.90546, 54.16211] } },
+    { "type": "Feature", "properties": { "id": "observation_primary", "name": "Main observation point", "where": "Terrace ~48 m north of the main face" },
+      "geometry": { "type": "Point", "coordinates": [-147.90546, 54.16291] } },
+    { "type": "Feature", "properties": { "id": "observation_backup", "name": "Backup observation point", "where": "Foot of the second ice band, ~330 m NE" },
+      "geometry": { "type": "Point", "coordinates": [-147.89585, 54.16524] } },
+    { "type": "Feature", "properties": { "id": "drone_perch", "name": "Drone perch", "where": "Terrace ~73 m north of the face, looking south" },
+      "geometry": { "type": "Point", "coordinates": [-147.90287, 54.16334] } },
+    { "type": "Feature", "properties": { "id": "plan_b_drill", "name": "Plan B drill point", "where": "Smooth plain ~93 m back from the scarp edge" },
+      "geometry": { "type": "Point", "coordinates": [-147.90553, 54.15921] } }
+  ]
+}

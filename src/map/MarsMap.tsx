@@ -18,13 +18,14 @@ import {
   EMPTY_LOAD, applyLoadEvent, combinedState, decodedSizeMatches, registrationNote,
   type ImageryLoadState, type LayerLoad,
 } from './imageryState';
-import { hazardsFor, routesFor, coverageFor, hasLine } from './stageFilters';
-import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
+import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } from './stageFilters';
+import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle, DRIVE_COLOR } from './layerStyles';
+import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
 import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
 import { dronePerchLabel } from './reviewPresentation';
-import { observationTarget, resolveScarpTarget } from './scarpTarget';
+import { crewFaceTarget, observationTarget, resolveScarpTarget } from './scarpTarget';
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
 import { SlopeLegend } from './SlopeLegend';
 import { auditFor, diagnosticHtml, routeRejectedForStyle } from './routeAudit';
@@ -118,6 +119,9 @@ export function MarsMap({
     ...hiriseTiles.filter((t) => t.role === 'core').map((t) => t.bounds),
   ];
   const scarpTarget = useMemo(() => resolveScarpTarget(scarpLines, nativeCoverage), [scarpLines, hiriseBounds, hiriseTiles]);
+  // The face the crew observes (second scarp) is a different place from the main face "Inspect scarp" shows.
+  const crewFace = useMemo(() => crewFaceTarget(scarpLines, mission.endpoints.observation_primary, nativeCoverage),
+    [scarpLines, mission, hiriseBounds, hiriseTiles]);
   useEffect(() => {
     // Log the resolved target once per data load: which source drives navigation, or why it is disabled.
     if (scarpTarget.target) appLogger.info('map', 'scarp_target.resolved', { target: scarpTarget.target, source: scarpTarget.source, evidence: 'inferred' });
@@ -185,9 +189,11 @@ export function MarsMap({
   // Routes with no line (failed searches) are reported in the side panel instead.
   // A non-"ok" route that still has a line (e.g. the unverified orbital guess) is drawn,
   // styled amber so it never looks like a cleared route.
-  const drawnRoutes = { ...stageRoutes, features: stageRoutes.features.filter((f) => hasLine(f.geometry.coordinates)) };
+  // Crew routes with drive/walk legs are split so the drive leg can be drawn differently.
+  const drawnRoutes = splitRouteLegs({ ...stageRoutes, features: stageRoutes.features.filter((f) => hasLine(f.geometry.coordinates)) });
   // During the rover stage the old crew route is shown faded next to the new one.
   const supersededId = stage === 'rover' ? mission.discovery.before_route_id : null;
+  const parking = stage === 'eva' ? crewRoverParking(stageRoutes) : null;
 
   return (
     <div className="map-wrap">
@@ -298,6 +304,7 @@ export function MarsMap({
           hiriseBounds={hiriseBounds}
           scarp={scarpTarget}
           observation={observationTarget(mission.endpoints.observation_primary)}
+          crewFace={crewFace}
           state={sizeMismatch && hiriseTiles.length === 0 ? 'failed' : hdState}
           registration={registrationNote(hiriseMeta)}
           onRetry={retryImagery}
@@ -326,17 +333,21 @@ export function MarsMap({
 
         {/* `key` makes React rebuild a layer when the stage changes; Leaflet's GeoJSON
             layer does not redraw by itself when its data prop changes. */}
-        {layers.coverage && (
-          <GeoJSON
-            key={`coverage-${stage}`}
-            data={asGeoJson(visibleCoverage)}
-            style={(f) => coverageStyle(f?.properties as CoverageProperties)}
-            onEachFeature={(f, layer) => {
-              const p = f.properties as CoverageProperties;
-              layer.bindTooltip(`Coverage: ${p.state.replace('_', ' ')}${p.simulated ? ' (simulated)' : ''}`);
-            }}
-          />
-        )}
+        {/* Coverage: everything when the toggle is on; otherwise just this stage's key zones. */}
+        <GeoJSON
+          key={`coverage-${stage}-${layers.coverage}`}
+          data={asGeoJson(layers.coverage ? visibleCoverage : highlightCoverageFor(stage, coverage, mission))}
+          style={(f) => {
+            // The drone's field of view is drawn stronger than ordinary coverage so the cone reads clearly.
+            const p = f?.properties as CoverageProperties;
+            return p.id === mission.drone.view_cone_id ? { ...coverageStyle(p), weight: 2, fillOpacity: 0.25 } : coverageStyle(p);
+          }}
+          onEachFeature={(f, layer) => {
+            const p = f.properties as CoverageProperties;
+            const what = p.id === mission.drone.view_cone_id ? 'Drone field of view' : `Coverage: ${p.state.replace('_', ' ')}`;
+            layer.bindTooltip(`${what}${p.simulated ? ' (simulated)' : ''}`);
+          }}
+        />
 
         {layers.hazards && (
           <GeoJSON
@@ -367,23 +378,28 @@ export function MarsMap({
           data={asGeoJson(drawnRoutes)}
           style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
           onEachFeature={(f, layer) => {
-            const p = f.properties as RouteProperties;
+            const p = f.properties as DrawnRouteProperties;
             const entry = auditFor(routeAudit, p.id);
             const rejected = routeRejectedForStyle(p, entry);
             const label =
               p.id === supersededId
                 ? 'Old route (replaced)'
-                : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`;
-            // Prefer measured numbers over the file's claimed stats; the popup explains the verdict.
+                : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}` +
+                  `${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`;
+            const legs = legSummary(p);
+            // Prefer measured numbers from the route audit (#18) over the file's claimed stats; otherwise show the
+            // drive/walk legs and walkback from the route data. The popup explains the audit verdict.
             layer.bindTooltip(entry && entry.length_m !== undefined
               ? `${label}: measured ${(entry.length_m / 1000).toFixed(2)} km one way, steepest crossed ${entry.max_slope_deg ?? '?'}° · click for diagnostics`
-              : `${label}: ${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip (claimed, not audited)`);
+              : `${label}: ${legs ?? `${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip`}, ${p.stats.est_time_min} min round trip (claimed, not audited)` +
+                (p.walkback_min ? `<br/>Walkback if the crew rover fails: ${p.walkback_min} min on foot` : ''));
             layer.bindPopup(diagnosticHtml(p, entry, routeAudit), { maxWidth: 320 });
           }}
         />
 
         {/* Where each drawn route first enters excluded terrain (from the audit). */}
-        {drawnRoutes.features.map((f) => {
+        {/* One marker per route id (drawnRoutes splits a route into drive/walk legs). */}
+        {drawnRoutes.features.filter((f, i, all) => all.findIndex((g) => g.properties.id === f.properties.id) === i).map((f) => {
           const first = auditFor(routeAudit, f.properties.id)?.first_exclusion;
           return first ? (
             <CircleMarker key={`excl-${f.properties.id}`} center={[first.lat, first.lon]} radius={6}
@@ -407,9 +423,16 @@ export function MarsMap({
           </CircleMarker>
         )}
 
-        {stage === 'eva' && (
+        {parking && (
+          <CircleMarker center={parking} radius={7} pathOptions={{ color: '#0b0d10', fillColor: DRIVE_COLOR, fillOpacity: 1, weight: 2 }}>
+            <Tooltip permanent direction="right" className="map-label">Crew rover parks (proposed)</Tooltip>
+          </CircleMarker>
+        )}
+
+        {(stage === 'drone' || stage === 'eva') && (
           <CircleMarker center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="right" className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
+            {/* "top": the perch is only ~50 m from the observation point, whose label sits to the right. */}
+            <Tooltip permanent direction="top" offset={[0, -8]} className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
           </CircleMarker>
         )}
       </MapContainer>

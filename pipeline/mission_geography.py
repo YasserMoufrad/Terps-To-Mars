@@ -41,7 +41,7 @@ from pipeline.export import write_json
 from pipeline.hazards import collection, hazard_masks, mask_features, uncertainty_area_check
 from pipeline.itinerary import backup_independence, evaluate_mixed, polyline_m
 from pipeline.logging_config import configure_logging, event, operation, traced
-from pipeline.route_audit import (ScarpZones, TerrainGrid, audit_file, point_in_polygon, polyline_distance_m, scarp_face,
+from pipeline.route_audit import (SCARPS, ScarpSet, ScarpZones, TerrainGrid, audit_file, point_in_polygon, polyline_distance_m, scarp_face,
                                   supercover)
 from pipeline.routing import cost_grid, grid_shortest_path, mars_distance
 from pipeline.slope_mvp import ACQUIRE_HINT, DEFAULT_BOUNDS, DEFAULT_DTM, _activate, window_for_bounds
@@ -73,9 +73,12 @@ def load_sites(path):
             raise ValueError(f"mission_sites.json: point {name} needs finite lat/lon")
         if not (-90 <= point["lat"] <= 90 and -180 <= point["lon"] <= 180):
             raise ValueError(f"mission_sites.json: point {name} outside lat/lon range (longitudes are -180..180)")
-    profiles = sites.get("scarp_profiles", {}).get("profiles") or []
-    if len(profiles) < 2 or any(p.get("height_m", -1) < 0 or p.get("apron_m", -1) < 0 for p in profiles):
-        raise ValueError("mission_sites.json: need at least two scarp profiles with height_m and apron_m")
+    for key in ("scarp_profiles", "upper_scarp_profiles"):
+        if key not in sites and key != "scarp_profiles":
+            continue
+        profiles = sites.get(key, {}).get("profiles") or []
+        if len(profiles) < 2 or any(p.get("height_m", -1) < 0 or p.get("apron_m", -1) < 0 for p in profiles):
+            raise ValueError(f"mission_sites.json: {key} needs at least two profiles with height_m and apron_m")
     return sites
 
 
@@ -147,6 +150,21 @@ def scarp_inputs(grid, zones, face_ring, rules):
           setback_m=zones.setback_m, rockfall_buffer_m=[float(zones.buffers.min()), float(zones.buffers.max())],
           routing_margin_m=ROUTING_MARGIN_M)
     return edge_d, foot_d, buffer, face
+
+
+def combine_scarps(inputs):
+    """Merge per-scarp (edge_d, foot_d, buffer, face) grids into one set hazard_masks can take.
+
+    Edge distance is the nearest edge; rockfall becomes one margin: a cell is in a rockfall zone when
+    foot_d - buffer <= 0 for any scarp, expressed as foot distance (margin + B) against a constant buffer B.
+    """
+    edge_d = np.minimum.reduce([i[0] for i in inputs])
+    margin = np.minimum.reduce([i[1] - i[2] for i in inputs])
+    top = float(max(i[2].max() for i in inputs))
+    face = np.logical_or.reduce([i[3] for i in inputs])
+    event("scarp_zones_combined", evidence="inferred", scarps=len(inputs), rockfall_buffer_max_m=top,
+          face_cells=int(face.sum()))
+    return edge_d, np.maximum(margin + top, 0.0), np.full(edge_d.shape, top), face
 
 
 def disc_mask(grid, centre_cell, radius_m):
@@ -337,11 +355,11 @@ def point_along(path, grid, fraction):
 
 @traced("mission_geography")
 def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT_SITES, report_path=DEFAULT_REPORT,
-          bounds=None, rules=None, drive_counts_toward_limit=True):
+          bounds=None, rules=None, drive_counts_toward_limit=False):
     """Compute, stage, audit and publish the mission geography; returns the report dict.
 
-    drive_counts_toward_limit: apply the 5,000 m round-trip rule to drive + walk metres (the current rule
-    until the team decides otherwise); the walking-only distance is always reported beside it.
+    drive_counts_toward_limit: apply the 5,000 m round-trip rule to drive + walk metres. Default False: the
+    team decided (STATUS 2026-11-14, Nic + Yasser) the limit applies to walking only; both are reported.
     """
     started = perf_counter()
     dtm_path, data_dir = Path(dtm_path), Path(data_dir)
@@ -356,13 +374,19 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
     face_ring = scarp_face(scarp)
     if face_ring is None:
         raise ValueError("scarp_lines.geojson needs scarp-edge and scarp-foot")
-    profiles = sites["scarp_profiles"]["profiles"]
-    zones = ScarpZones(lines["scarp-edge"], lines["scarp-foot"], profiles, rules)
+    # Every traced scarp with profile measurements (main scarp, then PR #17's upper scarp) gets zones.
+    members, rings = [], []
+    for edge_id, foot_id, key in SCARPS:
+        if edge_id in lines and foot_id in lines and sites.get(key, {}).get("profiles"):
+            members.append(ScarpZones(lines[edge_id], lines[foot_id], sites[key]["profiles"], rules))
+            rings.append(lines[edge_id] + list(reversed(lines[foot_id])))
+    zones = ScarpSet(members)
+    profiles = [p for _, _, key in SCARPS for p in sites.get(key, {}).get("profiles", [])]
     points = sites["points"]
 
     grid = Grid(dtm_path, dict(bounds or DEFAULT_BOUNDS), rules)
     terrain, analysis = grid.terrain, grid.analysis
-    edge_d, foot_d, buffer, face = scarp_inputs(grid, zones, face_ring, rules)
+    edge_d, foot_d, buffer, face = combine_scarps([scarp_inputs(grid, z, r, rules) for z, r in zip(members, rings)])
     # Published masks use the rules exactly; routing masks keep ROUTING_MARGIN_M extra.
     masks = hazard_masks(terrain, analysis, rules, edge_distance=edge_d, foot_distance=foot_d,
                          scarp_height=float(max(p["height_m"] for p in profiles)),
@@ -427,8 +451,9 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
         "rover": route_feature(grid, "rt-rover-v2", "rover_path", "rover", "after", "inspection_required",
                                [("drive", scouted + scout_detour[1:] + walk1[1:])]) if scout_detour else
                  empty_route("rt-rover-v2", "rover_path", "rover", "after", "no_viable_route"),
+        # Drawn viewpoint-first (return orientation, PR #17 convention): walk back to the rover, then drive home.
         "backup": route_feature(grid, "rt-crew-backup-v2", "backup", "crew", "after", "inspection_required",
-                                [("drive", drive_b), ("walk", walk_b)]) if drive_b and walk_b else
+                                [("walk", walk_b[::-1]), ("drive", drive_b[::-1])]) if drive_b and walk_b else
                   empty_route("rt-crew-backup-v2", "backup", "crew", "after", "backup_unavailable"),
     }
     # Budgets from pipeline.itinerary; failures become no_viable_route (backup_unavailable) with reasons.
@@ -439,9 +464,10 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
             continue
         report = evaluate_mixed(route, rules, EVA_MINUTES, SPEEDS_M_MIN, SITE_MINUTES)
         reasons = list(report["reasons"])
-        if not drive_counts_toward_limit and reasons == ["round_trip_distance_limit"] and \
-                report["walk_round_trip_m"] < threshold(rules, "round_trip_limit_m"):
-            reasons = []
+        # Walking-only rule: drop the distance reason when the walked round trip is within the limit;
+        # every other budget reason (EVA time, walkback) still applies.
+        if not drive_counts_toward_limit and report["walk_round_trip_m"] < threshold(rules, "round_trip_limit_m"):
+            reasons = [r for r in reasons if r != "round_trip_distance_limit"]
         report["applied_reasons"] = reasons
         budgets[route["properties"]["id"]] = report
         if reasons:
@@ -473,6 +499,11 @@ def build(dtm_path=DEFAULT_DTM, data_dir=Path("public/data"), sites_path=DEFAULT
                            type="U", category="edge", severity="exclude", evidence="inferred", agent="both", stage="orbital",
                            source="scarp_lines.geojson (HiRISE image trace, unreviewed)",
                            note="Traced ice-scarp face between top edge and foot; DTM face slopes 64-75°. Excluded for crew and rover."))
+    for ring, member in zip(rings[1:], members[1:]):
+        hazards.append(feature("hz-upper-scarp-face", "Polygon", [[[round(x, 7), round(y, 7)] for x, y in ring + ring[:1]]],
+                               type="U", category="edge", severity="exclude", evidence="inferred", agent="both", stage="orbital",
+                               source="scarp_lines.geojson upper-scarp lines (DTM cells >= 30°, PR #17; unreviewed)",
+                               note="Second (upper) scarp face the crew observes from the viewpoints; excluded for crew and rover."))
     hazards += polygons(masks["edge"], grid, 2, "any", "hz-edge", {
         "type": "U", "category": "edge", "severity": "exclude", "evidence": "inferred", "agent": "crew", "stage": "orbital",
         "source": "scarp_lines.geojson + hazard_rules.json cliff_setback_m",
@@ -596,8 +627,8 @@ def mission_record(sites, features, budgets, independence, discovery_point, driv
     detour = _leg_m(main2, "drive") - drive_g
     report_main, report_guess = budgets.get(mp["id"]), budgets.get(gp["id"])
     has_main = bool(main2["geometry"]["coordinates"])
-    rule_note = ("drive metres counted toward the 5,000 m rule (current rule)" if drive_counts_toward_limit
-                 else "drive metres exempt from the 5,000 m rule (team decision)")
+    rule_note = ("drive metres counted toward the 5,000 m rule (--drive-counts)" if drive_counts_toward_limit
+                 else "5,000 m rule on walking distance only (team decision 2026-11-14)")
     stages = [
         {"id": "orbital", "title": "Orbital planning",
          "text": (f"From NASA orbital data only: drive the crew rover {drive_g / 1000:.1f} km north across the crater floor to a "
@@ -675,8 +706,9 @@ def report_record(sites, grid, cells, checks, features, budgets, independence, w
             d = mars_distance([point["lon"], point["lat"]], [first[name]["lon"], first[name]["lat"]])
             discrepancies[name] = {"reviewed": {"lat": point["lat"], "lon": point["lon"]},
                                    "first_pass": {"lat": first[name]["lat"], "lon": first[name]["lon"]}, "distance_m": round(d, 1)}
-    margin = {k: round(float(polyline_distance_m([points[k]["lon"]], [points[k]["lat"]], zones.foot)[0]
-                             - zones.buffer_at([points[k]["lon"]])[0]), 1)
+    # Smallest margin over every scarp (zones: ScarpSet); negative would mean inside a rockfall buffer.
+    margin = {k: round(min(float(polyline_distance_m([points[k]["lon"]], [points[k]["lat"]], z.foot)[0]
+                                 - z.buffer_at([points[k]["lon"]])[0]) for z in zones.members), 1)
               for k in ("observation_primary", "observation_backup")}
     limit = threshold(rules, "round_trip_limit_m")
     return {
@@ -697,7 +729,6 @@ def report_record(sites, grid, cells, checks, features, budgets, independence, w
                          "rocks under ~1 m (below DTM resolution)", "scarp continuation beyond the traced 1.5 km"],
         "audit_statuses": {a["id"]: a["audit_status"] for a in audit["routes"]},
         "open_questions": [
-            "Do crew-rover drive metres count toward the 5,000 m round-trip rule? The current rule says yes.",
             "Scarp lines and profiles are Yasser's agent's image trace: review before relying on edge/rockfall zones.",
         ],
     }
@@ -709,13 +740,13 @@ if __name__ == "__main__":
     parser.add_argument("--data-dir", type=Path, default=Path("public/data"))
     parser.add_argument("--sites", type=Path, default=DEFAULT_SITES)
     parser.add_argument("--report", type=Path, default=DEFAULT_REPORT)
-    parser.add_argument("--drive-exempt", action="store_true",
-                        help="exempt drive metres from the 5,000 m round-trip rule (team decision required)")
+    parser.add_argument("--drive-counts", action="store_true",
+                        help="also count drive metres toward the 5,000 m round-trip rule (default: walking only, team decision)")
     arguments = parser.parse_args()
     configure_logging()
     with operation("mission_geography_cli", dataset_id=arguments.dtm.name):
         result = build(arguments.dtm, arguments.data_dir, arguments.sites, arguments.report,
-                       drive_counts_toward_limit=not arguments.drive_exempt)
+                       drive_counts_toward_limit=arguments.drive_counts)
     for rid, route in result["routes"].items():
         print(f"{rid}: {route['status']} {route['reason'] or ''} | {route['stats']['length_m']} m")
     print("audit:", result["audit_statuses"])

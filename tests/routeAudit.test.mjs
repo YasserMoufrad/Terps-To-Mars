@@ -41,7 +41,7 @@ test('generated routes pass their own terrain audit; budget-rejected ones still 
   assert.equal(routeRejectedForStyle(orbital.properties, { audit_status: 'excluded_terrain' }), true);
   assert.equal(routeStyle(orbital.properties, null, false).color, '#b4b9c2');
   const main = routes.features.find((f) => f.properties.id === 'rt-crew-main-v2');
-  assert.equal(routeStyle(main.properties, null, routeRejectedForStyle(main.properties, auditFor(audit, 'rt-crew-main-v2'))).color, '#e5484d');
+  assert.equal(routeStyle(main.properties, null, routeRejectedForStyle(main.properties, auditFor(audit, 'rt-crew-main-v2'))).color, '#b4b9c2');
   assert.equal(orbital.properties.status, 'no_viable_route');
   assert.match(orbital.properties.status_reason, /round-trip/);
 });

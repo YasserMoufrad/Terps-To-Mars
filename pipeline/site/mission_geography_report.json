@@ -7,7 +7,7 @@
   },
   "backup_independence": {
     "backup_id": "rt-crew-backup-v2",
-    "backup_m": 2733.5,
+    "backup_m": 3319.2,
     "common_mode": null,
     "independent": true,
     "main_id": "rt-crew-main-v2",
@@ -25,21 +25,24 @@
     "rt-crew-backup-v2": {
       "accepted_budget": false,
       "applied_reasons": [
-        "round_trip_distance_limit"
+        "eva_time_limit",
+        "walkback_exceeds_eva"
       ],
       "available_min": 168.0,
-      "claimed_round_trip_m": 5467.0,
+      "claimed_round_trip_m": 6638.3,
       "drive_one_way_m": 2207.9,
       "eva_min": 240,
       "evidence": "inferred",
       "leg_problems": [],
-      "one_way_m": 2733.5,
+      "one_way_m": 3319.2,
       "reasons": [
-        "round_trip_distance_limit"
+        "round_trip_distance_limit",
+        "eva_time_limit",
+        "walkback_exceeds_eva"
       ],
       "reserve_fraction": 0.3,
       "round_trip_limit_m": 5000,
-      "round_trip_m": 5467.0,
+      "round_trip_m": 6638.3,
       "route_id": "rt-crew-backup-v2",
       "site_min": 20,
       "speeds_m_min": {
@@ -47,32 +50,30 @@
         "walk": 20.0
       },
       "suggested_status": "inspection_required",
-      "total_min": 125.6,
-      "travel_min": 105.6,
-      "walk_one_way_m": 525.6,
-      "walk_round_trip_m": 1051.2,
-      "walkback_min": 136.7,
-      "walkback_state": "walkback_uses_reserve",
-      "walkback_total_min": 209.5
+      "total_min": 184.1,
+      "travel_min": 164.1,
+      "walk_one_way_m": 1111.3,
+      "walk_round_trip_m": 2222.5,
+      "walkback_min": 166.0,
+      "walkback_state": "walkback_exceeds_eva",
+      "walkback_total_min": 268.0
     },
     "rt-crew-main-v2": {
       "accepted_budget": false,
-      "applied_reasons": [
-        "round_trip_distance_limit"
-      ],
+      "applied_reasons": [],
       "available_min": 168.0,
-      "claimed_round_trip_m": 5103.6,
+      "claimed_round_trip_m": 5954.7,
       "drive_one_way_m": 2145.4,
       "eva_min": 240,
       "evidence": "inferred",
       "leg_problems": [],
-      "one_way_m": 2551.8,
+      "one_way_m": 2977.4,
       "reasons": [
         "round_trip_distance_limit"
       ],
       "reserve_fraction": 0.3,
       "round_trip_limit_m": 5000,
-      "round_trip_m": 5103.6,
+      "round_trip_m": 5954.7,
       "route_id": "rt-crew-main-v2",
       "site_min": 20,
       "speeds_m_min": {
@@ -80,32 +81,30 @@
         "walk": 20.0
       },
       "suggested_status": "inspection_required",
-      "total_min": 112.2,
-      "travel_min": 92.2,
-      "walk_one_way_m": 406.4,
-      "walk_round_trip_m": 812.8,
-      "walkback_min": 127.6,
+      "total_min": 154.7,
+      "travel_min": 134.7,
+      "walk_one_way_m": 832.0,
+      "walk_round_trip_m": 1663.9,
+      "walkback_min": 148.9,
       "walkback_state": "walkback_uses_reserve",
-      "walkback_total_min": 193.7
+      "walkback_total_min": 236.2
     },
     "rt-orbital-guess-v1": {
       "accepted_budget": false,
-      "applied_reasons": [
-        "round_trip_distance_limit"
-      ],
+      "applied_reasons": [],
       "available_min": 168.0,
-      "claimed_round_trip_m": 5091.4,
+      "claimed_round_trip_m": 5942.5,
       "drive_one_way_m": 2139.3,
       "eva_min": 240,
       "evidence": "inferred",
       "leg_problems": [],
-      "one_way_m": 2545.7,
+      "one_way_m": 2971.3,
       "reasons": [
         "round_trip_distance_limit"
       ],
       "reserve_fraction": 0.3,
       "round_trip_limit_m": 5000,
-      "round_trip_m": 5091.4,
+      "round_trip_m": 5942.5,
       "route_id": "rt-orbital-guess-v1",
       "site_min": 20,
       "speeds_m_min": {
@@ -113,13 +112,13 @@
         "walk": 20.0
       },
       "suggested_status": "inspection_required",
-      "total_min": 112.0,
-      "travel_min": 92.0,
-      "walk_one_way_m": 406.4,
-      "walk_round_trip_m": 812.8,
-      "walkback_min": 127.3,
+      "total_min": 154.6,
+      "travel_min": 134.6,
+      "walk_one_way_m": 832.0,
+      "walk_round_trip_m": 1663.9,
+      "walkback_min": 148.6,
       "walkback_state": "walkback_uses_reserve",
-      "walkback_total_min": 193.3
+      "walkback_total_min": 235.8
     }
   },
   "crew_clearance": "not_established",
@@ -127,7 +126,7 @@
     "lat": 54.1440681,
     "lon": -147.9040567
   },
-  "drive_counts_toward_limit": true,
+  "drive_counts_toward_limit": false,
   "dtm": "DTEEC_071085_2345_071006_2345_A01.IMG",
   "evidence": "inferred",
   "first_pass_discrepancies": {
@@ -154,30 +153,30 @@
       }
     },
     "observation_backup": {
-      "distance_m": 96.3,
+      "distance_m": 366.3,
       "first_pass": {
         "lat": 54.16524,
         "lon": -147.89585
       },
       "reviewed": {
-        "lat": 54.166137,
-        "lon": -147.893531
+        "lat": 54.17111413463595,
+        "lon": -147.89250737253616
       }
     },
     "observation_primary": {
-      "distance_m": 449.6,
+      "distance_m": 704.1,
       "first_pass": {
         "lat": 54.16291,
         "lon": -147.90546
       },
       "reviewed": {
-        "lat": 54.166626,
-        "lon": -147.894135
+        "lat": 54.172784,
+        "lon": -147.894109
       }
     }
   },
   "hazard_counts": {
-    "edge": 2,
+    "edge": 4,
     "rockfall": 1,
     "slope": 14,
     "soft_ground": 1
@@ -189,7 +188,6 @@
     "scarp continuation beyond the traced 1.5 km"
   ],
   "open_questions": [
-    "Do crew-rover drive metres count toward the 5,000 m round-trip rule? The current rule says yes.",
     "Scarp lines and profiles are Yasser's agent's image trace: review before relying on edge/rockfall zones."
   ],
   "point_checks": {
@@ -217,13 +215,13 @@
     },
     "observation_backup": {
       "cell": [
-        531,
-        1205
+        236,
+        1244
       ],
       "cells_checked": 783,
       "counts": {
         "artifact": 0,
-        "crew_caution": 8,
+        "crew_caution": 0,
         "edge": 0,
         "invalid_analysis": 0,
         "no_data": 0,
@@ -239,13 +237,13 @@
     },
     "observation_primary": {
       "cell": [
-        502,
-        1182
+        137,
+        1183
       ],
       "cells_checked": 783,
       "counts": {
         "artifact": 0,
-        "crew_caution": 32,
+        "crew_caution": 6,
         "edge": 0,
         "invalid_analysis": 0,
         "no_data": 0,
@@ -305,49 +303,49 @@
   },
   "routes": {
     "rt-crew-backup-v2": {
-      "reason": "over the 5 km round-trip rule",
+      "reason": "over the EVA time with reserve, walkback exceeds the EVA",
       "stats": {
-        "elevation_gain_m": 55.4,
-        "est_time_min": 105.6,
-        "length_m": 2733.5,
+        "elevation_gain_m": 210.6,
+        "est_time_min": 164.1,
+        "length_m": 3319.2,
         "max_slope_deg": 23.7,
-        "round_trip_m": 5467.0,
+        "round_trip_m": 6638.3,
         "shared_with_main_m": 0
       },
       "status": "backup_unavailable"
     },
     "rt-crew-main-v2": {
-      "reason": "over the 5 km round-trip rule",
+      "reason": null,
       "stats": {
-        "elevation_gain_m": 52.4,
-        "est_time_min": 92.2,
-        "length_m": 2551.8,
+        "elevation_gain_m": 57.1,
+        "est_time_min": 134.7,
+        "length_m": 2977.4,
         "max_slope_deg": 23.7,
-        "round_trip_m": 5103.6,
+        "round_trip_m": 5954.7,
         "shared_with_main_m": 0
       },
-      "status": "no_viable_route"
+      "status": "inspection_required"
     },
     "rt-orbital-guess-v1": {
-      "reason": "over the 5 km round-trip rule",
+      "reason": null,
       "stats": {
-        "elevation_gain_m": 52.9,
-        "est_time_min": 92.0,
-        "length_m": 2545.7,
+        "elevation_gain_m": 57.6,
+        "est_time_min": 134.6,
+        "length_m": 2971.3,
         "max_slope_deg": 23.7,
-        "round_trip_m": 5091.4,
+        "round_trip_m": 5942.5,
         "shared_with_main_m": 0
       },
-      "status": "no_viable_route"
+      "status": "inspection_required"
     },
     "rt-rover-v2": {
       "reason": null,
       "stats": {
-        "elevation_gain_m": 52.0,
-        "est_time_min": 257.2,
-        "length_m": 2571.5,
+        "elevation_gain_m": 56.8,
+        "est_time_min": 299.7,
+        "length_m": 2997.1,
         "max_slope_deg": 23.7,
-        "round_trip_m": 2571.5,
+        "round_trip_m": 2997.1,
         "shared_with_main_m": 0
       },
       "status": "inspection_required"
@@ -356,12 +354,12 @@
   "schema_version": "1.0",
   "terrain_evidence": "nasa_derived",
   "viewpoint_margin_outside_rockfall_m": {
-    "observation_backup": 16.3,
-    "observation_primary": 32.1
+    "observation_backup": 53.5,
+    "observation_primary": 145.0
   },
   "walk_only_reference": {
-    "length_m": 2526.9,
-    "round_trip_m": 5053.9,
+    "length_m": 2935.9,
+    "round_trip_m": 5871.9,
     "within_round_trip_rule": false
   }
 }

@@ -50,16 +50,26 @@ export function coverageStyle(p: CoverageProperties): PathOptions {
   };
 }
 
-export function routeStyle(p: RouteProperties, supersededId: string | null, rejected = false): PathOptions {
+export const DRIVE_COLOR = '#7cc4ff';
+export const CANDIDATE_GREY = '#b4b9c2';
+export const REJECTED_GREY = '#8a9099';
+
+export function routeStyle(p: RouteProperties & { leg_mode?: 'drive' | 'walk' }, supersededId: string | null, rejected = false): PathOptions {
   // Purpose: Leaflet style for one route by p.kind. `supersededId` is the crew route
   // replaced by the discovery (drawn faded gray); a route that is not "ok" but still
-  // has a line (e.g. the unverified orbital guess) is drawn amber and dashed.
-  // `rejected` (no viable route, or the terrain audit rejects the line): thin red broken line, never route-like.
-  if (p.id === supersededId) return { color: '#b4b9c2', weight: 4, dashArray: '8 8', opacity: 0.8 };
-  if (rejected) return { color: '#e5484d', weight: 3, dashArray: '2 9', opacity: 0.95, lineCap: 'round' };
-  // The orbital candidate is what the robots will scout: grey and dashed, never route-green.
-  if (p.kind === 'orbital_guess') return { color: '#b4b9c2', weight: 4, dashArray: '10 8', opacity: 0.95 };
+  // has a line is drawn amber and dashed. `p.leg_mode` is set on split routes: a
+  // crew-rover drive leg is drawn light blue. No route is ever red:
+  // `rejected` (no viable route, or the terrain audit rejects the line) is a thin grey dotted line, never route-like;
+  // the orbital candidate the robots will scout is grey and dashed.
+  if (p.id === supersededId) return { color: CANDIDATE_GREY, weight: 4, dashArray: '8 8', opacity: 0.8 };
+  if (rejected) return { color: REJECTED_GREY, weight: 3, dashArray: '2 9', opacity: 0.95, lineCap: 'round' };
+  if (p.kind === 'orbital_guess') return { color: CANDIDATE_GREY, weight: 4, dashArray: p.leg_mode === 'drive' ? '1 9' : '10 8', opacity: 0.95, lineCap: 'round' };
+  // Not "ok": amber. A drive leg is short amber dots so drive and walk stay distinguishable.
+  if (p.status !== 'ok' && p.leg_mode === 'drive') return { color: '#f5a524', weight: 5, dashArray: '1 9', opacity: 1, lineCap: 'round' };
   if (p.status !== 'ok') return { color: '#f5a524', weight: 5, dashArray: '12 8', opacity: 1 };
+  if (p.leg_mode === 'drive' && p.agent === 'crew') {
+    return { color: DRIVE_COLOR, weight: p.kind === 'backup' ? 4 : 6, dashArray: p.kind === 'backup' ? '12 8' : undefined, opacity: 1 };
+  }
   switch (p.kind) {
     case 'main':
       return { color: '#3ddc97', weight: 6, opacity: 1 };

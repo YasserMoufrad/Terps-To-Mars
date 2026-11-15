@@ -36,11 +36,12 @@ test('drone/eva stages exclude the preliminary (before) backup', () => {
 });
 
 test('missing post-discovery backup is reported, not hidden', () => {
-  const noBackup = { ...routes, features: routes.features.filter((f) => f.properties.kind !== 'backup') };
+  // The placeholder data now ships a post-discovery backup, so strip it to test the missing case.
+  const noBackup = { ...routes, features: routes.features.filter((f) => !(f.properties.kind === 'backup' && f.properties.version === 'after')) };
   assert.equal(missingBackupAssessment('eva', noBackup), true);
   assert.equal(missingBackupAssessment('orbital', noBackup), false);
   assert.ok(reviewNotices('eva', noBackup, mission).some((n) => /post-discovery backup/.test(n)));
-  assert.equal(missingBackupAssessment('eva', routes), false, 'the published data carries a post-discovery backup');
+  assert.equal(missingBackupAssessment('eva', routes), false);
   const withBackup = { ...noBackup, features: [...noBackup.features, route({ id: 'b2', kind: 'backup' })] };
   assert.equal(missingBackupAssessment('eva', withBackup), false);
 });
