@@ -234,6 +234,13 @@ export type RouteAuditStatus =
   | 'endpoint_mismatch' | 'candidate_requires_inspection';
 
 export interface RouteAuditEntry {
+  input_route?: RouteFeature;
+  cells?: import('../map/routeInspection').AuditCell[];
+  objective?: string;
+  orientation?: string;
+  cells_caution?: number;
+  first_exclusion_at_m?: number;
+  first_exclusion?: import('../map/routeInspection').AuditCell;
   id: string;
   agent: string;
   kind: string;
@@ -257,6 +264,7 @@ export interface RouteAuditEntry {
 }
 
 export interface RouteAudit {
+  freshness?: import('./analysis').Freshness;
   schema_version: string;
   routes_sha256: string;
   mission_placeholder: boolean;

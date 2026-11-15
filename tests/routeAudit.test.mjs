@@ -33,10 +33,11 @@ test('the preliminary orbital route is shown as rejected with its endpoint gap',
   assert.match(html, /not crew clearance/);
 });
 
-test('claimed vs measured length is shown only when they disagree', () => {
+test('claimed and measured length are always shown separately', () => {
   const rows = (id) => Object.fromEntries(diagnosticRows(auditFor(audit, id)));
-  assert.match(rows('rt-crew-main-v2')['Claimed length'], /differs by/);
-  assert.equal(rows('rt-crew-main-v1')['Claimed length'], undefined);
+  assert.match(rows('rt-crew-main-v2')['Claimed length'], / m$/);
+  assert.match(rows('rt-crew-main-v1')['Claimed length'], / m$/);
+  assert.ok(rows('rt-crew-main-v2')['Length discrepancy']);
 });
 
 test('a file status of ok is called an overclaim', () => {

@@ -1,3 +1,4 @@
+import L from 'leaflet';
 import { useState } from 'react';
 import { useMap } from 'react-leaflet';
 import type { LatLon, OverlayBounds, StageId } from '../data/types';
@@ -43,7 +44,7 @@ export function ImageryControls({overview,hiriseBounds,targets,stage,state,regis
     onInspect(incident);setViewport(incident.name);setChoice('discovery');
     appLogger.info('map','view.rover_incident',{target:incident.target,evidence:'simulated',mission_stage:stage});
   };
-  return <div className="leaflet-top leaflet-right"><div className="leaflet-control imagery-controls">
+  return <div className="leaflet-top leaflet-right"><div className="leaflet-control imagery-controls" ref={node=>{if(node){L.DomEvent.disableClickPropagation(node);L.DomEvent.disableScrollPropagation(node);}}}>
     <div className="imagery-buttons">
       <button type="button" onClick={overviewView}>Stage overview</button>
       <label>Inspect <select aria-label="Inspection target" value={choice} onChange={e=>setChoice(e.target.value)}>

@@ -37,6 +37,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - run: uv sync --locked --python 3.11
+      - run: uv run --no-sync python -m pipeline.science_results --verify
       - run: uv run --no-sync python -m pipeline.validate_contract
       - run: uv run --no-sync pytest
       - name: Generate and validate synthetic handoff bundle

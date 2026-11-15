@@ -32,7 +32,7 @@ PROFILE_POINTS = 240  # elevation-profile samples kept per route in the JSON
 LENGTH_TOLERANCE_M = 15.0  # plus 2 % of the length: claimed stats are rounded
 # Which mission endpoint each route kind is meant to reach (None: no declared objective).
 OBJECTIVE = {"orbital_guess": "observation_primary", "main": "observation_primary",
-             "backup": "observation_backup", "rover_path": None}
+             "backup": None, "rover_path": None}
 STATUS_ORDER = ("geometry_invalid", "outside_assessed_terrain", "excluded_terrain", "unassessed_terrain",
                 "endpoint_mismatch", "candidate_requires_inspection")
 
@@ -125,6 +125,7 @@ class TerrainGrid:
     def __init__(self, terrain, analysis, rules):
         """terrain: pipeline.terrain.Terrain crop; analysis: terrain.analyze output; rules: hazard rules."""
         self.terrain, self.slope, self.valid = terrain, analysis["slope"], analysis["valid"]
+        self.roughness = analysis.get("roughness")
         self.lon0 = float(terrain.crs.to_dict().get("lon_0", 0))
         self.caution = float(threshold(rules, "crew_caution_deg"))
         self.limits = {"crew": float(threshold(rules, "crew_exclude_deg")), "rover": float(threshold(rules, "rover_exclude_deg"))}
@@ -176,12 +177,14 @@ def traverse(grid, coords, modes=None):
     rows, along = [], 0.0
     height, width = grid.slope.shape
     modes = modes or ["walk"] * (len(coords) - 1)
-    for (a, b), (pa, pb), mode in zip(zip(coords, coords[1:]), zip(pixels, pixels[1:]), modes):
+    for segment_index, ((a, b), (pa, pb), mode) in enumerate(zip(zip(coords, coords[1:]), zip(pixels, pixels[1:]), modes)):
         seg_m = mars_distance(a, b)
         for (col, row), t in supercover(pa[0], pa[1], pb[0], pb[1]):
             inside = 0 <= row < height and 0 <= col < width
             known = inside and bool(grid.valid[row, col])
-            rows.append({"col": col, "row": row, "distance_m": along + t * seg_m, "inside": inside, "known": known,
+            rows.append({"segment_index": segment_index, "coordinates": grid.cell_lonlat(col, row),
+                         "roughness_m": float(grid.roughness[row, col]) if known and getattr(grid, "roughness", None) is not None and np.isfinite(grid.roughness[row, col]) else None,
+                         "col": col, "row": row, "distance_m": along + t * seg_m, "inside": inside, "known": known,
                          "limit": grid.limits["rover" if mode == "drive" else "crew"], "mode": mode,
                          "slope": float(grid.slope[row, col]) if known else None,
                          "elevation": float(grid.terrain.elevation[row, col]) if known else None})
@@ -192,20 +195,20 @@ def traverse(grid, coords, modes=None):
 def intended_endpoints(feature, mission):
     """(start, end) [lon, lat] the route is meant to join, or None for an undeclared objective."""
     endpoints = mission.get("endpoints", {})
-    objective = OBJECTIVE.get(feature["properties"].get("kind"))
+    objective = feature["properties"].get("objective_endpoint") or OBJECTIVE.get(feature["properties"].get("kind"))
     habitat = endpoints.get("habitat")
     if objective is None or habitat is None or objective not in endpoints:
         return None
     return [habitat["lon"], habitat["lat"]], [endpoints[objective]["lon"], endpoints[objective]["lat"]]
 
 
-def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
+def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None, faces=None):
     """Measure one route feature; returns its diagnostic dict (never modifies the feature)."""
     props = feature.get("properties", {})
     coords = feature.get("geometry", {}).get("coordinates") or []
     agent = props.get("agent", "crew")
     tolerance = float(threshold(rules, "position_uncertainty_m"))
-    result = {"id": props.get("id"), "agent": agent, "kind": props.get("kind"), "claimed_status": props.get("status"),
+    result = {"input_route": feature, "id": props.get("id"), "agent": agent, "kind": props.get("kind"), "claimed_status": props.get("status"),
               "evidence": "inferred", "terrain_evidence": "nasa_derived",
               "exclude_threshold_deg": {"walk": grid.limits["crew"], "drive": grid.limits["rover"]}, "reasons": []}
     reasons = result["reasons"]
@@ -223,6 +226,8 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
             reasons.append(f"stats_mismatch: claims {claimed:.0f} m, line measures {measured:.0f} m")
     intended = intended_endpoints(feature, mission)
     if intended:
+        result["objective"] = props.get("objective_endpoint") or OBJECTIVE.get(props.get("kind"))
+        result["intended_endpoints"] = intended
         forward = (mars_distance(coords[0], intended[0]), mars_distance(coords[-1], intended[1]))
         reverse = (mars_distance(coords[0], intended[1]), mars_distance(coords[-1], intended[0]))
         offsets, orientation = (forward, "outbound") if max(forward) <= max(reverse) else (reverse, "return")
@@ -249,6 +254,7 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
     if excluded:
         first = excluded[0]
         result["first_exclusion_at_m"] = round(first["distance_m"], 1)
+        result["first_exclusion"] = first
         by_mode = {m: sum(1 for c in excluded if c["mode"] == m) for m in ("drive", "walk")}
         detail = ", ".join(f"{n} {m} cells ≥ {grid.limits['rover' if m == 'drive' else 'crew']:g}°" for m, n in by_mode.items() if n)
         reasons.append(f"excluded_terrain: {detail} (first {first['distance_m']:.0f} m along, max {result['max_slope_deg']}°)")
@@ -256,12 +262,24 @@ def audit_route(feature, mission, grid, rules, face=None, scarp_foot=None):
         reasons.append(f"outside_assessed_terrain: {len(outside)} crossed cells outside the analysed DTM crop")
     if unknown:
         reasons.append(f"unassessed_terrain: {len(unknown)} crossed cells have no valid DTM slope")
-    if face:
+    face_rings = faces if faces is not None else ([face] if face else [])
+    if face_rings:
         centres = [grid.cell_lonlat(c["col"], c["row"]) for c in cells if c["inside"]]
-        hits = point_in_polygon([p[0] for p in centres], [p[1] for p in centres], face) if centres else np.array([])
+        hits = np.zeros(len(centres), dtype=bool)
+        for ring in face_rings:
+            hits |= point_in_polygon([p[0] for p in centres], [p[1] for p in centres], ring)
+        for cell, hit in zip([c for c in cells if c["inside"]], hits):
+            cell["on_scarp_face"] = bool(hit)
+        face_cells = [c for c in cells if c.get("on_scarp_face")]
+        if face_cells:
+            first = min(face_cells + excluded, key=lambda c: c["distance_m"])
+            result["first_exclusion"] = first
+            result["first_exclusion_at_m"] = round(first["distance_m"], 1)
         result["cells_on_scarp_face"] = int(hits.sum())
         if hits.any():
             reasons.append(f"excluded_terrain: crosses the traced scarp face ({int(hits.sum())} cells)")
+    result["cells"] = cells
+    result["artifact_review"] = "not_reviewed"
     step = max(1, math.ceil(len(cells) / PROFILE_POINTS))
     sample = cells[::step] + ([cells[-1]] if (len(cells) - 1) % step else [])
     result["profile"] = [[round(c["distance_m"], 1), None if c["elevation"] is None else round(c["elevation"], 2),
@@ -288,6 +306,10 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
         raise FileNotFoundError(f"{dtm_path} not found; download the HiRISE DTM first (pipeline/README.md)")
     scarp = json.loads(Path(scarp_path).read_text()) if scarp_path and Path(scarp_path).exists() else None
     face = scarp_face(scarp)
+    traced = {f["properties"]["id"]: f["geometry"]["coordinates"] for f in (scarp or {}).get("features", [])
+              if f.get("geometry", {}).get("type") == "LineString"}
+    faces = [line + list(reversed(traced[key[:-5] + "-foot"])) for key, line in traced.items()
+             if key.endswith("-edge") and key[:-5] + "-foot" in traced]
     foot = next((f["geometry"]["coordinates"] for f in (scarp or {}).get("features", []) if f["properties"].get("id") == "scarp-foot"), None)
     lines = [f for f in routes["features"] if len(f["geometry"].get("coordinates") or []) >= 2]
     coords = [c for f in lines for c in f["geometry"]["coordinates"]]
@@ -295,7 +317,7 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
     grid = load_grid(dtm_path, coords, rules)
     audits = []
     for feature in routes["features"]:
-        audit = audit_route(feature, mission, grid, rules, face, foot)
+        audit = audit_route(feature, mission, grid, rules, face, foot, faces)
         level = logging.WARNING if audit["audit_status"] != "candidate_requires_inspection" or not audit.get("status_consistent", True) else logging.INFO
         event("route_audited", level, route_id=audit["id"], agent=audit["agent"], audit_status=audit["audit_status"],
               claimed_status=audit["claimed_status"], reasons=audit["reasons"], max_slope_deg=audit.get("max_slope_deg"),
@@ -305,6 +327,7 @@ def audit_file(routes_path, mission_path, dtm_path=DEFAULT_DTM, scarp_path=None,
     payload = {
         "schema_version": SCHEMA_VERSION, "evidence": "inferred", "terrain_evidence": "nasa_derived",
         "dtm": Path(dtm_path).name, "routes_sha256": canonical_sha256(routes),
+        "input_context": {"mission": mission, "scarp_lines": scarp, "rules": rules},
         "mission_placeholder": bool(mission.get("placeholder")), "routes_placeholder": bool(routes.get("placeholder")),
         "scarp_source": Path(scarp_path).name if scarp else None,
         "thresholds_deg": {"crew_caution": grid.caution, "crew_exclude": grid.limits["crew"], "rover_exclude": grid.limits["rover"]},

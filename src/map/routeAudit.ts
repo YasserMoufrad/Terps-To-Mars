@@ -20,29 +20,24 @@ export function escapeHtml(text: string): string {
 
 export function auditFor(audit: RouteAudit | null, id: string): RouteAuditEntry | null {
   // Purpose: the audit entry for route `id`, or null when the route has not been audited.
+  if (audit?.freshness && audit.freshness !== 'current') return null;
   return audit?.routes.find((r) => r.id === id) ?? null;
 }
 
 export function diagnosticRows(entry: RouteAuditEntry): [string, string][] {
-  // Purpose: label/value rows for the popup; claimed length appears only when it disagrees.
-  const rows: [string, string][] = [['Status', AUDIT_STATUS_TEXT[entry.audit_status] ?? entry.audit_status]];
-  if (entry.length_m !== undefined) rows.push(['Measured length', `${Math.round(entry.length_m)} m`]);
-  // Same tolerance as the pipeline (15 m + 2 %): shown when the audit flagged stats_mismatch.
-  if (entry.claimed_length_m !== undefined && entry.length_mismatch_m !== undefined
-    && entry.reasons.some((r) => r.startsWith('stats_mismatch'))) {
-    rows.push(['Claimed length', `${Math.round(entry.claimed_length_m)} m (differs by ${Math.round(entry.length_mismatch_m)} m)`]);
-  }
-  if (entry.max_slope_deg !== undefined && entry.max_slope_deg !== null) rows.push(['Steepest crossed cell', `${entry.max_slope_deg}°`]);
-  if (entry.cells_excluded !== undefined) rows.push(['Excluded cells crossed', String(entry.cells_excluded)]);
-  if ((entry.cells_unknown ?? 0) > 0 || (entry.cells_outside ?? 0) > 0) {
-    rows.push(['Unknown data', `${entry.cells_unknown ?? 0} cells without slope, ${entry.cells_outside ?? 0} outside the DTM crop`]);
-  }
-  if (entry.start_offset_m !== undefined && entry.end_offset_m !== undefined) {
-    rows.push(['Start / end offset', `${Math.round(entry.start_offset_m)} m / ${Math.round(entry.end_offset_m)} m from the intended points`]);
-  }
-  if (entry.end_to_scarp_foot_m !== undefined) rows.push(['Objective end to scarp foot', `${Math.round(entry.end_to_scarp_foot_m)} m`]);
-  if (entry.status_consistent === false) rows.push(['File status', `"${entry.claimed_status}" overclaims: terrain evidence supports at most inspection`]);
-  return rows;
+  // Keep zero and missing values distinct; measured and claimed lengths remain separate.
+  const number=(v:unknown,unit='')=>typeof v==='number'&&Number.isFinite(v)?String(v)+unit:'Not measured';
+  return [
+    ['Status', AUDIT_STATUS_TEXT[entry.audit_status] ?? entry.audit_status],
+    ['Measured length',number(entry.length_m,' m')],['Claimed length',number(entry.claimed_length_m,' m')],
+    ['Length discrepancy',number(entry.length_mismatch_m,' m')],['Steepest crossed cell',number(entry.max_slope_deg,'°')],
+    ['Cells crossed',number(entry.cells_crossed)],['Caution cells crossed',number(entry.cells_caution)],
+    ['Excluded cells crossed',number(entry.cells_excluded)],['Unknown cells',number(entry.cells_unknown)],
+    ['Outside assessed terrain',number(entry.cells_outside)],['Scarp face cells',number(entry.cells_on_scarp_face)],
+    ['Start / end offset',number(entry.start_offset_m,' m')+' / '+number(entry.end_offset_m,' m')+' from the intended points'],
+    ['Objective end to scarp foot',number(entry.end_to_scarp_foot_m,' m')],
+    ['File status',entry.status_consistent===false?'"'+entry.claimed_status+'" overclaims: terrain evidence supports at most inspection':entry.claimed_status],
+  ];
 }
 
 export function profileSvg(profile: RouteAuditEntry['profile'], caution: number, exclude: number, width = 240, height = 70): string {

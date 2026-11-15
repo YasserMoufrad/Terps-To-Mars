@@ -1,3 +1,4 @@
+import { AnalysisPanel } from './components/AnalysisPanel';
 // Top-level screen: loads the data once, keeps the current stage, and lays out
 // the header, the guided step bar, the map and the side panel.
 
@@ -40,7 +41,7 @@ export function App() {
     appLogger.info('ui', 'stage.change', { mission_stage: stage });
 
     for (const f of routesFor(stage, routes, mission).features) {
-      logRouteReview(appLogger, f, stage);
+      logRouteReview(appLogger, f, stage, data.routeAudit);
     }
     if (missingBackupAssessment(stage, routes)) {
       appLogger.warn('safety', 'backup.assessment_missing', { mission_stage: stage, required_version: 'after' });
@@ -72,7 +73,7 @@ export function App() {
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
   const routeNotices =
     ready
-      ? reviewNotices(stage, routes, mission)
+      ? reviewNotices(stage, routes, mission, data.routeAudit)
       : [];
 
   const changeStage = (next: StageId) => {
@@ -113,10 +114,13 @@ export function App() {
               slopeMeta={data.slopeMeta}
               scarpLines={data.scarpLines}
               routeAudit={data.routeAudit}
+              scienceTargets={data.scienceTargets}
+              analysis={data.analysis}
               layers={layers}
               onSelectHazard={setSelectedHazard}
               onImageryState={setHiriseState}
             />
+            <div className="side-content"><div id="analysis-inspector-slot"/>
             <StagePanel
               stage={stage}
               mission={mission}
@@ -133,12 +137,14 @@ export function App() {
                 />
               )}
             />
+            </div>
           </main>
         </>
       ) : (
         <div className="loading">Core data files are missing; see the errors above.</div>
       )}
 
+      <AnalysisPanel analysis={data.analysis}/>
       {showBrief && mission && (
         <MissionBrief
           siteName={mission.site.name}

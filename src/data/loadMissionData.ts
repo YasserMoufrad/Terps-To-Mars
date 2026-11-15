@@ -1,3 +1,5 @@
+import { loadAnalysis, type AnalysisResults } from './analysis.ts';
+import { checkScienceTargets, DEFAULT_SCIENCE_TARGETS, type ScienceTargets } from '../map/scienceTargets.ts';
 // Loads every file in public/data/, checks it against the contract, and
 // collects problems as "issues" instead of crashing. The app shows the issues
 // on screen, so a missing or broken file is never silently treated as "no hazards".
@@ -21,6 +23,8 @@ export interface LoadIssue {
 }
 
 export interface MissionData {
+  analysis: AnalysisResults;
+  scienceTargets: ScienceTargets;
   hazards: HazardCollection | null;
   routes: RouteCollection | null;
   coverage: CoverageCollection | null;
@@ -369,6 +373,14 @@ export function checkRouteAudit(raw: unknown, file: string, issues: LoadIssue[])
     return null;
   }
   checkSchemaVersion(a, file, issues);
+  if (a.schema_version !== SCHEMA_VERSION) return null;
+  if (a.routes.some(r => r.cells?.some(c => !Array.isArray(c.coordinates) || c.coordinates.length!==2
+    || !c.coordinates.every(finite) || !finite(c.limit) || !finite(c.segment_index)
+    || typeof c.known!=='boolean' || typeof c.inside!=='boolean'
+    || ![c.slope,c.elevation,c.roughness_m].every(v=>v===null||finite(v))))) {
+    issues.push({file,severity:'warning',message:'Invalid native-cell measurements; audit ignored.'});
+    return null;
+  }
   return a as RouteAudit;
 }
 
@@ -428,7 +440,11 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
     fetchOptional(baseUrl, 'route_audit.json', issues),
   ]);
   const scarpLines = checkScarpLines(scarpRaw, 'scarp_lines.geojson', issues);
-  const routeAudit = checkRouteAudit(auditRaw, 'route_audit.json', issues);
+  let routeAudit = checkRouteAudit(auditRaw, 'route_audit.json', issues);
+  const analysis = await loadAnalysis(baseUrl, logger);
+  if (analysis.state === 'current') routeAudit = checkRouteAudit(analysis.reports['route_audit.json'], 'route_audit.json', issues);
+  if (routeAudit) routeAudit.freshness = analysis.state;
+  const scienceTargets = checkScienceTargets(await fetchOptional(baseUrl, 'science_targets.json', issues)) ?? DEFAULT_SCIENCE_TARGETS;
   if (routeAudit && routes) {
     const audited = new Set(routeAudit.routes.map((r) => r.id));
     const missing = routes.features.map((f) => f.properties.id).filter((id) => !audited.has(id));
@@ -479,6 +495,8 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
   });
 
   return {
+    analysis,
+    scienceTargets,
     hazards,
     routes,
     coverage,

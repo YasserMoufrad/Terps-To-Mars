@@ -23,6 +23,7 @@ export function SlopeLegend({ meta, state }: { meta: SlopeMeta; state: SlopeLoad
           </div>
         ))}
         <div className="legend-row muted">{SLOPE_SOURCE_TEXT}</div>
+        <div className="legend-row muted">Artifact QC: not reviewed. Unknown fraction: {(meta.unknown_fraction*100).toFixed(2)}%. Zero unknown cells does not mean artifact-free.</div>
         <div className="legend-row muted">Does not resolve sub-metre rocks, overhangs, loose soil or surface instability.</div>
       </details>
     </div>
