@@ -72,6 +72,8 @@ button { font: inherit; }
 .nav-btn:disabled { opacity: 0.35; cursor: default; }
 .primary { background: var(--accent); color: #04223f; border-color: var(--accent); font-weight: 600; }
 .lookfor { margin: 8px 2px 0; font-size: 14px; line-height: 1.45; }
+.guide-action { margin: 7px 2px 0; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 6px; background: rgba(77, 163, 255, 0.12); color: var(--text); cursor: pointer; font-size: 13px; }
+.guide-action:hover { background: rgba(77, 163, 255, 0.22); }
 
 /* ---------- map ---------- */
 .layout { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 0; }
@@ -116,6 +118,7 @@ button { font: inherit; }
 .imagery-buttons button:hover:not(:disabled) { border-color: var(--warn); }
 .imagery-buttons button:disabled { opacity: 0.5; cursor: not-allowed; }
 .imagery-status { margin-top: 6px; line-height: 1.35; }
+.imagery-help { margin: 5px 0; color: var(--muted); line-height: 1.35; }
 .imagery-status p { margin: 4px 0 0; color: var(--muted, #aab); }
 .imagery-state { font-weight: 600; }
 .imagery-failed, .imagery-partial, .layer-note { color: var(--warn); }
@@ -206,7 +209,11 @@ button { font: inherit; }
 .brief-kicker { color: var(--accent); font-size: 13px; margin: 0 !important; }
 .brief-steps { margin: 0 0 14px; padding-left: 20px; line-height: 1.7; }
 .brief-howto { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.brief-howto span { font-size: 13px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.brief-howto span { flex: 1 1 220px; font-size: 13px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.brief-key { font-size: 13px; }
+.brief-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.recap ul { padding-left: 20px; line-height: 1.5; font-size: 14px; }
+.recap li { margin: 0 0 7px; }
 .brief-note { font-size: 13px; color: #fac775; border-left: 3px solid var(--warn); padding-left: 10px; }
 .brief .primary { padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 15px; }
 
@@ -219,6 +226,15 @@ button { font: inherit; }
   .layout { grid-template-columns: 1fr; grid-template-rows: 60vh auto; }
   .panel { border-left: none; border-top: 1px solid var(--line); }
   .subtitle { display: none; }
+}
+@media (max-width: 640px) {
+  .stagenav-row { flex-wrap: wrap; }
+  .steps { order: -1; flex-basis: 100%; justify-content: space-between; }
+  .steps li { flex: 1; }
+  .step { justify-content: center; }
+  .nav-btn { flex: 1; }
+  .guide-action { width: 100%; margin-left: 0; }
+  .brief { max-height: 86vh; padding: 16px; }
 }
 
 /* ---------- ground-view photos (example terrain, not this site) ---------- */

@@ -2,6 +2,7 @@
 // caption telling the viewer what to look at in this step.
 
 import { STAGE_IDS, type StageId } from '../data/types';
+import { WALKTHROUGH_GUIDANCE } from './walkthrough';
 
 const STAGE_NAMES: Record<StageId, string> = {
   orbital: 'Orbital planning',
@@ -10,22 +11,15 @@ const STAGE_NAMES: Record<StageId, string> = {
   eva: 'Astronaut mission review',
 };
 
-// What to look for on the map at each step.
-const LOOK_FOR: Record<StageId, string> = {
-  orbital: 'Review the orbit-only plan (gray: a line to scout) and the modeled hazards. It avoids every cliff and slope visible from orbit, but no robot has checked it yet.',
-  rover: 'The simulated rover stopped at the red marker: suspected soft ground. Compare the previous route with the proposed alternative and its reported status.',
-  drone: 'Review the drone concept, available coverage evidence, and inspection limits. A proposed perch does not establish a flight or checked field of view.',
-  eva: 'Review the proposed route, the post-discovery backup assessment, and the evidence behind each hazard. Route geometry is not crew clearance.',
-};
-
 interface StageNavProps {
   stage: StageId;
   onChange: (stage: StageId) => void;
+  onAction: (stage: StageId) => void;
+  onFinish: () => void;
 }
 
-export function StageNav({ stage, onChange }: StageNavProps) {
-  // Purpose: Back/Next plus the four numbered steps and the current step's caption.
-  // `stage` is the current step; `onChange` moves to another one.
+export function StageNav({ stage, onChange, onAction, onFinish }: StageNavProps) {
+  // Purpose: navigate four stages, offer one map action for `stage`, then finish the walkthrough.
   const index = STAGE_IDS.indexOf(stage);
   const previous = index > 0 ? STAGE_IDS.at(index - 1) : undefined;
   const next = index < STAGE_IDS.length - 1 ? STAGE_IDS.at(index + 1) : undefined;
@@ -50,13 +44,14 @@ export function StageNav({ stage, onChange }: StageNavProps) {
             </li>
           ))}
         </ol>
-        <button className="nav-btn primary" onClick={() => next && onChange(next)} disabled={!next}>
-          Next →
+        <button className="nav-btn primary" onClick={() => next ? onChange(next) : onFinish()}>
+          {next ? 'Next →' : 'Finish walkthrough'}
         </button>
       </div>
       <p className="lookfor">
-        <strong>Step {index + 1} of 4:</strong> {LOOK_FOR[stage]}
+        <strong>Try this on the map · Step {index + 1} of 4:</strong> {WALKTHROUGH_GUIDANCE[stage].instruction}
       </p>
+      <button className="guide-action" type="button" onClick={() => onAction(stage)}>{WALKTHROUGH_GUIDANCE[stage].action} →</button>
     </div>
   );
 }

@@ -1,18 +1,28 @@
 // The first thing a judge sees: what this map is, why it matters, and how to use it.
 // Reopened any time from the "About this mission" button in the header.
 
+import { useEffect, useRef } from 'react';
+
 interface MissionBriefProps {
   siteName: string;
   isDemoData: boolean;
-  onStart: () => void;
+  hasStarted: boolean;
+  onContinue: () => void;
+  onRestart: () => void;
 }
 
-export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProps) {
-  // Purpose: intro dialog explaining the mission and how to use the map.
-  // `isDemoData` adds the placeholder-data note; `onStart` closes it and begins step 1.
+export function MissionBrief({ siteName, isDemoData, hasStarted, onContinue, onRestart }: MissionBriefProps) {
+  // Purpose: compact first-use help. `hasStarted` changes Continue to Resume without resetting the current stage.
+  const briefRef = useRef<HTMLDivElement>(null);
+  const continueRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Keep the help dialog at its top while focusing the primary action for keyboard users.
+    continueRef.current?.focus({ preventScroll: true });
+    if (briefRef.current) briefRef.current.scrollTop = 0;
+  }, []);
   return (
     <div className="brief-backdrop" role="dialog" aria-modal="true" aria-labelledby="brief-title">
-      <div className="brief">
+      <div className="brief" ref={briefRef}>
         <p className="brief-kicker">NASA Space Apps 2026 · Interplanetary Survival Guide: Martian Map</p>
         <h1 id="brief-title">Plan and evaluate a Marswalk to an ice-scarp candidate</h1>
         <p>
@@ -21,19 +31,14 @@ export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProp
           (simulated) robot scouting adds evidence about hazards astronauts can't see before the crew walks out.
         </p>
 
-        <ol className="brief-steps">
-          <li><strong>Orbital planning:</strong> a first candidate route from NASA orbital data, needing inspection.</li>
-          <li><strong>Rover reconnaissance:</strong> a simulated rover drives ahead and reports a hidden hazard.</li>
-          <li><strong>Drone inspection concept:</strong> review planned coverage and inspection limits.</li>
-          <li><strong>Astronaut mission review:</strong> review the proposed route, the reconnaissance evidence and the backup options.</li>
-        </ol>
-        <p className="muted">Nothing on this map is crew clearance; it shows what the evidence supports and what still needs inspection.</p>
-
         <div className="brief-howto">
-          <span>Step through with <strong>Next</strong></span>
-          <span>Click any hazard to see its evidence</span>
-          <span>Toggle layers in the side panel</span>
+          <span><strong>Explore:</strong> zoom and pan the map; click locations for terrain details.</span>
+          <span><strong>Inspect routes:</strong> select a line or use Inspect route for distance, slope and hazards.</span>
+          <span><strong>Switch layers:</strong> compare HiRISE, slope and scouting coverage in the side panel.</span>
+          <span><strong>Follow four steps:</strong> use Next and each “Try this on the map” action.</span>
         </div>
+        <p className="brief-key"><strong>Map key:</strong> gray = preliminary or rejected; amber = candidate needing inspection; green = conditional planning route after simulated scouting. Dotted marks simulated evidence, dashed marks inferred evidence, and solid marks NASA-derived evidence.</p>
+        <p className="muted">NASA observations are real; rover and drone reconnaissance are simulated. Green never means certified astronaut safety or crew clearance.</p>
 
         {isDemoData && (
           <p className="brief-note">
@@ -42,9 +47,10 @@ export function MissionBrief({ siteName, isDemoData, onStart }: MissionBriefProp
           </p>
         )}
 
-        <button className="primary" onClick={onStart} autoFocus>
-          Start the walkthrough
-        </button>
+        <div className="brief-actions">
+          <button className="primary" onClick={onContinue} ref={continueRef}>{hasStarted ? 'Resume walkthrough' : 'Start walkthrough'}</button>
+          {hasStarted && <button className="link-btn" onClick={onRestart}>Restart from Step 1</button>}
+        </div>
       </div>
     </div>
   );

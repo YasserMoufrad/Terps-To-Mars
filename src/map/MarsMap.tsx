@@ -5,7 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { GeoJsonObject } from 'geojson';
 import { createPortal } from 'react-dom';
-import { MapContainer, TileLayer, GeoJSON, CircleMarker, Marker, Polygon, Tooltip, ImageOverlay, Pane, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Marker, Polygon, Tooltip, ImageOverlay, Pane, useMap, useMapEvents } from 'react-leaflet';
 import { vehicleIcon } from './vehicleIcons';
 import { appLogger } from '../lib/appLogger';
 import { createTileErrorReporter, type TileCoords } from './tileErrors';
@@ -80,6 +80,7 @@ interface MarsMapProps {
   scarpLines?: ScarpLines | null; // traced scarp edge/foot: the "Inspect scarp" target
   routeAudit?: RouteAudit | null; // measured diagnostics shown when a route is clicked
   layers: LayerVisibility;
+  guidedAction?: { stage: StageId; serial: number } | null; // one explicit walkthrough focus request
   onSelectHazard: (hazard: HazardProperties) => void;
   onImageryState?: (state: ImageryLoadState) => void; // reports the HiRISE load state to the layer toggles
 }
@@ -106,7 +107,7 @@ function dataUrl(file: string): string {
 
 export function MarsMap({
   stage, mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, hiriseTiles, slopeBounds, layers, onSelectHazard,
-  onImageryState, slopeMeta = null, scarpLines = null, routeAudit = null, scienceTargets = DEFAULT_SCIENCE_TARGETS, analysis,
+  onImageryState, slopeMeta = null, scarpLines = null, routeAudit = null, scienceTargets = DEFAULT_SCIENCE_TARGETS, analysis, guidedAction = null,
 }: MarsMapProps) {
   // `hiriseTiles`: published HiRISE tile sets (context ring first, native corridor last).
   // Purpose: draw the basemap and every data layer for the current `stage`.
@@ -181,6 +182,29 @@ export function MarsMap({
     setInspectedTarget(null);
     setReplay('context');
   }, [stage]);
+  useEffect(() => {
+    // A guided action opens the same inspector as a manual route or waypoint selection.
+    if (!guidedAction || guidedAction.stage !== stage) return;
+    if (stage === 'orbital') {
+      const preliminary = routes.features.find((route) => route.properties.kind === 'orbital_guess');
+      if (preliminary) selectRoute(preliminary.properties.id);
+    } else if (stage === 'rover') {
+      inspectPoint('Rover incident (simulated)', mission.discovery.location, 'simulated', 'mission.json', 'Suspected soft ground; simulated observation');
+      setReplay('context');
+    } else if (stage === 'drone') {
+      inspectPoint('Drone perch (proposed)', mission.drone.perch, 'simulated', 'mission.json', 'Proposed field of view; no flight occurred');
+    } else {
+      selectRoute(mission.discovery.after_route_id);
+    }
+    appLogger.info('ui', 'walkthrough.map_action', { mission_stage: stage, action_serial: guidedAction.serial,
+      evidence: stage === 'rover' || stage === 'drone' ? 'simulated' : 'inferred', crew_clearance: 'not_established' });
+  }, [guidedAction]);
+  useEffect(() => {
+    // On mobile, a map inspection is rendered below the map; scroll the new result into view.
+    if (!selection || !window.matchMedia('(max-width: 800px)').matches) return;
+    const frame = requestAnimationFrame(() => document.getElementById('analysis-inspector-slot')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return () => cancelAnimationFrame(frame);
+  }, [selection]);
 
   // Slope overlay: drawn only with valid bounds + metadata; the decoded PNG must have one pixel per DTM cell.
   const slopePublished = slopeAvailable(slopeBounds, slopeMeta);
@@ -292,6 +316,7 @@ export function MarsMap({
           geometries={routes.features.map((f) => f.geometry.coordinates)}
           points={[mission.endpoints.habitat, mission.endpoints.observation_primary, mission.endpoints.observation_backup]}
         />
+        <GuidedMapFocus action={guidedAction} mission={mission} />
         <CoordinateReadout />
         <MarsScaleBar />
         <TerrainClick analysis={analysis} onSelect={setSelection} />
@@ -579,6 +604,7 @@ export function MarsMap({
             {routes.features.map((f) => <option key={f.properties.id} value={f.properties.id}>{routeLabel(f.properties.id)}</option>)}
           </select>
         </label>
+        <span>Select a route to open its terrain and distance details below the map on phones.</span>
         {stage === 'rover' && (
           <label>Replay{' '}
             <select aria-label="Static replay" value={replay} onChange={(e) => {
@@ -601,6 +627,17 @@ export function MarsMap({
       {!imageryLoaded && <div className="map-loading">Loading Mars imagery…</div>}
     </div>
   );
+}
+
+function GuidedMapFocus({ action, mission }: { action: { stage: StageId; serial: number } | null; mission: Mission }) {
+  // Fly to the simulated incident or proposed perch for a requested walkthrough action; other stages keep their route overview.
+  const map = useMap();
+  useEffect(() => {
+    if (!action) return;
+    const point = action.stage === 'rover' ? mission.discovery.location : action.stage === 'drone' ? mission.drone.perch : null;
+    if (point) map.flyTo([point.lat, point.lon], 16, { duration: 0.6 });
+  }, [action, map, mission]);
+  return null;
 }
 
 function TerrainClick({ analysis, onSelect }: { analysis: AnalysisResults | undefined; onSelect: (selection: Inspection) => void }) {
