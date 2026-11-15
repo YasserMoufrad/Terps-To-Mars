@@ -76,10 +76,5 @@ export function inside(point: LatLon, b: OverlayBounds): boolean {
   // Purpose: true when `point` lies within the south/west/north/east box `b`.
   return point.lat >= b.south && point.lat <= b.north && point.lon >= b.west && point.lon <= b.east;
 }
-
-export function inspectTarget(bounds: OverlayBounds, candidates: LatLon[]): LatLon {
-  // Purpose: where "Inspect scarp" centres the map: the first candidate point (e.g. the primary observation
-  // point) that lies inside the native image, otherwise the image centre. Never a point outside the image.
-  return candidates.find((p) => inside(p, bounds))
-    ?? { lat: (bounds.south + bounds.north) / 2, lon: (bounds.west + bounds.east) / 2 };
-}
+// "Inspect scarp" targets live in scarpTarget.ts: they come from scarp geometry only, never from an
+// observation point or an image midpoint.

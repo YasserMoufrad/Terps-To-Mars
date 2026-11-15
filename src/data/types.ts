@@ -204,3 +204,63 @@ export interface HiriseMeta {
   registration_rms_m?: number; // measured offset vs the DTM-companion orthoimage, metres
   registration_max_m?: number;
 }
+
+// slope.meta.json, written by Nic's pipeline.slope_mvp next to slope.png (one PNG pixel = one DTM cell).
+export interface SlopeLegendEntry {
+  class: string; // below_caution | crew_caution | crew_excluded | crew_and_rover_excluded | unknown
+  label: string; // degree range and meaning, e.g. "15° to <20° (crew caution)"
+  rgba: [number, number, number, number];
+}
+
+export interface SlopeMeta {
+  schema_version: string;
+  evidence: 'nasa_derived';
+  source: string; // DTM product file name
+  grid: { pixels: [number, number] }; // PNG width, height = DTM columns, rows
+  bounds: { south: number; west: number; north: number; east: number };
+  thresholds_deg: { crew_caution: number; crew_exclude: number; rover_exclude: number };
+  legend: SlopeLegendEntry[];
+  unknown_fraction: number;
+  limitations: string;
+}
+
+// scarp_lines.geojson: traced scarp top edge and foot (inferred from HiRISE imagery, not ground truth).
+export interface ScarpLineProperties { id: 'scarp-edge' | 'scarp-foot' | string; name?: string; evidence: Evidence }
+export type ScarpLines = FeatureCollection<Feature<LineStringGeometry, ScarpLineProperties>>;
+
+// route_audit.json, written by Nic's pipeline.route_audit: measured diagnostics per published route line.
+export type RouteAuditStatus =
+  | 'geometry_invalid' | 'outside_assessed_terrain' | 'excluded_terrain' | 'unassessed_terrain'
+  | 'endpoint_mismatch' | 'candidate_requires_inspection';
+
+export interface RouteAuditEntry {
+  id: string;
+  agent: string;
+  kind: string;
+  claimed_status: string;
+  audit_status: RouteAuditStatus;
+  status_consistent?: boolean;
+  reasons: string[];
+  length_m?: number;
+  claimed_length_m?: number;
+  length_mismatch_m?: number;
+  start_offset_m?: number;
+  end_offset_m?: number;
+  end_to_scarp_foot_m?: number;
+  max_slope_deg?: number | null;
+  cells_crossed?: number;
+  cells_excluded?: number;
+  cells_unknown?: number;
+  cells_outside?: number;
+  cells_on_scarp_face?: number;
+  profile?: [number, number | null, number | null][]; // [distance_m, elevation_m, slope_deg]
+}
+
+export interface RouteAudit {
+  schema_version: string;
+  routes_sha256: string;
+  mission_placeholder: boolean;
+  thresholds_deg: { crew_caution: number; crew_exclude: number; rover_exclude: number };
+  limitations: string;
+  routes: RouteAuditEntry[];
+}
