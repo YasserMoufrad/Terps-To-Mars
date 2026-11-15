@@ -70,7 +70,7 @@ export const SCIENCE_SOURCES: Source[] = [
     url: 'https://www.uahirise.org/ESP_071006_2345' },
 ];
 
-export const SCIENCE_CREDIT = 'Science text: Geury (Terrapin Trekkers), from his HiRISE enhanced-color analysis.';
+export const SCIENCE_CREDIT = 'Science text: Geury (Terps to Mars), from his HiRISE enhanced-color analysis.';
 
 // One line for the evidence card of the traced cliff faces.
 export const ICE_EVIDENCE =
