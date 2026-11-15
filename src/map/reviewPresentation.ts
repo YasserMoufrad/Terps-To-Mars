@@ -1,3 +1,5 @@
+import { currentEntry } from './routeInspection.ts';
+import type { RouteAudit } from '../data/types.ts';
 import type { CoverageCollection, Mission, RouteCollection, RouteFeature, StageId } from '../data/types.ts';
 import type { Logger } from '../lib/logger.ts';
 import { hasLine, routesFor } from './stageFilters.ts';
@@ -31,23 +33,25 @@ export function missingBackupAssessment(stage: StageId, routes: RouteCollection)
   );
 }
 
-export function reviewNotices(stage: StageId, routes: RouteCollection, mission: Mission): string[] {
+export function reviewNotices(stage: StageId, routes: RouteCollection, mission: Mission, audit: RouteAudit | null = null): string[] {
   // Build notices for this mission stage and explicitly report a missing post-discovery assessment.
   const notices = routesFor(stage, routes, mission).features.flatMap(route => {
-    const notice = routeReviewNotice(route);
+    const entry = currentEntry(audit, route);
+    const notice = entry ? route.properties.id + ': ' + entry.audit_status.replaceAll('_', ' ') + '. Crew clearance not established.' : routeReviewNotice(route);
     return notice ? [notice] : [];
   });
   if (missingBackupAssessment(stage, routes)) notices.push('No post-discovery backup assessment was supplied.');
   return notices;
 }
 
-export function logRouteReview(logger: Logger, route: RouteFeature, stage: StageId): void {
+export function logRouteReview(logger: Logger, route: RouteFeature, stage: StageId, audit: RouteAudit | null = null): void {
   // logger supplies the page correlation ID; route/status distinguish a candidate from failure.
   const p = route.properties;
   const hasGeometry = hasLine(route.geometry.coordinates);
   const candidate = hasGeometry && (p.status === 'inspection_required' || p.kind === 'orbital_guess');
-  const fields = { mission_stage: stage, route_id: p.id, status: p.status, version: p.version,
-    has_geometry: hasGeometry, geometric_feasibility: hasGeometry && (p.status === 'ok' || p.status === 'inspection_required'),
+  const measured = currentEntry(audit, route);
+  const fields = { audit_status: measured?.audit_status ?? 'not_current', mission_stage: stage, route_id: p.id, status: p.status, version: p.version,
+    has_geometry: hasGeometry, geometric_feasibility: measured?.audit_status === 'candidate_requires_inspection',
     crew_clearance: 'not_established' };
   if (candidate) logger.warn('safety', 'route.candidate', fields);
   else if (p.status !== 'ok') logger.warn('safety', 'route.unavailable', fields);

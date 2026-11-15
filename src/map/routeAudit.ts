@@ -39,27 +39,34 @@ export function escapeHtml(text: string): string {
 }
 
 export function auditFor(audit: RouteAudit | null, id: string): RouteAuditEntry | null {
-  // Purpose: the audit entry for route `id`, or null when the route has not been audited.
+  // Purpose: the audit entry for route `id`, or null when the route has not been audited or the analysis
+  // manifest marks the audit stale/missing/invalid (audit.freshness, PR #20).
+  if (audit?.freshness && audit.freshness !== 'current') return null;
   return audit?.routes.find((r) => r.id === id) ?? null;
 }
 
+function measuredText(value: unknown, unit = ''): string {
+  // Purpose: a finite number with its unit (zero included), otherwise "Not measured": never blank, never "0" for missing.
+  return typeof value === 'number' && Number.isFinite(value) ? `${value}${unit}` : 'Not measured';
+}
+
 export function diagnosticRows(entry: RouteAuditEntry): [string, string][] {
-  // Purpose: label/value rows for the popup; claimed length appears only when it disagrees.
-  const rows: [string, string][] = [['Status', AUDIT_STATUS_TEXT[entry.audit_status] ?? entry.audit_status]];
-  if (entry.length_m !== undefined) rows.push(['Measured length', `${Math.round(entry.length_m)} m`]);
-  // Same tolerance as the pipeline (15 m + 2 %): shown when the audit flagged stats_mismatch.
-  if (entry.claimed_length_m !== undefined && entry.length_mismatch_m !== undefined
-    && entry.reasons.some((r) => r.startsWith('stats_mismatch'))) {
-    rows.push(['Claimed length', `${Math.round(entry.claimed_length_m)} m (differs by ${Math.round(entry.length_mismatch_m)} m)`]);
-  }
-  if (entry.max_slope_deg !== undefined && entry.max_slope_deg !== null) rows.push(['Steepest crossed cell', `${entry.max_slope_deg}°`]);
-  if (entry.cells_excluded !== undefined) rows.push(['Excluded cells crossed', String(entry.cells_excluded)]);
-  if ((entry.cells_unknown ?? 0) > 0 || (entry.cells_outside ?? 0) > 0) {
-    rows.push(['Unknown data', `${entry.cells_unknown ?? 0} cells without slope, ${entry.cells_outside ?? 0} outside the DTM crop`]);
-  }
-  if (entry.start_offset_m !== undefined && entry.end_offset_m !== undefined) {
-    rows.push(['Start / end offset', `${Math.round(entry.start_offset_m)} m / ${Math.round(entry.end_offset_m)} m from the intended points`]);
-  }
+  // Purpose: label/value rows for the popup and inspector. Every count is shown, zero included, and measured
+  // and claimed lengths are separate rows (PR #20); scarp-zone, first-exclusion and objective rows come from #19.
+  const rows: [string, string][] = [
+    ['Status', AUDIT_STATUS_TEXT[entry.audit_status] ?? entry.audit_status],
+    ['Measured length', measuredText(entry.length_m, ' m')],
+    ['Claimed length', measuredText(entry.claimed_length_m, ' m')],
+    ['Length discrepancy', measuredText(entry.length_mismatch_m, ' m')],
+    ['Steepest crossed cell', measuredText(entry.max_slope_deg, '°')],
+    ['Cells crossed', measuredText(entry.cells_crossed)],
+    ['Caution cells crossed', measuredText(entry.cells_caution)],
+    ['Excluded cells crossed', measuredText(entry.cells_excluded)],
+    ['Unknown cells', measuredText(entry.cells_unknown)],
+    ['Outside assessed terrain', measuredText(entry.cells_outside)],
+    ['Scarp face cells', measuredText(entry.cells_on_scarp_face)],
+    ['Start / end offset', `${measuredText(entry.start_offset_m, ' m')} / ${measuredText(entry.end_offset_m, ' m')} from the intended points`],
+  ];
   if (entry.first_exclusion) {
     rows.push(['First excluded crossing', `${entry.first_exclusion.kind.replace(/_/g, ' ')} at ${Math.round(entry.first_exclusion.distance_m)} m along (marked on the map)`]);
   }
@@ -68,18 +75,20 @@ export function diagnosticRows(entry: RouteAuditEntry): [string, string][] {
   }
   if (entry.objective) rows.push(['Joins', entry.objective.replace('->', ' ↔ ').replace(/_/g, ' ')]);
   if (entry.end_to_scarp_foot_m !== undefined) rows.push(['Objective end to scarp foot', `${Math.round(entry.end_to_scarp_foot_m)} m`]);
-  if (entry.status_consistent === false) rows.push(['File status', `"${entry.claimed_status}" overclaims: terrain evidence supports at most inspection`]);
+  rows.push(['File status', entry.status_consistent === false
+    ? `"${entry.claimed_status}" overclaims: terrain evidence supports at most inspection` : entry.claimed_status]);
   return rows;
 }
 
 export function profileSvg(profile: RouteAuditEntry['profile'], caution: number, exclude: number, width = 240, height = 70): string {
-  // Purpose: inline SVG of elevation (line) against distance, with cells at/above `caution` (amber) and
-  // `exclude` (red) degrees marked along the bottom. Gaps are left where elevation is unknown.
+  // Purpose: inline SVG of elevation (line) against distance, with cells at/above `caution` (amber) and the
+  // exclusion limit (red) marked along the bottom. Each sample's own limit/mode (route_audit/3) is used when
+  // present, so drive cells are judged against 24° and walk cells against 20°; `exclude` is the fallback.
   const points = (profile ?? []).filter((p) => Number.isFinite(p[0]));
-  const known = points.filter((p) => p[1] !== null) as [number, number, number | null][];
+  const known = points.filter((p) => p[1] !== null);
   if (known.length < 2) return '';
   const maxD = Math.max(...points.map((p) => p[0])) || 1;
-  const zs = known.map((p) => p[1]);
+  const zs = known.map((p) => p[1] as number);
   const lo = Math.min(...zs);
   const span = Math.max(Math.max(...zs) - lo, 1);
   const x = (d: number) => ((d / maxD) * (width - 2) + 1).toFixed(1);
@@ -91,8 +100,9 @@ export function profileSvg(profile: RouteAuditEntry['profile'], caution: number,
     path += `${pen ? 'L' : 'M'}${x(p[0])},${y(p[1])}`;
     pen = true;
   }
-  const ticks = points.filter((p) => p[2] !== null && (p[2] as number) >= caution)
-    .map((p) => `<rect x="${x(p[0])}" y="${height - 8}" width="2" height="6" fill="${(p[2] as number) >= exclude ? '#e5484d' : '#f5a524'}"/>`)
+  const limit = (p: (typeof points)[number]) => p[3] ?? exclude;
+  const ticks = points.filter((p) => p[2] !== null && ((p[4] !== 'drive' && (p[2] as number) >= caution) || (p[2] as number) >= limit(p)))
+    .map((p) => `<rect x="${x(p[0])}" y="${height - 8}" width="2" height="6" fill="${(p[2] as number) >= limit(p) ? '#e5484d' : '#f5a524'}"/>`)
     .join('');
   return `<svg class="route-profile" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" `
     + `aria-label="Elevation profile, ${Math.round(span)} m relief over ${Math.round(maxD)} m">`

@@ -61,11 +61,14 @@ test('a terrain-rejected line is rejected and its first excluded crossing is lis
   assert.ok(!isRejected({ id: 'y', status: 'inspection_required' }, { ...entry, audit_status: 'candidate_requires_inspection' }));
 });
 
-test('claimed vs measured length is shown only when they disagree', () => {
+test('claimed and measured length are always shown separately, with the discrepancy (PR #20)', () => {
   const base = { id: 'x', agent: 'crew', kind: 'main', claimed_status: 'inspection_required', audit_status: 'candidate_requires_inspection',
-    length_m: 1140, claimed_length_m: 940, length_mismatch_m: 200 };
-  assert.match(Object.fromEntries(diagnosticRows({ ...base, reasons: ['stats_mismatch: claims 940 m, line measures 1140 m'] }))['Claimed length'], /differs by/);
-  assert.equal(Object.fromEntries(diagnosticRows({ ...base, reasons: [] }))['Claimed length'], undefined);
+    length_m: 1140, claimed_length_m: 940, length_mismatch_m: 200, reasons: [] };
+  const rows = Object.fromEntries(diagnosticRows(base));
+  assert.equal(rows['Measured length'], '1140 m');
+  assert.equal(rows['Claimed length'], '940 m');
+  assert.equal(rows['Length discrepancy'], '200 m');
+  assert.equal(Object.fromEntries(diagnosticRows({ ...base, claimed_length_m: undefined }))['Claimed length'], 'Not measured');
 });
 
 test('a file status of ok is called an overclaim', () => {

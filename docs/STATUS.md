@@ -14,6 +14,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 
 ## In progress
 
+- 2026-11-14 · Nic: new isolated ui/science-target-results branch from main 65c1514; integrating science-target navigation, offline results and route/segment/waypoint inspection; initial audit/plan checkpoint, no changes to other active worktrees
+
 - Nic: PR #5 merged after explicit approval and exact-head green checks; PR #6 conflicts resolved against reviewed main; PR #8 remains with Yasser; separate UI follow-up requested
 - 2026-11-14 · Nic: logging policy PR #7 merged with all checks passing; open pipeline PRs being corrected and instrumented before merge; frontend logging gaps handed to Yasser
 
@@ -92,6 +94,8 @@ Live log shared by the team and both agents. Update it whenever you start or fin
 | Nic | Yasser | Real slope, hazards, routes | Pending (Saturday evening) |
 
 ## Decision log
+
+- 2026-11-15 · Yasser (completing Nic's #20 handoff, on top of #22's habitat move): #20's edits re-applied on main's versions. Route audit is now `route_audit/3` (pipeline and `auditFreshness.ts`): per-cell records (segment, coordinates, roughness), `input_route`, `input_context`, profile limit/mode columns, `artifact_review`; `first_exclusion` is the actual crossed cell plus main's lon/lat/kind. Main's objectives (backup may join either viewpoint), `ScarpSet` zones and fingerprint kept; #20's `faces` list dropped. `science_results.publish` passes `mission_sites.json` so its audit equals `mission_geography`'s. Loader: files with a schema_version other than 1.0/1.1 are ignored; analysis freshness and main's stale-audit rejection both apply. Map: #20's inspection targets (plus #17's crew ice face), route/point/terrain inspector, uncertainty rings and rover-stage replay on main's map; routes stay grey when rejected (no red, Nic's decision), slope opacity stays in the slope legend. Analysis regenerated (`pipeline.science_results`)
 
 - 2026-11-15 · Yasser: habitat moved north to 54.150243°N, −147.906865 (picked on the map; DTM-checked: no cell ≥ 20° within 15 m, roughness 0.3 m, outside the no-go zones) in `pipeline/site/mission_sites.json`, then `python -m pipeline.mission_geography` rerun. Main route 0.85 km drive + 832 m walk, 3.37 km round trip, 124/168 min, so it meets the 5,000 m rule whether or not driving counts; the backup now fits (was `backup_unavailable`). Fix in `mission_geography.py`: the scouting rover's path before the soft ground is cut from the dense drive trace and re-straightened over passable cells (joining the last kept vertex straight to the stop cell clipped one 26° cell after the move). Step 1 summary row renamed "Orbit-only plan" (the candidate is a DTM route, not a straight line); map coordinate readout added. Nic: tests `geography`, `routeAudit` (rejected-backup style now on a copy) and `stageSummary` updated
 
