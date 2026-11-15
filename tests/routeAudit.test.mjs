@@ -40,9 +40,10 @@ test('generated routes pass their own terrain audit; budget-rejected ones still 
   assert.equal(routeRejectedForStyle(orbital.properties, auditFor(audit, orbital.properties.id)), false);
   assert.equal(routeRejectedForStyle(orbital.properties, { audit_status: 'excluded_terrain' }), true);
   assert.equal(routeStyle(orbital.properties, null, false).color, '#b4b9c2');
-  // No route is ever red: a rejected one (here the backup, over the EVA budget) is a thin grey dotted line.
-  const backup = routes.features.find((f) => f.properties.id === 'rt-crew-backup-v2');
-  assert.equal(backup.properties.status, 'backup_unavailable');
+  // No route is ever red: a rejected one (a backup over the EVA budget) is a thin grey dotted line. Since the
+  // habitat moved north (2026-11-14) the published backup fits the budget, so test the rule on a rejected copy.
+  const published = routes.features.find((f) => f.properties.id === 'rt-crew-backup-v2');
+  const backup = { ...published, properties: { ...published.properties, status: 'backup_unavailable' } };
   const style = routeStyle(backup.properties, null, routeRejectedForStyle(backup.properties, auditFor(audit, backup.properties.id)));
   assert.equal(style.color, '#8a9099');
   assert.equal(style.dashArray, '2 9');

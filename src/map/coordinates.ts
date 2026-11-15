@@ -1,0 +1,25 @@
+// Coordinate text for the map's cursor readout. Pure functions so the Node test runner can check them.
+
+export interface LatLonPoint { lat: number; lon: number }
+
+export function wrapLon(lon: number): number {
+  // Purpose: Leaflet reports longitudes past ±180 after panning across the date line; return −180..180.
+  // In-range values are returned unchanged (the modulo arithmetic would add floating-point drift).
+  if (lon >= -180 && lon <= 180) return lon;
+  return ((((lon + 180) % 360) + 360) % 360) - 180;
+}
+
+export function formatLatLon(p: LatLonPoint, digits = 5): string {
+  // Purpose: "54.15000°N, −147.90700° (212.09300°E)": signed −180..180 longitude as the repo uses it, plus the
+  // 0..360 east form HiRISE labels use. `digits` = decimal places (5 ≈ 0.6 m of latitude on Mars).
+  const lon = wrapLon(p.lon);
+  const ns = p.lat >= 0 ? 'N' : 'S';
+  const east = (lon + 360) % 360;
+  const signed = `${lon < 0 ? '−' : ''}${Math.abs(lon).toFixed(digits)}°`;
+  return `${Math.abs(p.lat).toFixed(digits)}°${ns}, ${signed} (${east.toFixed(digits)}°E)`;
+}
+
+export function copyText(p: LatLonPoint, digits = 5): string {
+  // Purpose: plain "lat, lon" (signed, −180..180) for pasting into chat, configs or the {"lat","lon"} JSON.
+  return `${p.lat.toFixed(digits)}, ${wrapLon(p.lon).toFixed(digits)}`;
+}

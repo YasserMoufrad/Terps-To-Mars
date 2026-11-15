@@ -4,7 +4,7 @@ The full contract is section 4 of [docs/IMPLEMENTATION.md](../../docs/IMPLEMENTA
 
 | File | Status |
 | --- | --- |
-| `routes.geojson` | **Real** (Nic, 2026-11-15): `pipeline.mission_geography` DTM routes with drive/walk `legs` and optional `status_reason`; candidates only, budget-rejected under the current rule |
+| `routes.geojson` | **Real** (Nic, 2026-11-15): `pipeline.mission_geography` DTM routes with drive/walk `legs` and optional `status_reason`; candidates only; regenerated 2026-11-15 (Yasser) after the habitat moved north: every crew route now fits the budget (`inspection_required`) |
 | `hazards.geojson` | **Real** (Nic, 2026-11-15): DTM slope clusters (nasa_derived), traced scarp face, edge setback, rockfall zone (inferred), simulated discovery (rover stage) |
 | `coverage.geojson` | Nic, 2026-11-15: simulated rover corridor and drone areas from the generated routes; orbit-only box = DTM area |
 | `mission.json` | **Real** (Nic, 2026-11-15): endpoints from `pipeline/site/mission_sites.json`, stage texts/stats computed from the routes |

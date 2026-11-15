@@ -24,6 +24,7 @@ import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties
 import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
+import { CoordinateReadout } from './CoordinateReadout';
 import { dronePerchLabel } from './reviewPresentation';
 import { crewFaceTarget, observationTarget, resolveScarpTarget } from './scarpTarget';
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
@@ -210,6 +211,7 @@ export function MarsMap({
           geometries={routes.features.map((f) => f.geometry.coordinates)}
           points={[mission.endpoints.habitat, mission.endpoints.observation_primary, mission.endpoints.observation_backup]}
         />
+        <CoordinateReadout />
 
         <TileLayer
           url={THEMIS_URL}
@@ -419,7 +421,7 @@ export function MarsMap({
 
         {stage === 'rover' && (
           <CircleMarker center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground?</Tooltip>
+            <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground</Tooltip>
           </CircleMarker>
         )}
 

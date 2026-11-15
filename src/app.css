@@ -87,6 +87,13 @@ button { font: inherit; }
   padding: 8px 10px; font-size: 12px; display: flex; flex-direction: column; gap: 5px;
 }
 .legend-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.coord-readout {
+  position: absolute; right: 10px; bottom: 30px; z-index: 900; pointer-events: none;
+  background: rgba(16, 19, 24, 0.88); border: 1px solid var(--line); border-radius: 8px;
+  padding: 5px 8px; font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.coord-pinned { color: var(--warn); margin-top: 2px; }
+@media (max-width: 640px) { .coord-readout { bottom: auto; top: 10px; right: auto; left: 50px; } }
 .imagery-controls {
   max-width: min(280px, calc(100vw - 80px)); background: rgba(16, 19, 24, 0.88); border: 1px solid var(--line);
   border-radius: 8px; padding: 6px; font-size: 12px;

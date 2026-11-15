@@ -75,12 +75,16 @@ function orbital({ hazards, routes, coverage }: SummaryData): StageSummary {
     { label: 'From orbit', value: `${nasa} NASA-derived and ${inferred} inferred hazard zones`, tone: 'info' },
   ];
   if (guess) {
+    // The orbital candidate is the DTM least-cost drive + walk (pipeline.mission_geography), not a straight line.
     const crossed = hazardsCrossed(guess, seen);
+    const legs = guess.properties.legs?.length
+      ? `Drive ${km(legLength(guess, 'drive'))}, walk ${Math.round(legLength(guess, 'walk'))} m; `
+      : '';
     rows.push({
-      label: 'First guess',
+      label: 'Orbit-only plan',
       value: crossed.length > 0
-        ? `Straight line crosses ${crossed.length} no-go zone${crossed.length > 1 ? 's' : ''} (${crossed.map((h) => h.properties.category.replace('_', ' ')).join(', ')})`
-        : `${statusWords(guess.properties.status)}: no no-go zone crossed`,
+        ? `${legs}crosses ${crossed.length} mapped no-go zone${crossed.length > 1 ? 's' : ''} (${crossed.map((h) => h.properties.category.replace('_', ' ')).join(', ')})`
+        : `${legs}routed around every mapped no-go zone. ${statusWords(guess.properties.status)}`,
       tone: crossed.length > 0 ? 'stop' : statusTone(guess.properties.status),
     });
   }
