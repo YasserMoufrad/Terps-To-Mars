@@ -1,0 +1,9 @@
+{
+  "east": -147.8910702714945,
+  "north": 54.17212224618224,
+  "processing": "Native HiRISE pixels read in a window from ESP_071006_2345_RED_A_01_ORTHO.JP2; no DTM-grid intermediate; no warp (equirectangular is linear in lat/lon); resampling=none_native; stretch=percentile [64.0, 211.0]; JPEG q95 (re-encoded from opaque PNG); effective 0.249 m/pixel projected, ~0.227 m E-W ground; landmark_alignment=measured_exceeds_tolerance; diagnostic_unverified; registration vs ESP_071006_2345_RED_C_01_ORTHO.JP2: RMS 0.86 m, max 1.05 m over 9 patches; published by pipeline.publish_imagery; 4093x4088 px",
+  "schema_version": "1.0",
+  "source": "ESP_071006_2345_RED_A_01_ORTHO",
+  "south": 54.154878898971084,
+  "west": -147.91792896813186
+}

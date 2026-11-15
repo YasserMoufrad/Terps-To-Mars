@@ -177,3 +177,30 @@ export interface OverlayBounds {
   source: string;
   processing: string;
 }
+
+// hirise-tiles/{core,context}/tiles.json, written by Nic's pipeline.tiles_hd.
+// core = native ~0.25 m HiRISE along the habitat-to-scarp corridor (zoom 16-17);
+// context = 4x-averaged (~1 m) HiRISE ring around it (zoom 12-15). Leaflet EPSG4326 grid.
+export interface HiriseTiles {
+  schema_version: string;
+  role: 'core' | 'context' | 'wide'; // wide = whole strip at low zoom, drawn first
+  url_template: string; // relative to public/data, e.g. "hirise-tiles/core/{z}/{x}/{y}.webp"
+  bounds: { south: number; west: number; north: number; east: number };
+  min_zoom: number;
+  max_native_zoom: number;
+  read_factor: number; // 1 = native pixels, 4 = 4x average
+  landmark_alignment: string;
+}
+
+// hirise.meta.json, written by Nic's pipeline.publish_imagery next to hirise.jpg.
+// Only the fields the app shows or checks are listed; the file carries more provenance.
+export interface HiriseMeta {
+  schema_version: string;
+  source: string;
+  output_pixels: [number, number]; // image width, height in pixels
+  ground_sampling_m_ew_ns: [number, number]; // ground metres per pixel, east-west and north-south
+  resampling: string; // "none_native" = every pixel is a real source pixel
+  landmark_alignment: string; // not_verified | measured_within_tolerance | measured_exceeds_tolerance | insufficient_landmarks
+  registration_rms_m?: number; // measured offset vs the DTM-companion orthoimage, metres
+  registration_max_m?: number;
+}
