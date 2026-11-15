@@ -72,7 +72,13 @@ A complete source list is maintained in [docs/IMPLEMENTATION.md](docs/IMPLEMENTA
 
 ## Use of AI tools
 
-AI assistants were used to help plan the project, research sources, draft documentation and write parts of the code. Any AI-generated crew briefings in the app are labeled as such and are generated only from our mission data.
+Our engineers were the creative brain in the loop; AI coding assistants were the builders.
+
+**Designed and decided by the team:** the concept (robots scout first, the crew follows, four planning steps), the site (the Milankovič ice scarp), the habitat landing spot, the ice target (from Geury's color analysis of HiRISE images), the drive-then-walk plan with a crew vehicle, the rule that only fully scouted routes turn green, the scout's route back along the backup, the safety rules (slope limits, cliff setback, rockfall zone, time budget), and the scout rover concept. The team also orchestrated the exact parking spot, primary viewpoint and backup viewpoint: we set the goals and criteria (flat ground, outside every hazard, facing the bluest ice, within the time budget) and reviewed the results.
+
+**Built with AI assistance:** AI coding assistants (Claude Code, by Anthropic) wrote most of the software under the team's direction and review: the web app, the data-processing pipeline, and the scripts that trace the cliffs, compute the exact parking and viewpoint cells from the team's criteria, and compute routes from NASA's elevation data. AI also drafted most of the interface wording and documentation, and drew the small map icons (scout rover, crew vehicle, drone) in code.
+
+**Not AI:** the app uses no AI while it runs (no chatbot, no generated text or images at runtime). All map imagery, elevation data and ground photos come from NASA and its mission teams (see Data and credits). The route lines are not hand-drawn by anyone: they are computed by a least-cost path algorithm on NASA's elevation data.
 
 ## Team
 

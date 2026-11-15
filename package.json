@@ -2,6 +2,7 @@
   "name": "terps-to-mars",
   "private": true,
   "version": "0.1.0",
+  "description": "Mars spacewalk planning map with robotic scouts, built on NASA data. Team-designed mission; software written with AI coding assistants (Claude Code by Anthropic) under the team's direction. See README 'Use of AI tools'.",
   "type": "module",
   "scripts": {
     "dev": "vite",
