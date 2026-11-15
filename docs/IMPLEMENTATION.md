@@ -34,6 +34,9 @@ An astronaut-facing map for planning one Marswalk to the exposed water-ice scarp
 | Acquisition | 19 Sep 2021, local Mars time 15:26, Ls 101.2° (northern summer), Sun about 42° above the horizon |
 | Ice evidence | Milankovič is the only northern-hemisphere site among the eight ice scarps of Dundas et al. (2018, *Science*). The target is a Milankovič ice-scarp candidate within a region documented to contain exposed subsurface water ice. Dundas et al. report CRISM water-ice signatures at three of the eight locations, not all eight; the face within our stereo pair (`ESP_071006_2345`/`ESP_071085_2345`) has no confirmed CRISM detection of its own, and the exact observation target and its spectral provenance require confirmation. Blue tones in HiRISE enhanced color alone are **not** proof of ice; cite the spectral evidence. Ice depth is unknown at any route point unless measured or specifically sourced: the 1–2 m overburden figure is from some studied scarps (a 2021 USGS study reports some ice under <1 m with large variability), and at an exposed scarp ice may already be visible on the cliff face. The pipeline deliberately produces no ice-depth raster. |
 | Resolution limit | HiRISE resolves objects of about 92 cm at best; the DTM cannot see individual rocks under about 1 m |
+| Scarp (measured 2026-11-14, `data/site/scarp_lines.geojson`, `scarp_measurements.json`) | North-facing ice scarp: top edge about 54.1636°N, foot about 54.1645°N, from −147.9175 to −147.8939 (traced in the 0.25 m HiRISE crop). Height on the HiRISE DTM: median 59 m (23–73 m), face 64–75°. Geury's first-pass "main band" (54.1608–54.1619) lies on featureless plain; the real face is about 200 m north. |
+| Endpoints (DTM-checked candidates, `data/site/site_points_dtm.geojson`) | Habitat 54.12777°N, −147.90130 (Geury's spot moved 59 m; it had 24 cells ≥ 20° within 15 m) · crew-rover parking 54.16256°N, −147.89445 · viewpoint 54.16663°N, −147.89414 (bench facing the scarp's east end, 145 m from the foot, 23 m face) · backup viewpoint 54.16614°N, −147.89353 · drone perch 54.16691°N, −147.90188 (pit floor facing the 70 m face). Every point: no cell ≥ 20° within its 15 m disc. Candidates, not clearance; Nic's pipeline re-checks them. |
+| EVA budget check (placeholder routes, DTM least-cost paths) | Walking all the way is infeasible (about 4 km straight-line round trip). Drive-then-walk: crew rover 2.3 km each way on the DTM (steepest 15°, rover limit 24°, roughness ≤ 0.5 m), walk 290 m each way around the scarp's east end (steepest 15°): 83 min travel + 20 min site work = 103 of 168 min; walkback 189 of 240 min EVA. The tall middle of the face is not reachable within budget (nearest rover parking about 1.9 km on foot), so the crew views the east end and the drone images the tall face. |
 
 Mars Trek has no HiRISE data for this spot: HiRISE comes from the HiRISE/PDS links above; CTX, MOLA, THEMIS and geology come from [Mars Trek](https://trek.nasa.gov/mars/).
 
@@ -59,7 +62,7 @@ Terps-To-Mars/
 
 ## 4. Data contract
 
-All files live in `public/data/`. Every file carries `"schema_version": "1.0"` (as a top-level member in GeoJSON). Every hazard, route and coverage zone has a stable `id`.
+All files live in `public/data/`. Every file carries `"schema_version"`: `"1.1"` (current) or `"1.0"` (still valid; no route legs), as a top-level member in GeoJSON. Overlay `*.bounds.json` files stay `"1.0"`. Every hazard, route and coverage zone has a stable `id`.
 
 > **Coordinate order:** GeoJSON is `[longitude, latitude]`. JSON objects outside GeoJSON use `{"lat": …, "lon": …}`. All longitudes are −180..180.
 
@@ -109,6 +112,22 @@ All files live in `public/data/`. Every file carries `"schema_version": "1.0"` (
 | `stats` | `{ "length_m", "round_trip_m", "est_time_min", "elevation_gain_m", "max_slope_deg", "shared_with_main_m" }` (Mars geometry, radius 3,389.5 km) |
 
 A route with a non-`ok` status may have empty geometry. The app must show the status, never hide it.
+
+**Schema 1.1 (agreed by Nic and Yasser, 2026-11-14): optional drive-then-walk crew routes.** The crew drives an unpressurized crew rover most of the way and walks the last part, as on Apollo 15–17 and in Artemis surface plans. Two optional properties on crew routes:
+
+| Property | Values |
+| --- | --- |
+| `legs` | ordered list of `{ "mode": "drive" \| "walk", "from", "to", "length_m", "est_time_min" }`. `from`/`to` are indexes into the route's coordinates; legs run end to end over the whole line. Lengths and times are one way. |
+| `walkback_min` | minutes to walk home along the drive legs if the crew rover fails (NASA walkback constraint) |
+
+With legs, `est_time_min` is the round trip at each leg's own speed; `length_m`/`round_trip_m` are unchanged (geometry, ×2 for crew). Legs require `schema_version` 1.1; a 1.0 file has no legs and every route is walked end to end, so 1.0 files stay valid (the app and `pipeline/validate_contract.py` accept both). Speeds: walk 20 m/min; drive 5 km/h, a cautious, configurable modeled assumption (the Apollo LRV averaged roughly 7–10 km/h on traverses), to live in `hazard_rules.json` next to walking speed. The app splits routes by leg and warns, without hiding the route, when legs are malformed.
+
+Two budget checks for a route with legs (both must pass):
+
+1. **30% reserve:** drive + walk round trip + observation/site work ≤ 168 min (240 min EVA × 0.7).
+2. **Walkback:** drive out + site walk (round trip) + observation/site work + walking home along the drive legs (`walkback_min`) ≤ the full 240 min EVA.
+
+Until a real crew-rover traversability model exists, routes with a drive leg are `inspection_required` even when both checks pass. Routing (Nic, pipeline PR on top of #13): habitat → parking on a rover cost grid (provisional 24° rover slope limit), parking → observation on the crew grid, then emit `legs`, `walkback_min` and both checks.
 
 ### `coverage.geojson` (Polygon features)
 
@@ -174,7 +193,7 @@ Stored in `pipeline/hazard_rules.json` (versioned). Values marked *assumption* a
 | Cliff-top setback | 20 m from the edge | crew | DTM | *Assumption*: edge collapse |
 | Roughness | elevation range > 0.5 m within the closest odd-pixel approximation to 3 × 3 m → caution | both | DTM | *Provisional assumption*: DTM vertical uncertainty not established; log effective dimensions; coarse sampling cannot establish roughness |
 | No-data / artifact cells | exclude → `inspection_required` | both | DTM QC | Missing or suspect data is never safe |
-| Max excursion | round trip under 5 km; hard cap 10 km from habitat | crew | route stats | NASA Walkback test (10 km assumption from Apollo) |
+| Max excursion | walking distance under 5 km round trip (drive legs not counted); hard cap 10 km from the habitat, so the crew can always walk back (walkback) | crew | route stats | NASA Walkback test (10 km assumption from Apollo) |
 | Time reserve | ≥ 30% of planned EVA time kept for return | crew | route stats | *Assumption*; no oxygen modeling |
 | Wheel slip → stop and request input | > 35% | rover | rover sensors (scenario) | Scenario value, `simulated` |
 
@@ -256,6 +275,7 @@ The pipeline precomputes both versions; nothing is simulated live in the browser
 15. Imagery quality: the science-view crop is centred at 54.1635, −147.9045 to cover Geury's first-pass ice bands and the work site/observation points, not the 54.144 N site centre. PNG output makes HiRISE nulls transparent and reduction ignores no-data (no black seams). `pipeline.registration` measures RED_A vs the DTM-companion RED_C orthoimage at a patch grid and reports RMS/max offsets in metres; it is a measurement, not a correction, and not independent ground truth.
 16. Corridor tiles and publishing safety: `pipeline.tiles_hd` builds optional Leaflet EPSG:4326 WebP tile pyramids from the same RED_A product: a wide set over the whole strip (54.041–54.253 N, −147.983 to −147.787, zoom 9–11, 16× average, ~4 m), a context ring (54.110–54.185 N, −147.945 to −147.863, zoom 12–15, 4× area average, ~1 m) and a native core over the habitat→scarp corridor (54.124–54.171 N, −147.922 to −147.886, zoom 16–17). Each set has `public/data/hirise-tiles/<role>/tiles.json` (url template, bounds, zooms, read factor, stretch, registration); the app draws wide under context under core and keeps the single 4K overlay only when no core set exists. `publish_imagery` stages, re-validates (product name, Mars eqc CRS, sampling, decoded size, finite numbers, registration method/patches/tolerance) and replaces image, meta, then bounds with rollback; it is not multi-file atomic.
 17. Mixed drive/walk budgets: `pipeline.itinerary` checks routes with `legs` (contract 1.1): legs contiguous, modes drive/walk, lengths and times recomputed on R = 3,389.5 km; the 5,000 m rule (strict `<`) on the whole itinerary until the team decides drive metres are exempt; outbound + site + return within EVA × 0.7; emergency walkback (rover fails at the site, crew walks the whole way) reported as within reserve / uses reserve / exceeds EVA; backups sharing > 50 % of their length with the main route are not independent. It never suggests `ok`. `routing.itinerary_budget` stays the walking-only check. `data/site/feasibility_audit_from_parking.json` is a partial walking audit from the parking point only.
+19. Mission geography (real DTM, 2026-11-15): `python -m pipeline.mission_geography` reads `pipeline/site/mission_sites.json` and `scarp_lines.geojson`, builds slope, edge-setback (20 m) and per-profile rockfall masks (below the face only), finds least-cost drive (rover limit) and walk (crew limit) legs with `routing.grid_shortest_path`, straightens them over passable cells only, budgets them with `pipeline.itinerary`, places the simulated discovery on the drive leg, then stages all five files, audits exactly the staged lines (refusing to publish any line that fails) and renames them into place with rollback. The audit carries a `fingerprint`; the app recomputes route, endpoint and scarp digests (`src/map/auditFreshness.ts`) and withholds a stale audit with a visible error. Rejected routes draw as thin red dotted lines with a marker at the first excluded crossing.
 18. Slope map and route audit (standalone, real DTM): `python -m pipeline.slope_mvp` publishes the classified slope map for 54.120–54.175 N, −147.925 to −147.880 (1,715 × 3,260 cells) with gradient padding, staging, re-validation and rollback; it never reads routes. `python -m pipeline.route_audit --output public/data/route_audit.json` audits the published route lines against the same analysis. Both fail with acquisition instructions when the DTM is missing and never publish synthetic terrain.
 
 Route search: cost grid from step 6, `skimage.graph.route_through_array` on the metric grid; convert the path to lat/lon only at export.
@@ -304,6 +324,8 @@ Route search: cost grid from step 6, `skimage.graph.route_through_array` on the 
 
 ## 12. Sources
 
+- Mission site candidates and per-profile scarp measurements: PR #15 `data/site/site_points_dtm.geojson` and `scarp_measurements.json` (Yasser's agent, DTM-checked), copied with provenance into `pipeline/site/mission_sites.json`; Geury's first-pass `site_points.geojson` kept for comparison.
+- [SciPy sparse.csgraph Dijkstra](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csgraph.dijkstra.html) for full-resolution route search; Web Crypto SHA-256 (browser) for audit freshness.
 - [THEMIS fact sheet](https://themis.mars.asu.edu/factsheet): infrared sampling is 100 m/pixel; regional thermal context is not rover-scale bearing-strength evidence. No precise thermal soft-ground exclusions are generated by this pipeline.
 - [HiRISE image metadata](https://www.uahirise.org/ESP_071006_2345): 25 cm map-projected sampling; objects approximately 92 cm across resolved in the original imagery. Wheel-drop, belly-clearance and wheel-slip rules remain sensor/scenario inputs, not DTM-derived orbital measurements.
 - [uv project and Docker integration](https://docs.astral.sh/uv/guides/integration/docker/): root `pyproject.toml`/`uv.lock` are the Python dependency source of truth.
@@ -322,3 +344,6 @@ Route search: cost grid from step 6, `skimage.graph.route_through_array` on the 
 - Scarp trace (`public/data/scarp_lines.geojson`): Yasser's agent's HiRISE RED_A trace (`tools/site/trace_scarp.py`, PR #15); inferred from imagery, not ground truth.
 - Supercover grid traversal: Amanatides & Woo (1987), *A Fast Voxel Traversal Algorithm for Ray Tracing*, Eurographics; used so a route segment is checked against every DTM cell it crosses.
 - [JPL Open Source Rover](https://github.com/nasa-jpl/open-source-rover) (Apache-2.0)
+- Geury's site inputs: `data/site/ice_zone.geojson` and `data/site/site_points.geojson` (HiRISE ESP_071006_2345 enhanced color, about ±15 m; rebuilt from his site-pack tables)
+- Apollo Lunar Roving Vehicle (Apollo 15–17) and the Artemis Lunar Terrain Vehicle: precedent for drive-then-walk surface EVAs; the walkback limit follows the NASA Walkback test cited above
+- Ground-view example photos (side panel, chosen by Geury; NASA public domain; labeled "Example Mars terrain, not this site"; hotlinked from NASA's image CDN): [PIA10682 Icy, Patterned Ground](https://photojournal.jpl.nasa.gov/catalog/PIA10682) and [PIA11383 Phoenix Deepens Trenches](https://photojournal.jpl.nasa.gov/catalog/PIA11383) and [PIA10903 "Dodo-Goldilocks" Trench](https://photojournal.jpl.nasa.gov/catalog/PIA10903) (Phoenix, NASA/JPL-Caltech/UArizona, PIA11383/PIA10903 also Texas A&M); [PIA00571 Ice on Mars Utopia Planitia Again](https://photojournal.jpl.nasa.gov/catalog/PIA00571) (Viking 2, NASA/JPL)

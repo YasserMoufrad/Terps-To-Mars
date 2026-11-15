@@ -13,6 +13,26 @@ export const AUDIT_STATUS_TEXT: Record<string, string> = {
   candidate_requires_inspection: 'Candidate: requires inspection (model-feasible, not crew-cleared)',
 };
 
+// Audit verdicts that mean the line crosses ground the model excludes, or never reaches its points.
+export const REJECTING_AUDIT = new Set(['geometry_invalid', 'outside_assessed_terrain', 'excluded_terrain', 'unassessed_terrain', 'endpoint_mismatch']);
+
+export function isRejected(p: RouteProperties, entry: RouteAuditEntry | null): boolean {
+  // Purpose: true when a drawn route must read as rejected (red, broken): the file says no route,
+  // or the terrain audit rejects the line. Never true merely because a route is unverified.
+  return p.status === 'no_viable_route' || p.status === 'backup_unavailable' || (entry !== null && REJECTING_AUDIT.has(entry.audit_status));
+}
+
+export function terrainRejected(entry: RouteAuditEntry | null): boolean {
+  // Purpose: true only when the terrain audit itself rejects the line (not a budget or status verdict).
+  return entry !== null && REJECTING_AUDIT.has(entry.audit_status);
+}
+
+export function routeRejectedForStyle(p: RouteProperties, entry: RouteAuditEntry | null): boolean {
+  // Purpose: the orbital candidate is a scouting line (drawn grey) unless the terrain audit rejects it;
+  // other routes read as rejected for any no-route status too.
+  return p.kind === 'orbital_guess' ? terrainRejected(entry) : isRejected(p, entry);
+}
+
 export function escapeHtml(text: string): string {
   // Purpose: make pipeline text safe to place inside a Leaflet popup's HTML.
   return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
@@ -20,24 +40,36 @@ export function escapeHtml(text: string): string {
 
 export function auditFor(audit: RouteAudit | null, id: string): RouteAuditEntry | null {
   // Purpose: the audit entry for route `id`, or null when the route has not been audited.
-  if (audit?.freshness && audit.freshness !== 'current') return null;
   return audit?.routes.find((r) => r.id === id) ?? null;
 }
 
 export function diagnosticRows(entry: RouteAuditEntry): [string, string][] {
-  // Keep zero and missing values distinct; measured and claimed lengths remain separate.
-  const number=(v:unknown,unit='')=>typeof v==='number'&&Number.isFinite(v)?String(v)+unit:'Not measured';
-  return [
-    ['Status', AUDIT_STATUS_TEXT[entry.audit_status] ?? entry.audit_status],
-    ['Measured length',number(entry.length_m,' m')],['Claimed length',number(entry.claimed_length_m,' m')],
-    ['Length discrepancy',number(entry.length_mismatch_m,' m')],['Steepest crossed cell',number(entry.max_slope_deg,'°')],
-    ['Cells crossed',number(entry.cells_crossed)],['Caution cells crossed',number(entry.cells_caution)],
-    ['Excluded cells crossed',number(entry.cells_excluded)],['Unknown cells',number(entry.cells_unknown)],
-    ['Outside assessed terrain',number(entry.cells_outside)],['Scarp face cells',number(entry.cells_on_scarp_face)],
-    ['Start / end offset',number(entry.start_offset_m,' m')+' / '+number(entry.end_offset_m,' m')+' from the intended points'],
-    ['Objective end to scarp foot',number(entry.end_to_scarp_foot_m,' m')],
-    ['File status',entry.status_consistent===false?'"'+entry.claimed_status+'" overclaims: terrain evidence supports at most inspection':entry.claimed_status],
-  ];
+  // Purpose: label/value rows for the popup; claimed length appears only when it disagrees.
+  const rows: [string, string][] = [['Status', AUDIT_STATUS_TEXT[entry.audit_status] ?? entry.audit_status]];
+  if (entry.length_m !== undefined) rows.push(['Measured length', `${Math.round(entry.length_m)} m`]);
+  // Same tolerance as the pipeline (15 m + 2 %): shown when the audit flagged stats_mismatch.
+  if (entry.claimed_length_m !== undefined && entry.length_mismatch_m !== undefined
+    && entry.reasons.some((r) => r.startsWith('stats_mismatch'))) {
+    rows.push(['Claimed length', `${Math.round(entry.claimed_length_m)} m (differs by ${Math.round(entry.length_mismatch_m)} m)`]);
+  }
+  if (entry.max_slope_deg !== undefined && entry.max_slope_deg !== null) rows.push(['Steepest crossed cell', `${entry.max_slope_deg}°`]);
+  if (entry.cells_excluded !== undefined) rows.push(['Excluded cells crossed', String(entry.cells_excluded)]);
+  if ((entry.cells_unknown ?? 0) > 0 || (entry.cells_outside ?? 0) > 0) {
+    rows.push(['Unknown data', `${entry.cells_unknown ?? 0} cells without slope, ${entry.cells_outside ?? 0} outside the DTM crop`]);
+  }
+  if (entry.start_offset_m !== undefined && entry.end_offset_m !== undefined) {
+    rows.push(['Start / end offset', `${Math.round(entry.start_offset_m)} m / ${Math.round(entry.end_offset_m)} m from the intended points`]);
+  }
+  if (entry.first_exclusion) {
+    rows.push(['First excluded crossing', `${entry.first_exclusion.kind.replace(/_/g, ' ')} at ${Math.round(entry.first_exclusion.distance_m)} m along (marked on the map)`]);
+  }
+  if ((entry.cells_in_rockfall_zone ?? 0) > 0 || (entry.cells_in_edge_setback ?? 0) > 0) {
+    rows.push(['Scarp zones crossed', `${entry.cells_in_rockfall_zone ?? 0} rockfall, ${entry.cells_in_edge_setback ?? 0} edge-setback cells`]);
+  }
+  if (entry.objective) rows.push(['Joins', entry.objective.replace('->', ' ↔ ').replace(/_/g, ' ')]);
+  if (entry.end_to_scarp_foot_m !== undefined) rows.push(['Objective end to scarp foot', `${Math.round(entry.end_to_scarp_foot_m)} m`]);
+  if (entry.status_consistent === false) rows.push(['File status', `"${entry.claimed_status}" overclaims: terrain evidence supports at most inspection`]);
+  return rows;
 }
 
 export function profileSvg(profile: RouteAuditEntry['profile'], caution: number, exclude: number, width = 240, height = 70): string {
@@ -59,8 +91,8 @@ export function profileSvg(profile: RouteAuditEntry['profile'], caution: number,
     path += `${pen ? 'L' : 'M'}${x(p[0])},${y(p[1])}`;
     pen = true;
   }
-  const ticks = points.filter((p) => p[2] !== null && ((p[4]!=='drive' && (p[2] as number) >= caution) || (p[2] as number)>=(p[3]??exclude)))
-    .map((p) => `<rect x="${x(p[0])}" y="${height - 8}" width="2" height="6" fill="${(p[2] as number) >= (p[3]??exclude) ? '#e5484d' : '#f5a524'}"/>`)
+  const ticks = points.filter((p) => p[2] !== null && (p[2] as number) >= caution)
+    .map((p) => `<rect x="${x(p[0])}" y="${height - 8}" width="2" height="6" fill="${(p[2] as number) >= exclude ? '#e5484d' : '#f5a524'}"/>`)
     .join('');
   return `<svg class="route-profile" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" `
     + `aria-label="Elevation profile, ${Math.round(span)} m relief over ${Math.round(maxD)} m">`

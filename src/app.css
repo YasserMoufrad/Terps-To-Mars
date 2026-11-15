@@ -110,9 +110,13 @@ button { font: inherit; }
 .line { display: inline-block; width: 22px; height: 0; border-top-width: 4px; margin-left: 6px; }
 .line:first-child { margin-left: 0; }
 .line-main { border-top: 5px solid var(--good); }
+.line-drive { border-top: 5px solid #7cc4ff; }
+.line-unverified-drive { border-top: 4px dotted var(--warn); }
 .line-backup { border-top: 4px dashed var(--good); }
 .line-rover { border-top: 4px dotted #ffffff; }
 .line-unverified { border-top: 4px dashed var(--warn); }
+.line-candidate { border-top: 4px dashed #b4b9c2; }
+.line-rejected { border-top: 3px dotted #8a9099; }
 .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-left: 6px; }
 .swatch:first-child { margin-left: 0; }
 
@@ -194,6 +198,22 @@ button { font: inherit; }
   .panel { border-left: none; border-top: 1px solid var(--line); }
   .subtitle { display: none; }
 }
+
+/* ---------- ground-view photos (example terrain, not this site) ---------- */
+.ground-view h3 { margin: 0 0 8px; font-size: 15px; }
+.ground-view figure { margin: 0; position: relative; }
+.ground-view img { display: block; width: 100%; height: auto; border-radius: 6px; border: 1px solid var(--line); }
+.ground-view figcaption { font-size: 13px; line-height: 1.45; margin-top: 8px; }
+.example-tag {
+  position: absolute; top: 8px; left: 8px; z-index: 1; pointer-events: none;
+  background: rgba(16, 19, 24, 0.85); color: #fac775; border: 1px solid var(--warn);
+  border-radius: 4px; padding: 2px 6px; font-size: 12px; font-weight: 600;
+}
+/* ---------- stage summary ("what this step shows") ---------- */
+.stage-summary h3 { margin: 0 0 8px; font-size: 15px; }
+.stage-summary ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.summary-row { display: grid; grid-template-columns: 96px 1fr; gap: 8px; font-size: 13px; line-height: 1.45; border-left: 3px solid; padding-left: 8px; }
+.summary-label { color: var(--muted); }
 /* Slope legend (shown with the slope layer), scarp-target reason and route diagnostics popup. */
 .slope-legend {
   position: absolute; left: 52px; top: 10px; z-index: 900; max-width: min(250px, calc(100% - 330px));
@@ -217,3 +237,7 @@ button { font: inherit; }
 @media (max-width: 640px) {
   .slope-legend { max-width: 200px; }
 }
+
+.slope-retry { margin-left: 6px; font: inherit; padding: 1px 8px; border-radius: 4px; border: 1px solid currentColor; background: transparent; color: inherit; cursor: pointer; }
+.slope-opacity { display: flex; align-items: center; gap: 6px; }
+.slope-opacity input { flex: 1; min-width: 80px; }

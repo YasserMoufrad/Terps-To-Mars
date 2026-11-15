@@ -1,66 +1,99 @@
-import L from 'leaflet';
-import { useState } from 'react';
+// Map navigation and HiRISE status: "Mission overview", "Inspect scarp" (the traced scarp face) and
+// "Inspect observation point" (the selected waypoint), the imagery load state, and the sampling/registration
+// disclosures shown as text (not only in a tooltip).
+
 import { useMap } from 'react-leaflet';
-import type { LatLon, OverlayBounds, StageId } from '../data/types';
+import type { LatLon, OverlayBounds } from '../data/types';
 import { appLogger } from '../lib/appLogger';
 import { collectPositions } from './FitToMission';
-import { IMAGERY_STATUS_TEXT, SAMPLING_DISCLOSURE, type ImageryLoadState } from './imageryState';
-import type { InspectionTarget } from './scienceTargets';
+import { IMAGERY_STATUS_TEXT, INSPECT_ZOOM, SAMPLING_DISCLOSURE, type ImageryLoadState } from './imageryState';
+import type { ScarpTarget } from './scarpTarget';
 
 interface ImageryControlsProps {
-  overview:{geometries:unknown[];points:LatLon[]}; hiriseBounds:OverlayBounds|null;
-  targets:InspectionTarget[]; stage:StageId; state:ImageryLoadState; registration:string; onRetry:()=>void;
-  onInspect:(target:InspectionTarget|null)=>void; slopeOpacity:number; onOpacity:(value:number)=>void;
+  overview: { geometries: unknown[]; points: LatLon[] }; // route/hazard coordinates and named endpoints
+  hiriseBounds: OverlayBounds | null; // native image footprint; null when not published
+  scarp: ScarpTarget; // resolved scarp-face target (null target = disabled, with a reason)
+  observation: LatLon | null; // selected observation waypoint
+  crewFace?: ScarpTarget; // face the crew looks at (second scarp); absent or null target = disabled
+  state: ImageryLoadState; // combined HiRISE load state
+  registration: string; // visible alignment note (registrationNote)
+  onRetry: () => void; // re-requests the HiRISE layers after a failure
 }
 
-export function ImageryControls({overview,hiriseBounds,targets,stage,state,registration,onRetry,onInspect,slopeOpacity,onOpacity}:ImageryControlsProps) {
-  // targets are geographic inspection choices; stage is independent and never changed by map navigation.
-  const map=useMap(), [choice,setChoice]=useState('active'), [viewport,setViewport]=useState('Stage overview');
-  const selected=targets.find(t=>t.id===choice) ?? targets[0];
-  const narrow=typeof window!=='undefined' && window.matchMedia?.('(max-width: 640px)').matches;
-  const reason=selected?.reason ?? (!selected?.target ? 'Target not available.' : undefined);
-  const inspect=() => {
-    // selected bounds come from the actual feature; asymmetric padding leaves space for map controls.
-    if (!selected?.target || !selected.bounds || reason) return;
-    const size=map.getSize(), left=Math.min(45,size.x*.12), top=Math.min(narrow?220:170,size.y*.4);
-    map.flyToBounds(selected.bounds,{maxZoom:17,paddingTopLeft:[left,top],paddingBottomRight:[35,55]});
-    onInspect(selected); setViewport(selected.name);
-    appLogger.info('map','view.inspect_target',{target_id:selected.science_target_id??selected.id,target:selected.target,bounds:selected.bounds,
-      source:selected.source,evidence:selected.evidence,mission_stage:stage});
+export function ImageryControls({ overview, hiriseBounds, scarp, observation, crewFace, state, registration, onRetry }: ImageryControlsProps) {
+  // Purpose: explicit views instead of an automatic re-fit on every stage change. The two inspect buttons
+  // go to different objectives: the scarp face (from scarp geometry) and the observation waypoint.
+  const map = useMap();
+  const narrow = typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches;
+  const imageryOff = ['disabled', 'unavailable', 'failed'].includes(state);
+  const scarpDisabledReason = scarp.target === null ? scarp.reason : imageryOff ? 'Turn on the HiRISE layer to inspect the scarp.' : undefined;
+
+  const showOverview = () => {
+    const positions: [number, number][] = overview.points.map((p) => [p.lat, p.lon]);
+    for (const g of overview.geometries) collectPositions(g, positions);
+    if (positions.length > 1) map.flyToBounds(positions, { padding: [40, 40] });
+    appLogger.info('map', 'view.overview', { points: positions.length });
   };
-  const overviewView=() => {
-    // overview contains this stage's geometry, keeping a rover incident distinct from the scarp view.
-    const positions:[number,number][]=overview.points.map(p=>[p.lat,p.lon]);
-    for (const g of overview.geometries) collectPositions(g,positions);
-    if (positions.length>1) map.flyToBounds(positions,{padding:[45,65],maxZoom:16});
-    onInspect(null);setViewport('Stage overview');
-    appLogger.info('map','view.overview',{points:positions.length,mission_stage:stage});
+  const inspectScarp = () => {
+    if (!scarp.target || scarpDisabledReason) return;
+    map.flyTo([scarp.target.lat, scarp.target.lon], INSPECT_ZOOM);
+    appLogger.info('map', 'view.inspect_scarp', {
+      zoom: INSPECT_ZOOM, target: scarp.target, source: scarp.source, evidence: scarp.evidence, imagery_state: state,
+    });
   };
-  const locateIncident=() => {
-    // The rover coordinate is a simulated observation, not the currently selected scarp.
-    const incident=targets.find(t=>t.id==='discovery');
-    if (!incident?.target || !incident.bounds) return;
-    map.flyToBounds(incident.bounds,{maxZoom:17,padding:[45,85]});
-    onInspect(incident);setViewport(incident.name);setChoice('discovery');
-    appLogger.info('map','view.rover_incident',{target:incident.target,evidence:'simulated',mission_stage:stage});
+  const crewFaceDisabledReason = !crewFace || crewFace.target === null ? crewFace?.reason ?? 'Not available.'
+    : imageryOff ? "Turn on the HiRISE layer to inspect the crew's ice face." : undefined;
+  const inspectCrewFace = () => {
+    // Purpose: fly to the second-scarp face the crew observes (not the main face the drone images).
+    if (!crewFace?.target || crewFaceDisabledReason) return;
+    map.flyTo([crewFace.target.lat, crewFace.target.lon], INSPECT_ZOOM);
+    appLogger.info('map', 'view.inspect_crew_face', { zoom: INSPECT_ZOOM, target: crewFace.target, source: crewFace.source, evidence: crewFace.evidence });
   };
-  return <div className="leaflet-top leaflet-right"><div className="leaflet-control imagery-controls" ref={node=>{if(node){L.DomEvent.disableClickPropagation(node);L.DomEvent.disableScrollPropagation(node);}}}>
-    <div className="imagery-buttons">
-      <button type="button" onClick={overviewView}>Stage overview</button>
-      <label>Inspect <select aria-label="Inspection target" value={choice} onChange={e=>setChoice(e.target.value)}>
-        {targets.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-      </select></label>
-      <button type="button" onClick={inspect} disabled={Boolean(reason)} title={reason??selected?.note}>Inspect selected</button>
-      <button type="button" onClick={locateIncident}>Locate rover incident</button>
+  const inspectObservation = () => {
+    if (!observation) return;
+    map.flyTo([observation.lat, observation.lon], INSPECT_ZOOM);
+    appLogger.info('map', 'view.inspect_observation', { zoom: INSPECT_ZOOM, target: observation });
+  };
+
+  return (
+    <div className="leaflet-top leaflet-right">
+      <div className="leaflet-control imagery-controls">
+        <div className="imagery-buttons">
+          <button type="button" onClick={showOverview}>Mission overview</button>
+          <button type="button" onClick={inspectScarp} disabled={scarpDisabledReason !== undefined}
+            title={scarpDisabledReason ?? scarp.note}>
+            Inspect scarp
+          </button>
+          {crewFace && (
+            <button type="button" onClick={inspectCrewFace} disabled={crewFaceDisabledReason !== undefined}
+              title={crewFaceDisabledReason ?? crewFace.note}>
+              Inspect crew&apos;s ice face
+            </button>
+          )}
+          <button type="button" onClick={inspectObservation} disabled={!observation}
+            title="Centre on the candidate observation point (not the scarp)">
+            Inspect observation point
+          </button>
+        </div>
+        {scarp.target === null && scarp.reason && <p className="imagery-reason">{scarp.reason}</p>}
+        {hiriseBounds !== null || state !== 'unavailable' ? (
+          <div className="imagery-status" role="status" aria-live="polite">
+            <span className={`imagery-state imagery-${state}`}>HiRISE: {IMAGERY_STATUS_TEXT[state]}</span>
+            {(state === 'failed' || state === 'partial') && (
+              <button type="button" className="link-btn" onClick={onRetry}>Retry</button>
+            )}
+            {state !== 'disabled' && state !== 'failed' && (
+              // Open by default on wider screens; on phones one tap away so the map stays visible.
+              <details className="imagery-notes" open={!narrow}>
+                <summary>About this image</summary>
+                <p>{SAMPLING_DISCLOSURE}</p>
+                <p>{registration}</p>
+                {scarp.target && <p>Scarp target: {scarp.note}</p>}
+              </details>
+            )}
+          </div>
+        ) : null}
+      </div>
     </div>
-    <p className="inspection-context">Stage: {stage} · Viewport: {viewport}</p>
-    {reason && <p className="imagery-reason">{reason}</p>}
-    {selected?.target && <p className="inspection-coordinates">{selected.name}: {selected.target.lat.toFixed(6)}°, {selected.target.lon.toFixed(6)}° · {selected.evidence}<br/>{selected.source}</p>}
-    <label className="slope-opacity">Slope opacity <input aria-label="Slope opacity" type="range" min="0.1" max="0.85" step="0.05" value={slopeOpacity} onChange={e=>onOpacity(Number(e.target.value))}/>{Math.round(slopeOpacity*100)}%</label>
-    {(hiriseBounds!==null || state!=='unavailable') && <div className="imagery-status" role="status" aria-live="polite">
-      <span className={'imagery-state imagery-'+state}>HiRISE: {IMAGERY_STATUS_TEXT[state]}</span>
-      {(state==='failed'||state==='partial') && <button type="button" className="link-btn" onClick={onRetry}>Retry</button>}
-      <details className="imagery-notes" open={!narrow}><summary>Image source and alignment</summary><p>{SAMPLING_DISCLOSURE}</p><p>{registration}</p></details>
-    </div>}
-  </div></div>;
+  );
 }

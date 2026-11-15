@@ -69,6 +69,37 @@ export function resolveScarpTarget(
   return { target: { lat: target.lat, lon: normalizeLon(target.lon) }, source, evidence: 'inferred', note };
 }
 
+export function crewFaceTarget(
+  lines: ScarpLines | null,
+  viewpoint: LatLon | null | undefined,
+  coverage: { south: number; west: number; north: number; east: number }[],
+): ScarpTarget {
+  // Purpose: "Inspect crew's ice face": the face the crew actually looks at, i.e. the second (upper) scarp's
+  // traced face at the viewpoint's longitude (midpoint of the nearest edge and foot vertices). "Inspect
+  // scarp" stays on the main face (the drone's target). Disabled, with a reason, when the upper scarp is not
+  // traced, the viewpoint is not in front of it, or native HiRISE does not cover the face.
+  const note = "Second-scarp face in front of the crew's viewpoint (DTM trace; inferred, not ground truth).";
+  const line = (id: string) => lines?.features.find((f) => f.properties.id === id)?.geometry.coordinates;
+  const edge = line('upper-scarp-edge');
+  const foot = line('upper-scarp-foot');
+  if (!edge || !foot || edge.length < 2 || foot.length < 2 || !viewpoint) {
+    return { target: null, source: null, evidence: 'inferred', note, reason: 'The face in front of the crew viewpoint is not traced.' };
+  }
+  const vlon = normalizeLon(viewpoint.lon);
+  const lons = edge.map((p) => normalizeLon(p[0]));
+  if (vlon < Math.min(...lons) - 0.0005 || vlon > Math.max(...lons) + 0.0005) {
+    return { target: null, source: null, evidence: 'inferred', note, reason: 'The crew viewpoint is not in front of the traced second scarp.' };
+  }
+  const nearest = (pts: number[][]) => pts.reduce((best, p) => (Math.abs(normalizeLon(p[0]) - vlon) < Math.abs(normalizeLon(best[0]) - vlon) ? p : best));
+  const e = nearest(edge);
+  const f = nearest(foot);
+  const target = { lat: (e[1] + f[1]) / 2, lon: (normalizeLon(e[0]) + normalizeLon(f[0])) / 2 };
+  if (coverage.length === 0 || !insideAny(target, coverage)) {
+    return { target: null, source: null, evidence: 'inferred', note, reason: "The crew's ice face lies outside the published HiRISE coverage." };
+  }
+  return { target, source: 'scarp_lines', evidence: 'inferred', note };
+}
+
 export function observationTarget(point: LatLon | null | undefined): LatLon | null {
   // Purpose: "Inspect observation point" destination: the selected observation waypoint itself, if valid.
   if (!point || !Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return null;

@@ -72,20 +72,28 @@ def cost_grid(terrain, analysis, masks, agent="crew", unscouted=None, rules=None
     return costs
 
 
-@traced("route_search")
-def shortest_path(costs, start, end, spacing=None):
-    """Find a deterministic 4-neighbour path; start/end are cells, spacing is metric row/column scale."""
+def _validate_search(costs, start, end):
+    """Shared input checks for both searches: positive-or-inf 2D costs, distinct integer in-grid endpoints."""
     costs = np.asarray(costs, dtype=float)
     if costs.ndim != 2 or np.isnan(costs).any() or (costs <= 0).any():
         raise ValueError("Costs must be positive or infinity in a 2D grid")
-    start, end = tuple(start), tuple(end)
-    for point in (start, end):
+    cells = []
+    for point in (tuple(start), tuple(end)):
         if len(point) != 2 or any(isinstance(v, bool) or int(v) != v for v in point):
             raise ValueError("Endpoints must be integer row/column pairs")
+        point = (int(point[0]), int(point[1]))
         if not 0 <= point[0] < costs.shape[0] or not 0 <= point[1] < costs.shape[1]:
             raise ValueError("Endpoint outside terrain")
-    if start == end:
+        cells.append(point)
+    if cells[0] == cells[1]:
         raise ValueError("Route endpoints must differ")
+    return costs, cells[0], cells[1]
+
+
+@traced("route_search")
+def shortest_path(costs, start, end, spacing=None):
+    """Find a deterministic 4-neighbour path; start/end are cells, spacing is metric row/column scale."""
+    costs, start, end = _validate_search(costs, start, end)
     event("route_search_started", start=start, destination=end, excluded_cells=int((~np.isfinite(costs)).sum()))
     if not np.isfinite(costs[start]) or not np.isfinite(costs[end]):
         event("route_search_unavailable", logging.WARNING, reason="endpoint_excluded", status="no_viable_route")
@@ -117,6 +125,52 @@ def shortest_path(costs, start, end, spacing=None):
                 heapq.heappush(queue, (candidate, neighbour))
     event("route_search_unavailable", logging.WARNING, reason="disconnected_or_excluded", status="no_viable_route")
     return []
+
+
+@traced("route_search")
+def grid_shortest_path(costs, start, end, spacing=None):
+    """Same graph, edge weights and contract as shortest_path, solved with scipy's compiled Dijkstra.
+
+    For full-resolution DTM crops (millions of cells) where the pure-Python heap is too slow.
+    Edge weight between 4-neighbours a and b: (costs[a] + costs[b]) / 2 x step, with step = spacing[0]
+    between rows and spacing[1][row] between columns (metres), or 1 without spacing. Infinite cells
+    have no edges. Returns the cell list from start to end, or [] when no path exists.
+    """
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import dijkstra
+
+    costs, start, end = _validate_search(costs, start, end)
+    rows, cols = costs.shape
+    event("route_search_started", start=start, destination=end, excluded_cells=int((~np.isfinite(costs)).sum()),
+          solver="scipy_csgraph_dijkstra")
+    if not np.isfinite(costs[start]) or not np.isfinite(costs[end]):
+        event("route_search_unavailable", logging.WARNING, reason="endpoint_excluded", status="no_viable_route")
+        return []
+    row_step = 1.0 if spacing is None else float(spacing[0])
+    col_step = np.ones(rows) if spacing is None else np.asarray(spacing[1], dtype=float)
+    finite = np.isfinite(costs)
+    index = np.arange(costs.size, dtype=np.int64).reshape(costs.shape)
+    across = finite[:, :-1] & finite[:, 1:]
+    down = finite[:-1, :] & finite[1:, :]
+    weight_across = (costs[:, :-1] + costs[:, 1:]) / 2 * col_step[:, None]
+    weight_down = (costs[:-1, :] + costs[1:, :]) / 2 * row_step
+    graph = coo_matrix((np.concatenate([weight_across[across], weight_down[down]]),
+                        (np.concatenate([index[:, :-1][across], index[:-1, :][down]]),
+                         np.concatenate([index[:, 1:][across], index[1:, :][down]]))),
+                       shape=(costs.size, costs.size)).tocsr()
+    source, target = start[0] * cols + start[1], end[0] * cols + end[1]
+    distance, predecessor = dijkstra(graph, directed=False, indices=source, return_predecessors=True)
+    if not np.isfinite(distance[target]):
+        event("route_search_unavailable", logging.WARNING, reason="disconnected_or_excluded", status="no_viable_route")
+        return []
+    path, node = [], target
+    while node != source:
+        path.append((int(node // cols), int(node % cols)))
+        node = predecessor[node]
+    path.append(start)
+    result = path[::-1]
+    event("route_search_completed", cells=len(result), geometric_cost=float(distance[target]), solver="scipy_csgraph_dijkstra")
+    return result
 
 
 def route_stats(terrain, analysis, path, primary=(), speed_m_min=20):

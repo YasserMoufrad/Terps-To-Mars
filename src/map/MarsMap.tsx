@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { GeoJsonObject } from 'geojson';
-import { MapContainer, TileLayer, GeoJSON, CircleMarker, Polygon, Tooltip, ImageOverlay, Pane } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Tooltip, ImageOverlay, Pane } from 'react-leaflet';
 import { appLogger } from '../lib/appLogger';
 import { createTileErrorReporter, type TileCoords } from './tileErrors';
 import type {
@@ -18,20 +18,17 @@ import {
   EMPTY_LOAD, applyLoadEvent, combinedState, decodedSizeMatches, registrationNote,
   type ImageryLoadState, type LayerLoad,
 } from './imageryState';
-import { hazardsFor, routesFor, coverageFor, hasLine } from './stageFilters';
-import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
+import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } from './stageFilters';
+import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle, DRIVE_COLOR } from './layerStyles';
+import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
 import type { LayerVisibility } from './layers';
 import { FitToMission } from './FitToMission';
 import { MapLegend } from './MapLegend';
 import { dronePerchLabel } from './reviewPresentation';
-import { DEFAULT_SCIENCE_TARGETS, activeScienceTarget, resolveScienceTarget, pointInspection, type InspectionTarget, type ScienceTargets } from './scienceTargets';
+import { crewFaceTarget, observationTarget, resolveScarpTarget } from './scarpTarget';
 import { slopeAvailable, slopeDecodedState, type SlopeLoadState } from './slopeLayer';
 import { SlopeLegend } from './SlopeLegend';
-import { createPortal } from 'react-dom';
-import { RouteInspector } from '../components/RouteInspector';
-import { currentEntry, nearestCell, type Inspection, type AuditCell } from './routeInspection';
-import type { AnalysisResults } from '../data/analysis';
-import { useMapEvents } from 'react-leaflet';
+import { auditFor, diagnosticHtml, routeRejectedForStyle } from './routeAudit';
 
 // CTX global mosaic: real tiles exist up to zoom 10 here (see docs/MAP_TILES.md).
 // Its server sometimes fails a tile, so THEMIS (from Mars Trek) sits underneath:
@@ -55,8 +52,6 @@ const VIKING_COLOR_ATTRIBUTION = 'Color: Viking MDIM 2.1 color mosaic, NASA/USGS
 const EVIDENCE_LABEL = { nasa_derived: 'NASA-derived', inferred: 'Inferred', simulated: 'Simulated' } as const;
 
 interface MarsMapProps {
-  scienceTargets?: ScienceTargets;
-  analysis?: AnalysisResults;
   stage: StageId;
   mission: Mission;
   hazards: HazardCollection;
@@ -96,7 +91,7 @@ function dataUrl(file: string): string {
 
 export function MarsMap({
   stage, mission, hazards, routes, coverage, hiriseBounds, hiriseMeta, hiriseTiles, slopeBounds, layers, onSelectHazard,
-  onImageryState, slopeMeta = null, scarpLines = null, routeAudit = null, scienceTargets = DEFAULT_SCIENCE_TARGETS, analysis,
+  onImageryState, slopeMeta = null, scarpLines = null, routeAudit = null,
 }: MarsMapProps) {
   // `hiriseTiles`: published HiRISE tile sets (context ring first, native corridor last).
   // Purpose: draw the basemap and every data layer for the current `stage`.
@@ -123,42 +118,31 @@ export function MarsMap({
     ...(hiriseBounds ? [hiriseBounds] : []),
     ...hiriseTiles.filter((t) => t.role === 'core').map((t) => t.bounds),
   ];
-  const targets = useMemo(() => {
-    // Catalog entries reference published geometry only; unresolved science selection stays visible.
-    const scarps = scienceTargets.targets.map(t => resolveScienceTarget(t, scarpLines, nativeCoverage));
-    return [{...activeScienceTarget(scienceTargets, scarps),id:'active'}, ...scarps,
-      pointInspection('observation', 'Observation point (candidate)', mission.endpoints.observation_primary, 'mission.json', 'inferred'),
-      pointInspection('discovery', 'Rover incident (simulated)', mission.discovery.location, 'mission.json', 'simulated')];
-  }, [scarpLines, hiriseBounds, hiriseTiles, mission, scienceTargets]);
-  const [inspectedTarget, setInspectedTarget] = useState<InspectionTarget | null>(null);
-  const [slopeOpacity, setSlopeOpacity] = useState(0.45);
-  const [selection, setSelection] = useState<Inspection | null>(null);
-  const selectRoute = (id: string, point: LatLon | null = null) => {
-    // Only a current feature snapshot can supply local measurements or an audit verdict.
-    const route = routes.features.find(f=>f.properties.id===id);
-    if (!route) return;
-    const entry = currentEntry(routeAudit, route);
-    const cell = point ? nearestCell(entry?.cells ?? [], point) : null;
-    setSelection({route,cell,point,name:id,source:'route_audit.json / routes.geojson',evidence:'inferred; terrain NASA-derived'});
-    appLogger.info('analysis','route.inspect',{route_id:id,audit_status:entry?.audit_status??'not_current',segment:cell?.segment_index,coordinates:cell?.coordinates,crew_clearance:'not_established'});
-  };
-  const inspectPoint = (name: string, point: LatLon, evidence = 'inferred', source = 'mission.json', purpose = name) => {
-    // Published node identity and coordinates remain separate from terrain clearance.
-    const report=analysis?.reportStates?.['feasibility_report.json']==='current'?analysis.reports['feasibility_report.json'] as {points?:Record<string,{lonlat:number[];uncertainty:unknown}>}:null;
-    const assessed=Object.entries(report?.points??{}).find(([,p])=>Math.abs(p.lonlat[0]-point.lon)<.00003 && Math.abs(p.lonlat[1]-point.lat)<.00003);
-    setSelection({route:null,cell:null,point,name,source,evidence,details:{purpose,
-      quality:source!=='mission.json'?'Image-traced feature; ground truth not reviewed':mission.placeholder?'Placeholder mission coordinate':'Published candidate; review status unresolved',
-      uncertainty:assessed?.[1].uncertainty??'Not measured',clearance:'not_established'}});
-    appLogger.info('analysis','node.inspect',{name,point,evidence,crew_clearance:'not_established'});
-  };
-  useEffect(()=>{
-    // Stage navigation clears inspection; geographic navigation never changes the stage.
-    setSelection(null);setInspectedTarget(null);
-  },[stage]);
+  const scarpTarget = useMemo(() => resolveScarpTarget(scarpLines, nativeCoverage), [scarpLines, hiriseBounds, hiriseTiles]);
+  // The face the crew observes (second scarp) is a different place from the main face "Inspect scarp" shows.
+  const crewFace = useMemo(() => crewFaceTarget(scarpLines, mission.endpoints.observation_primary, nativeCoverage),
+    [scarpLines, mission, hiriseBounds, hiriseTiles]);
+  useEffect(() => {
+    // Log the resolved target once per data load: which source drives navigation, or why it is disabled.
+    if (scarpTarget.target) appLogger.info('map', 'scarp_target.resolved', { target: scarpTarget.target, source: scarpTarget.source, evidence: 'inferred' });
+    else appLogger.warn('map', 'scarp_target.unavailable', { reason: scarpTarget.reason });
+  }, [scarpTarget]);
 
   // Slope overlay: drawn only with valid bounds + metadata; the decoded PNG must have one pixel per DTM cell.
   const slopePublished = slopeAvailable(slopeBounds, slopeMeta);
   const [slopeState, setSlopeState] = useState<SlopeLoadState>(slopePublished ? 'loading' : 'unavailable');
+  const [slopeOpacity, setSlopeOpacity] = useState(0.75);
+  const [slopeAttempt, setSlopeAttempt] = useState(0);
+  const retrySlope = () => {
+    // Purpose: drop a failed slope load and request the image again (new URL, remounted overlay).
+    appLogger.info('map', 'slope.retry', { attempt: slopeAttempt + 1 });
+    setSlopeState('loading');
+    setSlopeAttempt((a) => a + 1);
+  };
+  useEffect(() => {
+    // Switching the layer back on after a failure retries instead of staying silently failed.
+    if (layers.slope && slopeState === 'failed') retrySlope();
+  }, [layers.slope]);
   const setSlope = (next: SlopeLoadState, fields: Record<string, unknown> = {}) => {
     setSlopeState(next);
     if (next === 'failed') appLogger.error('map', 'slope.load_state', { slope_state: next, ...fields });
@@ -199,18 +183,17 @@ export function MarsMap({
     tileerror: (e: L.TileErrorEvent) => reporter.report(e.coords),
   });
 
-  const [replay, setReplay] = useState('context');
   const visibleHazards = hazardsFor(stage, hazards);
   const visibleCoverage = coverageFor(stage, coverage, mission);
   const stageRoutes = routesFor(stage, routes, mission);
   // Routes with no line (failed searches) are reported in the side panel instead.
   // A non-"ok" route that still has a line (e.g. the unverified orbital guess) is drawn,
   // styled amber so it never looks like a cleared route.
-  const drawnRoutes = { ...stageRoutes, features: stageRoutes.features.filter(f=>stage!=='rover' || replay==='context' || f.properties.id===(replay==='before'?mission.discovery.before_route_id:mission.discovery.after_route_id)).filter((f) => hasLine(f.geometry.coordinates)).map(f=>({
-    ...f,properties:{...f.properties,status:'inspection_required' as const}
-  })) };
+  // Crew routes with drive/walk legs are split so the drive leg can be drawn differently.
+  const drawnRoutes = splitRouteLegs({ ...stageRoutes, features: stageRoutes.features.filter((f) => hasLine(f.geometry.coordinates)) });
   // During the rover stage the old crew route is shown faded next to the new one.
   const supersededId = stage === 'rover' ? mission.discovery.before_route_id : null;
+  const parking = stage === 'eva' ? crewRoverParking(stageRoutes) : null;
 
   return (
     <div className="map-wrap">
@@ -222,10 +205,10 @@ export function MarsMap({
         minZoom={4}
         maxZoom={MAP_MAX_ZOOM}
       >
-        <TerrainClick analysis={analysis} onSelect={setSelection}/>
         <FitToMission
-          geometries={[...routes.features, ...hazards.features].map((f) => f.geometry.coordinates)}
-          points={[mission.endpoints.habitat, mission.endpoints.observation_primary]}
+          // Routes and endpoints only: hazard and coverage polygons (DTM-wide slope clusters) would widen the view.
+          geometries={routes.features.map((f) => f.geometry.coordinates)}
+          points={[mission.endpoints.habitat, mission.endpoints.observation_primary, mission.endpoints.observation_backup]}
         />
 
         <TileLayer
@@ -315,15 +298,13 @@ export function MarsMap({
         )}
         <ImageryControls
           overview={{
-            geometries: [...stageRoutes.features, ...visibleHazards.features].map((f) => f.geometry.coordinates),
+            geometries: [...routes.features, ...hazards.features].map((f) => f.geometry.coordinates),
             points: [mission.endpoints.habitat, mission.endpoints.observation_primary],
           }}
           hiriseBounds={hiriseBounds}
-          targets={targets}
-          stage={stage}
-          onInspect={target=>{setInspectedTarget(target);if(target?.target) inspectPoint(target.name,target.target,target.evidence,target.source,target.note);else setSelection(null);}}
-          slopeOpacity={slopeOpacity}
-          onOpacity={setSlopeOpacity}
+          scarp={scarpTarget}
+          observation={observationTarget(mission.endpoints.observation_primary)}
+          crewFace={crewFace}
           state={sizeMismatch && hiriseTiles.length === 0 ? 'failed' : hdState}
           registration={registrationNote(hiriseMeta)}
           onRetry={retryImagery}
@@ -333,7 +314,8 @@ export function MarsMap({
         {slopePublished && slopeBounds && slopeMeta && layers.slope && slopeState !== 'failed' && (
           <Pane name="slope" style={{ zIndex: 380 }}>
             <ImageOverlay
-              url={dataUrl('slope.png')}
+              key={`slope-${slopeAttempt}`}
+              url={slopeAttempt ? `${dataUrl('slope.png')}?retry=${slopeAttempt}` : dataUrl('slope.png')}
               bounds={toCorners(slopeBounds)}
               opacity={slopeOpacity}
               eventHandlers={{
@@ -351,17 +333,21 @@ export function MarsMap({
 
         {/* `key` makes React rebuild a layer when the stage changes; Leaflet's GeoJSON
             layer does not redraw by itself when its data prop changes. */}
-        {layers.coverage && (
-          <GeoJSON
-            key={`coverage-${stage}`}
-            data={asGeoJson(visibleCoverage)}
-            style={(f) => coverageStyle(f?.properties as CoverageProperties)}
-            onEachFeature={(f, layer) => {
-              const p = f.properties as CoverageProperties;
-              layer.bindTooltip(`Coverage: ${p.state.replace('_', ' ')}${p.simulated ? ' (simulated)' : ''}`);
-            }}
-          />
-        )}
+        {/* Coverage: everything when the toggle is on; otherwise just this stage's key zones. */}
+        <GeoJSON
+          key={`coverage-${stage}-${layers.coverage}`}
+          data={asGeoJson(layers.coverage ? visibleCoverage : highlightCoverageFor(stage, coverage, mission))}
+          style={(f) => {
+            // The drone's field of view is drawn stronger than ordinary coverage so the cone reads clearly.
+            const p = f?.properties as CoverageProperties;
+            return p.id === mission.drone.view_cone_id ? { ...coverageStyle(p), weight: 2, fillOpacity: 0.25 } : coverageStyle(p);
+          }}
+          onEachFeature={(f, layer) => {
+            const p = f.properties as CoverageProperties;
+            const what = p.id === mission.drone.view_cone_id ? 'Drone field of view' : `Coverage: ${p.state.replace('_', ' ')}`;
+            layer.bindTooltip(`${what}${p.simulated ? ' (simulated)' : ''}`);
+          }}
+        />
 
         {layers.hazards && (
           <GeoJSON
@@ -375,120 +361,85 @@ export function MarsMap({
                   `${EVIDENCE_LABEL[p.evidence]} · click for evidence`,
               );
               // Clicking a hazard opens its evidence card in the side panel.
-              layer.on('click', (e: L.LeafletMouseEvent) => { L.DomEvent.stopPropagation(e.originalEvent); onSelectHazard(p); });
+              layer.on('click', () => onSelectHazard(p));
             }}
           />
         )}
 
         {/* Routes are drawn twice: a dark outline first, then the colored line on top. */}
         <GeoJSON
-          key={`route-casing-${stage}-${replay}`}
+          key={`route-casing-${stage}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => routeCasingStyle(f?.properties as RouteProperties, supersededId)}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeCasingStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
           interactive={false}
         />
         <GeoJSON
-          key={`routes-${stage}-${replay}`}
+          key={`routes-${stage}`}
           data={asGeoJson(drawnRoutes)}
-          style={(f) => {
-            // Rejected terrain takes precedence over claimed status and superseded-route coloring.
-            const p=f?.properties as RouteProperties, original=routes.features.find(r=>r.properties.id===p.id);
-            const entry=original?currentEntry(routeAudit,original):null;
-            return entry && entry.audit_status!=='candidate_requires_inspection'
-              ? {color:'#ff5365',weight:5,dashArray:'10 5',opacity:1}:routeStyle(p,supersededId);
-          }}
+          style={(f) => { const p = f?.properties as RouteProperties; return routeStyle(p, supersededId, routeRejectedForStyle(p, auditFor(routeAudit, p.id))); }}
           onEachFeature={(f, layer) => {
-            const p = f.properties as RouteProperties;
+            const p = f.properties as DrawnRouteProperties;
+            const entry = auditFor(routeAudit, p.id);
+            const rejected = routeRejectedForStyle(p, entry);
             const label =
               p.id === supersededId
                 ? 'Old route (replaced)'
-                : `${p.agent} ${p.kind.replace('_', ' ')}${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')})` : ''}`;
-            const original = routes.features.find(r=>r.properties.id===p.id)!;
-            const entry = currentEntry(routeAudit, original);
-            // Prefer measured numbers over the file's claimed stats; the popup explains the verdict.
+                : `${rejected ? 'REJECTED ' : ''}${p.agent} ${p.kind.replace('_', ' ')}${p.leg_mode ? ` (${p.leg_mode} leg)` : ''}` +
+                  `${p.status !== 'ok' ? ` (${p.status.replace(/_/g, ' ')}${p.status_reason ? `: ${p.status_reason}` : ''})` : ''}`;
+            const legs = legSummary(p);
+            // Prefer measured numbers from the route audit (#18) over the file's claimed stats; otherwise show the
+            // drive/walk legs and walkback from the route data. The popup explains the audit verdict.
             layer.bindTooltip(entry && entry.length_m !== undefined
               ? `${label}: measured ${(entry.length_m / 1000).toFixed(2)} km one way, steepest crossed ${entry.max_slope_deg ?? '?'}° · click for diagnostics`
-              : `${label}: ${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip (claimed, not audited)`);
-            layer.bindPopup((entry?.audit_status??'No current audit')+' · full diagnostics in inspector', { maxWidth: 260 });
-            layer.on('click', (e: L.LeafletMouseEvent) => {
-              // The native cell at the click supplies local values, independent of route-wide maxima.
-              L.DomEvent.stopPropagation(e.originalEvent);
-              selectRoute(p.id,{lat:e.latlng.lat,lon:e.latlng.lng});
-            });
+              : `${label}: ${legs ?? `${(p.stats.round_trip_m / 1000).toFixed(2)} km round trip`}, ${p.stats.est_time_min} min round trip (claimed, not audited)` +
+                (p.walkback_min ? `<br/>Walkback if the crew rover fails: ${p.walkback_min} min on foot` : ''));
+            layer.bindPopup(diagnosticHtml(p, entry, routeAudit), { maxWidth: 320 });
           }}
         />
 
-        <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Habitat",mission.endpoints.habitat)}} center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
+        {/* Where each drawn route first enters excluded terrain (from the audit). */}
+        {/* One marker per route id (drawnRoutes splits a route into drive/walk legs). */}
+        {drawnRoutes.features.filter((f, i, all) => all.findIndex((g) => g.properties.id === f.properties.id) === i).map((f) => {
+          const first = auditFor(routeAudit, f.properties.id)?.first_exclusion;
+          return first ? (
+            <CircleMarker key={`excl-${f.properties.id}`} center={[first.lat, first.lon]} radius={6}
+              pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
+              <Tooltip direction="top">{`First excluded crossing: ${first.kind.replace(/_/g, ' ')}, ${Math.round(first.distance_m)} m along ${f.properties.id}`}</Tooltip>
+            </CircleMarker>
+          ) : null;
+        })}
+
+        <CircleMarker center={toLatLng(mission.endpoints.habitat)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#ffffff', fillOpacity: 1, weight: 2 }}>
           <Tooltip permanent direction="left" className="map-label">Habitat</Tooltip>
         </CircleMarker>
-        <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Observation primary",mission.endpoints.observation_primary)}} center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
+        <CircleMarker center={toLatLng(mission.endpoints.observation_primary)} radius={8} pathOptions={{ color: '#0b0d10', fillColor: '#f5a524', fillOpacity: 1, weight: 2 }}>
           {/* Amber, not green: the point is an unconfirmed candidate, not a cleared site. */}
           <Tooltip permanent direction="right" className="map-label">Observation point (candidate)</Tooltip>
         </CircleMarker>
 
         {stage === 'rover' && (
-          <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Rover incident",mission.discovery.location,"simulated")}} center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
+          <CircleMarker center={toLatLng(mission.discovery.location)} radius={9} pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
             <Tooltip permanent direction="left" className="map-label">Rover stopped (simulated): soft ground?</Tooltip>
           </CircleMarker>
         )}
 
-        {stage === 'eva' && (
-          <CircleMarker bubblingMouseEvents={false} eventHandlers={{click:()=>inspectPoint("Drone perch",mission.drone.perch,"simulated")}} center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
-            <Tooltip permanent direction="right" className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
+        {parking && (
+          <CircleMarker center={parking} radius={7} pathOptions={{ color: '#0b0d10', fillColor: DRIVE_COLOR, fillOpacity: 1, weight: 2 }}>
+            <Tooltip permanent direction="right" className="map-label">Crew rover parks (proposed)</Tooltip>
           </CircleMarker>
         )}
-        {analysis?.reportStates?.['feasibility_report.json']==='current' && Object.entries((analysis.reports['feasibility_report.json'] as {points?:Record<string,{lonlat:[number,number];uncertainty:{radius_m:number}}>})?.points??{}).map(([id,p])=>
-          <Polygon bubblingMouseEvents={false} key={'uncertainty-'+id} positions={uncertaintyRing(p.lonlat,p.uncertainty.radius_m)}
-            pathOptions={{color:'#d6b5ff',weight:1,dashArray:'3 3',fillOpacity:.08}}
-            eventHandlers={{click:()=>inspectPoint(id,{lon:p.lonlat[0],lat:p.lonlat[1]})}}>
-            <Tooltip>{id}: {p.uncertainty.radius_m} m modeled position uncertainty</Tooltip>
-          </Polygon>)}
-        {inspectedTarget?.geometry && <GeoJSON key={inspectedTarget.id} data={asGeoJson(inspectedTarget.geometry)}
-          style={{color:'#62ddff',weight:5,opacity:0.95}} interactive={false}/>}
-        {inspectedTarget?.target && <CircleMarker bubblingMouseEvents={false} center={toLatLng(inspectedTarget.target)} radius={14}
-          pathOptions={{color:'#62ddff',weight:3,fillOpacity:0}}><Tooltip permanent>{inspectedTarget.name}</Tooltip></CircleMarker>}
-        {selection?.route && <GeoJSON key={'selected-'+selection.route.properties.id} data={asGeoJson(selection.route)} style={{color:'#fff',weight:7,opacity:.7}} interactive={false}/>}
-        {selection?.cell && <CircleMarker bubblingMouseEvents={false} center={[selection.cell.coordinates[1],selection.cell.coordinates[0]]} radius={7} pathOptions={{color:'#fff',fillColor:'#ff642f',fillOpacity:1}}/>}
-        {selection?.route && currentEntry(routeAudit,selection.route)?.first_exclusion &&
-          <CircleMarker bubblingMouseEvents={false} center={[currentEntry(routeAudit,selection.route)!.first_exclusion!.coordinates[1],currentEntry(routeAudit,selection.route)!.first_exclusion!.coordinates[0]]}
-            radius={10} pathOptions={{color:'#ff3948',weight:3,fillOpacity:.3}}><Tooltip>First excluded native cell</Tooltip></CircleMarker>}
-        {mission.endpoints.observation_backup && <CircleMarker bubblingMouseEvents={false} center={toLatLng(mission.endpoints.observation_backup)}
-          eventHandlers={{click:()=>inspectPoint('Observation backup',mission.endpoints.observation_backup!)}}
-          radius={7} pathOptions={{color:'#f5a524'}}><Tooltip>Backup candidate</Tooltip></CircleMarker>}
-      </MapContainer>
-      <div className="route-selector"><label>Inspect route <select aria-label="Inspect route" value={selection?.route?.properties.id??''}
-        onChange={e=>e.target.value?selectRoute(e.target.value):setSelection(null)}><option value="">Select a route</option>
-        {routes.features.map(f=><option key={f.properties.id} value={f.properties.id}>{f.properties.id}</option>)}</select></label>
-      {stage==='rover' && <label>Static replay <select aria-label="Static replay" value={replay} onChange={e=>{setReplay(e.target.value);appLogger.info('simulation','replay.view',{view:e.target.value,evidence:'simulated',human_approval:'not_granted',live_control:false});}}><option value="context">Before and after context</option><option value="before">Before incident</option><option value="after">Published after candidate</option></select><span>Preview only · no command or crew approval</span></label>}</div>
-      {selection && document.getElementById('analysis-inspector-slot') && createPortal(<RouteInspector selection={selection} audit={routeAudit} onClose={()=>setSelection(null)}/>, document.getElementById('analysis-inspector-slot')!)}
 
+        {(stage === 'drone' || stage === 'eva') && (
+          <CircleMarker center={toLatLng(mission.drone.perch)} radius={7} pathOptions={{ color: '#0b0d10', fillColor: '#4da3ff', fillOpacity: 1, weight: 2 }}>
+            {/* "top": the perch is only ~50 m from the observation point, whose label sits to the right. */}
+            <Tooltip permanent direction="top" offset={[0, -8]} className="map-label">{dronePerchLabel(coverage, mission)}</Tooltip>
+          </CircleMarker>
+        )}
+      </MapContainer>
 
       <MapLegend />
-      {layers.slope && slopeMeta && slopePublished && <SlopeLegend meta={slopeMeta} state={slopeState} />}
+      {layers.slope && slopeMeta && slopePublished && <SlopeLegend meta={slopeMeta} state={slopeState} opacity={slopeOpacity} onOpacity={setSlopeOpacity} onRetry={retrySlope} />}
       {!imageryLoaded && <div className="map-loading">Loading Mars imagery…</div>}
     </div>
   );
-}
-
-function TerrainClick({analysis,onSelect}:{analysis:AnalysisResults|undefined;onSelect:(selection:Inspection)=>void}) {
-  // Sparse native samples disclose their actual position and offset; no interpolation is performed.
-  useMapEvents({click:e=>{
-    const point={lat:e.latlng.lat,lon:e.latlng.lng};
-    const report=analysis?.reportStates?.['terrain_samples.json']==='current'?analysis.reports['terrain_samples.json'] as {samples?:[number,number,number|null,number|null,number|null,string,number,number][];stride_cells:number;bounds:{west:number;east:number;south:number;north:number}}:null;
-    const b=report?.bounds;
-    const inside=b && point.lon>=b.west && point.lon<=b.east && point.lat>=b.south && point.lat<=b.north;
-    const cells:AuditCell[]=inside?(report?.samples??[]) .map(([lon,lat,elevation,slope,roughness_m,quality,col,row])=>({
-      coordinates:[lon,lat],elevation,slope,roughness_m,known:quality==='valid_unreviewed',inside:true,col,row,
-      segment_index:-1,distance_m:0,limit:(analysis!.reports['analysis_rules.json'] as {rules:{crew_exclude_deg:{value:number}}}).rules.crew_exclude_deg.value,mode:'walk'
-    })):[];
-    onSelect({point,route:null,cell:nearestCell(cells,point),name:'Terrain sample',source:inside?'terrain_samples.json (sparse; stride '+report?.stride_cells+' native cells)':'Outside published numeric coverage',evidence:'nasa_derived; artifact review unavailable'});
-    appLogger.info('analysis','terrain.inspect',{point,inside:Boolean(inside),state:analysis?.state});
-  }});
-  return null;
-}
-
-function uncertaintyRing(point:[number,number],radius:number):[number,number][] {
-  // Radius is Mars ground metres from the published point audit, not Leaflet's Earth-metre circle.
-  const dy=radius/3389500*180/Math.PI, dx=dy/Math.cos(point[1]*Math.PI/180);
-  return Array.from({length:48},(_,i)=>[point[1]+dy*Math.sin(i*Math.PI/24),point[0]+dx*Math.cos(i*Math.PI/24)]);
 }

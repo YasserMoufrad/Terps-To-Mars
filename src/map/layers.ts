@@ -12,7 +12,7 @@ export interface LayerVisibility {
 export const DEFAULT_LAYERS: LayerVisibility = {
   color: true,
   hirise: true,
-  slope: false, // off by default so the map is not cluttered
+  slope: true, // on at load (orbital planning starts here); stage changes never touch the user's toggle
   hazards: true,
   coverage: false, // off by default; the route and hazards tell the story first
 };

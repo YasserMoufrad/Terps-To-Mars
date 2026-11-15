@@ -1,20 +1,19 @@
-import { loadAnalysis, stable, REPORT_INPUTS, type AnalysisResults } from './analysis.ts';
-import { checkScienceTargets, DEFAULT_SCIENCE_TARGETS, type ScienceTargets } from '../map/scienceTargets.ts';
 // Loads every file in public/data/, checks it against the contract, and
 // collects problems as "issues" instead of crashing. The app shows the issues
 // on screen, so a missing or broken file is never silently treated as "no hazards".
 
 // Imports use the .ts extension so the Node test runner can load this file directly.
 import {
-  SCHEMA_VERSION,
+  SCHEMA_VERSION, SUPPORTED_SCHEMA_VERSIONS,
   HAZARD_TYPES, HAZARD_CATEGORIES, SEVERITIES, EVIDENCE, HAZARD_AGENTS, STAGE_IDS,
-  ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES,
-  COVERAGE_STATES, SENSORS,
+  ROUTE_KINDS, ROUTE_AGENTS, ROUTE_VERSIONS, ROUTE_STATUSES, LEG_MODES,
+  COVERAGE_STATES, SENSORS, type RouteLeg,
   type HazardCollection, type RouteCollection, type CoverageCollection,
   type Mission, type OverlayBounds, type HiriseMeta, type HiriseTiles,
   type SlopeMeta, type ScarpLines, type RouteAudit,
 } from './types.ts';
 import { silentLogger, type Logger } from '../lib/logger.ts';
+import { checkAuditFreshness } from '../map/auditFreshness.ts';
 
 export interface LoadIssue {
   file: string;
@@ -23,8 +22,6 @@ export interface LoadIssue {
 }
 
 export interface MissionData {
-  analysis: AnalysisResults;
-  scienceTargets: ScienceTargets;
   hazards: HazardCollection | null;
   routes: RouteCollection | null;
   coverage: CoverageCollection | null;
@@ -84,12 +81,13 @@ function checkAllowed(
 }
 
 function checkSchemaVersion(data: { schema_version?: unknown }, file: string, issues: LoadIssue[]): void {
-  // Purpose: record an error when a file's schema_version differs from SCHEMA_VERSION.
-  if (data.schema_version !== SCHEMA_VERSION) {
+  // Purpose: record an error when a file's schema_version is not one the app supports
+  // (SUPPORTED_SCHEMA_VERSIONS: 1.0 and 1.1; the current version is SCHEMA_VERSION).
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(data.schema_version)) {
     issues.push({
       file,
       severity: 'error',
-      message: `schema_version is "${String(data.schema_version)}" but the app expects "${SCHEMA_VERSION}".`,
+      message: `schema_version is "${String(data.schema_version)}" but the app expects one of ${SUPPORTED_SCHEMA_VERSIONS.join(', ')}.`,
     });
   }
 }
@@ -117,10 +115,6 @@ export function checkFeatureCollection(raw: unknown, file: string, issues: LoadI
     issues.push({ file, severity: 'error', message: 'Not a GeoJSON FeatureCollection; file ignored.' });
     return null;
   }
-  if(raw.schema_version!==SCHEMA_VERSION) {
-    issues.push({file,severity:'error',message:'Unsupported core contract version; file ignored.'});
-    return null;
-  }
   const bad = raw.features.findIndex((f: unknown) => !isObject(f) || !isObject(f.properties)
     || typeof f.properties.id !== 'string' || !isObject(f.geometry) || typeof f.geometry.type !== 'string'
     || !coordinatesOk(f.geometry.coordinates));
@@ -138,7 +132,7 @@ export function checkMissionShape(raw: unknown, issues: LoadIssue[]): unknown | 
   const ok = isObject(raw) && isObject(raw.site) && typeof raw.site.name === 'string' && Array.isArray(raw.stages)
     && raw.stages.every((st: unknown) => isObject(st) && typeof st.id === 'string')
     && isObject(raw.discovery) && Array.isArray(raw.discovery.options) && isObject(raw.drone);
-  if (!ok || (raw as {schema_version?:unknown}).schema_version!==SCHEMA_VERSION) {
+  if (!ok) {
     issues.push({ file: 'mission.json', severity: 'error', message: 'mission.json is missing site, stages, discovery or drone; file ignored.' });
     return null;
   }
@@ -189,7 +183,32 @@ function checkRoutes(data: RouteCollection, issues: LoadIssue[], ids: Set<string
     if (p.status !== 'ok') {
       issues.push({ file, severity: 'warning', message: `${label} status is ${p.status}.` });
     }
+    if (p.legs !== undefined && data.schema_version === '1.0') {
+      issues.push({ file, severity: 'warning', message: `${label} has legs, which need schema_version 1.1.` });
+    }
+    checkLegs(p.legs, f.geometry.coordinates.length, label, issues);
   }
+}
+
+export function checkLegs(legs: unknown, pointCount: number, label: string, issues: LoadIssue[]): void {
+  // Purpose: validate the optional drive/walk `legs` of one route. `pointCount` is the
+  // number of coordinates in its line. Bad legs are a warning, not an error: the route
+  // is still drawn as one walking line, so nothing is hidden.
+  if (legs === undefined) return;
+  const file = 'routes.geojson';
+  const warn = (message: string): void => {
+    issues.push({ file, severity: 'warning', message: `${label} legs: ${message}` });
+  };
+  if (!Array.isArray(legs)) return warn('expected a list.');
+  let expectedFrom = 0;
+  for (const leg of legs as RouteLeg[]) {
+    if (!(LEG_MODES as readonly string[]).includes(String(leg?.mode))) return warn(`mode "${String(leg?.mode)}" is not drive or walk.`);
+    if (!Number.isInteger(leg.from) || !Number.isInteger(leg.to) || leg.from !== expectedFrom || leg.to <= leg.from || leg.to >= pointCount) {
+      return warn('indexes must run along the line without gaps or overlaps.');
+    }
+    expectedFrom = leg.to;
+  }
+  if (expectedFrom !== pointCount - 1) warn('do not cover the whole line.');
 }
 
 function checkCoverage(data: CoverageCollection, issues: LoadIssue[], ids: Set<string>): void {
@@ -257,8 +276,9 @@ export function checkOverlayBounds(raw: unknown, file: string, issues: LoadIssue
     issues.push({ file, severity: 'error', message: 'Bounds must be signed degrees with south < north and west < east (longitude -180..180).' });
     return null;
   }
-  if (b.schema_version !== SCHEMA_VERSION) {
-    // A different contract version may mean different corner semantics: never draw it.
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(b.schema_version)) {
+    // An unknown contract version may mean different corner semantics: never draw it.
+    // 1.1 changed only route legs, so overlay bounds written as "1.0" stay valid.
     checkSchemaVersion(b, file, issues);
     return null;
   }
@@ -327,7 +347,10 @@ export function checkSlopeMeta(raw: unknown, bounds: OverlayBounds | null, file:
   if (raw === null) return null;
   const m = raw as Partial<SlopeMeta>;
   const reasons: string[] = [];
-  if (m.schema_version !== SCHEMA_VERSION) reasons.push(`schema_version ${String(m.schema_version)} is not ${SCHEMA_VERSION}`);
+  // 1.1 changed only route legs, so slope metadata written as "1.0" stays valid.
+  if (!(SUPPORTED_SCHEMA_VERSIONS as readonly unknown[]).includes(m.schema_version)) {
+    reasons.push(`schema_version ${String(m.schema_version)} is not one of ${SUPPORTED_SCHEMA_VERSIONS.join(', ')}`);
+  }
   if (m.evidence !== 'nasa_derived') reasons.push('evidence must be nasa_derived (no synthetic slope maps)');
   const px = m.grid?.pixels;
   if (!Array.isArray(px) || px.length !== 2 || !px.every((v) => Number.isInteger(v) && v > 0 && v <= 16384)) {
@@ -377,14 +400,6 @@ export function checkRouteAudit(raw: unknown, file: string, issues: LoadIssue[])
     return null;
   }
   checkSchemaVersion(a, file, issues);
-  if (a.schema_version !== SCHEMA_VERSION) return null;
-  if (a.routes.some(r => r.cells?.some(c => !Array.isArray(c.coordinates) || c.coordinates.length!==2
-    || !c.coordinates.every(finite) || !finite(c.limit) || !finite(c.segment_index)
-    || typeof c.known!=='boolean' || typeof c.inside!=='boolean'
-    || ![c.slope,c.elevation,c.roughness_m].every(v=>v===null||finite(v))))) {
-    issues.push({file,severity:'warning',message:'Invalid native-cell measurements; audit ignored.'});
-    return null;
-  }
   return a as RouteAudit;
 }
 
@@ -445,21 +460,16 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
   ]);
   const scarpLines = checkScarpLines(scarpRaw, 'scarp_lines.geojson', issues);
   let routeAudit = checkRouteAudit(auditRaw, 'route_audit.json', issues);
-  const analysis = await loadAnalysis(baseUrl, logger);
-  // A moving publication/cache must not attach verified reports to a different displayed context.
-  const displayed:Record<string,unknown>={'mission.json':missionRaw,'routes.geojson':routesRaw,
-    'hazards.geojson':hazardsRaw,'coverage.geojson':coverageRaw,'scarp_lines.geojson':scarpRaw,
-    'slope.meta.json':slopeMetaRaw,'slope.bounds.json':slopeRaw};
-  for(const [name,value] of Object.entries(displayed)) {
-    if(value!==null && analysis.reports[name]!==undefined && stable(value)!==stable(analysis.reports[name])) {
-      analysis.state='stale';analysis.reason='Displayed inputs changed during load — requires regeneration/reload: '+name;
-      for(const [report,inputs] of Object.entries(REPORT_INPUTS)) if(inputs.includes(name) && analysis.reportStates) analysis.reportStates[report]='stale';
-      logger.warn('analysis','results.context_changed',{file:name,crew_clearance:'not_established'});
+  if (routeAudit && routes) {
+    // A stale audit describes other lines than the ones drawn: withhold all of its diagnostics, visibly.
+    const freshness = await checkAuditFreshness(routeAudit, routes.features, mission, scarpLines, slopeMeta);
+    if (!freshness.fresh) {
+      issues.push({ file: 'route_audit.json', severity: 'error',
+        message: `Route audit is stale and was not used (${freshness.problems.join('; ')}). Re-run pipeline.mission_geography or pipeline.route_audit.` });
+      logger.error('safety', 'route_audit.stale', { problems: freshness.problems, stale_routes: freshness.staleRoutes });
+      routeAudit = null;
     }
   }
-  if (analysis.reportStates?.['route_audit.json'] === 'current') routeAudit = checkRouteAudit(analysis.reports['route_audit.json'], 'route_audit.json', issues);
-  if (routeAudit) routeAudit.freshness = analysis.reportStates?.['route_audit.json'] ?? analysis.state;
-  const scienceTargets = checkScienceTargets(analysis.reports['science_targets.json'] ?? await fetchOptional(baseUrl, 'science_targets.json', issues)) ?? DEFAULT_SCIENCE_TARGETS;
   if (routeAudit && routes) {
     const audited = new Set(routeAudit.routes.map((r) => r.id));
     const missing = routes.features.map((f) => f.properties.id).filter((id) => !audited.has(id));
@@ -510,8 +520,6 @@ export async function loadMissionData(baseUrl: string, logger: Logger = silentLo
   });
 
   return {
-    analysis,
-    scienceTargets,
     hazards,
     routes,
     coverage,
