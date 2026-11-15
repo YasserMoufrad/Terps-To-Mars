@@ -16,24 +16,36 @@ import { ErrorBanner, DataBadge } from './components/IssuesBanner';
 import { LayerToggles } from './components/LayerToggles';
 import { StageNav } from './components/StageNav';
 import { MissionBrief } from './components/MissionBrief';
+import { WalkthroughRecap } from './components/WalkthroughRecap';
+import { logWalkthroughTransition } from './components/walkthrough';
 import { appLogger } from './lib/appLogger';
 import { IMAGERY_STATUS_TEXT, type ImageryLoadState } from './map/imageryState';
-import { logRouteReview, reviewNotices, missingBackupAssessment } from './map/reviewPresentation';
+import { logRouteReview, reviewNotices, missingBackupAssessment, conservativeFeasibilityNotice, logConservativeFeasibility } from './map/reviewPresentation';
 
 export function App() {
   // Purpose: top-level screen. State: `data` (loaded files + issues), `stage` (current
-  // mission step), `layers` (toggles), `selectedHazard` (evidence card), `showBrief` (intro).
+  // mission step), `layers` (toggles), `selectedHazard` (evidence card), and tour dialogs/actions.
   const [data, setData] = useState<MissionData | null>(null);
   const [stage, setStage] = useState<StageId>('orbital');
   const [layers, setLayers] = useState<LayerVisibility>(DEFAULT_LAYERS);
   const [selectedHazard, setSelectedHazard] = useState<HazardProperties | null>(null);
   const [showBrief, setShowBrief] = useState(true);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [showRecap, setShowRecap] = useState(false);
+  const [guidedAction, setGuidedAction] = useState<{ stage: StageId; serial: number } | null>(null);
   const [hiriseState, setHiriseState] = useState<ImageryLoadState>('ready'); // reported by MarsMap
 
   // Runs once when the page opens: fetch every data file.
   useEffect(() => {
     loadMissionData(import.meta.env.BASE_URL, appLogger).then(setData);
   }, []);
+
+  useEffect(() => {
+    // On narrow screens the hazard evidence card is below the map; reveal it after the map click renders it.
+    if (!selectedHazard || !window.matchMedia('(max-width: 800px)').matches) return;
+    const frame = requestAnimationFrame(() => document.querySelector('.evidence-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return () => cancelAnimationFrame(frame);
+  }, [selectedHazard]);
 
   // Log each stage the viewer reaches, plus the safety-relevant things that stage shows.
   // Runs only when the stage (or the data) changes, never on every render or click.
@@ -46,6 +58,8 @@ export function App() {
     for (const f of routesFor(stage, routes, mission).features) {
       logRouteReview(appLogger, f, stage, data.routeAudit);
     }
+    logConservativeFeasibility(appLogger, stage, data.analysis.reports['feasibility_report.json'],
+      data.analysis.reportStates?.['feasibility_report.json'] === 'current');
     if (missingBackupAssessment(stage, routes)) {
       appLogger.warn('safety', 'backup.assessment_missing', { mission_stage: stage, required_version: 'after' });
     }
@@ -81,20 +95,39 @@ export function App() {
   };
 
   // Honest failures from the pipeline (e.g. no backup route) are shown in words.
-  // A route the robots have scouted end to end (routeReadiness) gets a "go" notice instead of "requires inspection".
+  // A route scouted end to end in the simulation gets a conditional planning notice; the independent feasibility audit remains visible.
   const readiness = ready ? readinessFor(stage, routes, data.routeAudit, coverage, hazards) : {};
   const routeNotices =
     ready
       ? reviewNotices(stage, routes, mission, data.routeAudit).map((n) => {
         const id = n.split(':')[0];
-        return readiness[id]?.state === 'go' ? `${id}: scouted end to end by the rover: go for EVA (simulated scouting; not a real-world certification).` : n;
+        return readiness[id]?.state === 'go' ? `${id}: conditional planning go after simulated rover scouting; crew clearance is not established.` : n;
       })
       : [];
+  const feasibilityNotice = conservativeFeasibilityNotice(data.analysis.reports['feasibility_report.json'],
+    data.analysis.reportStates?.['feasibility_report.json'] === 'current');
+  if (feasibilityNotice) routeNotices.push(feasibilityNotice);
 
   const changeStage = (next: StageId) => {
     // Purpose: move to step `next` and close any open evidence card.
     setStage(next);
     setSelectedHazard(null); // the clicked hazard may not exist in the new stage
+    setGuidedAction(null);
+  };
+
+  const guideStage = (current: StageId) => {
+    // Trigger a visible map focus for `current`; orbital guidance also reveals the available slope layer.
+    if (current === 'orbital' && slopeBounds && data.slopeMeta) setLayers((before) => ({ ...before, slope: true }));
+    setGuidedAction((before) => ({ stage: current, serial: (before?.serial ?? 0) + 1 }));
+  };
+
+  const restartWalkthrough = () => {
+    // Restore Step 1 only when the user explicitly restarts; keep data and layers loaded.
+    logWalkthroughTransition(appLogger, 'restart', stage);
+    changeStage('orbital');
+    setShowRecap(false);
+    setShowBrief(false);
+    setHasStarted(true);
   };
 
   return (
@@ -106,7 +139,7 @@ export function App() {
         </div>
         <div className="topbar-actions">
           <DataBadge issues={data.issues} placeholderFiles={data.placeholderFiles} />
-          <button className="link-btn" onClick={() => setShowBrief(true)}>About this mission</button>
+          <button className="link-btn" onClick={() => setShowBrief(true)}>Help</button>
         </div>
       </header>
 
@@ -114,7 +147,10 @@ export function App() {
 
       {ready ? (
         <>
-          <StageNav stage={stage} onChange={changeStage} />
+          <StageNav stage={stage} onChange={changeStage} onAction={guideStage} onFinish={() => {
+            logWalkthroughTransition(appLogger, 'finish', stage);
+            setShowRecap(true);
+          }} />
           <main className="layout">
             <MarsMap
               stage={stage}
@@ -132,6 +168,7 @@ export function App() {
               scienceTargets={data.scienceTargets}
               analysis={data.analysis}
               layers={layers}
+              guidedAction={guidedAction}
               onSelectHazard={setSelectedHazard}
               onImageryState={setHiriseState}
             />
@@ -168,12 +205,18 @@ export function App() {
         <MissionBrief
           siteName={mission.site.name}
           isDemoData={data.placeholderFiles.length > 0}
-          onStart={() => {
+          hasStarted={hasStarted}
+          onContinue={() => {
             setShowBrief(false);
-            changeStage('orbital');
+            setHasStarted(true);
           }}
+          onRestart={restartWalkthrough}
         />
       )}
+      {showRecap && ready && <WalkthroughRecap
+        summary={stageSummary('eva', { mission, hazards, routes, coverage, readiness: readinessFor('eva', routes, data.routeAudit, coverage, hazards) })}
+        onExplore={() => setShowRecap(false)} onRestart={restartWalkthrough}
+      />}
     </div>
   );
 }

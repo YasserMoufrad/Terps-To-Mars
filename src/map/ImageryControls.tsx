@@ -77,6 +77,7 @@ export function ImageryControls({ overview, hiriseBounds, targets, stage, state,
           {open ? '▾' : '▸'} Map view
         </button>
         {open && (<>
+        <p className="imagery-help">Stage overview frames this step. Inspect jumps to a traced target; Go opens its evidence. Locate rover incident marks a simulated report.</p>
         <div className="imagery-buttons">
           <button type="button" onClick={overviewView}>Stage overview</button>
           <label>Inspect{' '}

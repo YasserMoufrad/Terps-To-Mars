@@ -19,6 +19,7 @@ export function LayerToggles({ layers, available, onChange, notes = {} }: LayerT
   return (
     <section className="card toggles">
       <h3>Layers</h3>
+      <p className="muted">Slope map shows DTM terrain classes; scouting coverage is simulated. Switch them on to compare evidence, not to clear a route.</p>
       {keys.map((key) => (
         <Fragment key={key}>
         <label className={available[key] ? undefined : 'unavailable'}>

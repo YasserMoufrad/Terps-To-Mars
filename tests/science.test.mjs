@@ -11,6 +11,9 @@ test('ice is "consistent with", never claimed as confirmed', () => {
   assert.match(all, /consistent with/i);
   assert.doesNotMatch(all, /\b(ice is confirmed|confirmed ice|proves? (that )?ice)\b/i);
   assert.match(ICE_EVIDENCE, /not confirmed/);
+  assert.match(SCIENCE_LEAD, /at studied scarps, not along our route/);
+  assert.match(all, /pending independent review/);
+  assert.match(all, /neither depth nor thickness has been established at this viewpoint/);
 });
 
 test('every source is a DOI or the HiRISE page, and Dundas 2018 is cited', () => {

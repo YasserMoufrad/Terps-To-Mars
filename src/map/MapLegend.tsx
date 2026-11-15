@@ -13,9 +13,9 @@ export interface LegendKeys {
 }
 
 const LINES: [LineKey, string, string][] = [
-  ['drive', 'line-drive', 'Crew vehicle drive (scouted, go)'],
-  ['walk', 'line-main', 'Crew walk (scouted, go)'],
-  ['backup', 'line-backup', 'Backup (scouted, go)'],
+  ['drive', 'line-drive', 'Crew vehicle drive (simulated scouting; conditional plan)'],
+  ['walk', 'line-main', 'Crew walk (simulated scouting; conditional plan)'],
+  ['backup', 'line-backup', 'Backup (simulated scouting; conditional plan)'],
   ['candidate', 'line-unverified', 'Candidate: needs scouting'],
   ['candidate-drive', 'line-unverified-drive', 'Candidate drive'],
   ['to-scout', 'line-candidate', 'Orbit-only plan (to scout)'],

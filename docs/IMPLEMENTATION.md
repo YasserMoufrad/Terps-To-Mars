@@ -14,6 +14,8 @@ An astronaut-facing map for planning one Marswalk to the exposed water-ice scarp
 
 > Real NASA observation → modeled hazard → rover reconnaissance → updated evidence → revised astronaut route → informed crew decision
 
+**Walkthrough presentation:** first-use Help explains map inspection, route colors, layers and real versus simulated evidence. Each of the four stages offers one direct map action; Help resumes the current stage unless the visitor explicitly restarts. Finishing Step 4 shows a recap drawn from the current route and backup assessments, never crew clearance. On narrow screens, selecting a route or hazard brings its details into view below the map.
+
 **Real vs concept:**
 
 | Real and working | Concept (CAD, specs, mission logic, labeled simulation) |
