@@ -26,8 +26,9 @@ interface StagePanelProps {
 export function StagePanel({
   stage, mission, selectedHazard, hazardsArePlaceholder, onCloseHazard, routeNotices, summary, toggles,
 }: StagePanelProps) {
-  // Purpose: side panel for `stage`: evidence card (if `selectedHazard`), stage stats, the
-  // stage `summary`, honest route failures (`routeNotices`), alerts, the rover card, and toggles.
+  // Purpose: side panel for `stage`: the layer `toggles` first, then the evidence card (if
+  // `selectedHazard`), stage stats, the stage `summary`, honest route failures (`routeNotices`),
+  // alerts and the rover card.
   const current = mission.stages.find((s) => s.id === stage);
   const alerts = mission.alerts[stage] ?? [];
   // Several routes can share one notice (e.g. main and backup both need inspection):
@@ -37,6 +38,9 @@ export function StagePanel({
 
   return (
     <aside className="panel">
+      {/* Layer toggles come first so they are visible as soon as the page opens. */}
+      {toggles}
+
       {selectedHazard && (
         <EvidenceCard hazard={selectedHazard} isPlaceholder={hazardsArePlaceholder} mission={mission} onClose={onCloseHazard} />
       )}
@@ -84,7 +88,6 @@ export function StagePanel({
 
       <GroundViewCard stage={stage} />
 
-      {toggles}
     </aside>
   );
 }

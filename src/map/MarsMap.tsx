@@ -24,6 +24,7 @@ import { hazardsFor, routesFor, coverageFor, highlightCoverageFor, hasLine } fro
 import { hazardStyle, routeStyle, routeCasingStyle, coverageStyle } from './layerStyles';
 import { splitRouteLegs, legSummary, crewRoverParking, type DrawnRouteProperties } from './routeLegs';
 import type { LayerVisibility } from './layers';
+import { routeLabel } from './routeLabel';
 import { FitToMission } from './FitToMission';
 import { MapLegend, type LegendKeys, type LineKey } from './MapLegend';
 import { CoordinateReadout } from './CoordinateReadout';
@@ -501,7 +502,7 @@ export function MarsMap({
           return first ? (
             <CircleMarker key={`excl-${f.properties.id}`} center={[first.lat, first.lon]} radius={6}
               pathOptions={{ color: '#0b0d10', fillColor: '#e5484d', fillOpacity: 1, weight: 2 }}>
-              <Tooltip direction="top">{`First excluded crossing: ${first.kind.replace(/_/g, ' ')}, ${Math.round(first.distance_m)} m along ${f.properties.id}`}</Tooltip>
+              <Tooltip direction="top">{`First excluded crossing: ${first.kind.replace(/_/g, ' ')}, ${Math.round(first.distance_m)} m along ${routeLabel(f.properties.id)}`}</Tooltip>
             </CircleMarker>
           ) : null;
         })}
@@ -575,7 +576,7 @@ export function MarsMap({
           <select aria-label="Inspect route" value={selection?.route?.properties.id ?? ''}
             onChange={(e) => (e.target.value ? selectRoute(e.target.value) : setSelection(null))}>
             <option value="">Select a route</option>
-            {routes.features.map((f) => <option key={f.properties.id} value={f.properties.id}>{f.properties.id}</option>)}
+            {routes.features.map((f) => <option key={f.properties.id} value={f.properties.id}>{routeLabel(f.properties.id)}</option>)}
           </select>
         </label>
         {stage === 'rover' && (
