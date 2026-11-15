@@ -32,8 +32,12 @@ def mask_features(mask, terrain, prefix, properties):
 
 @traced("hazard_generation")
 def hazard_masks(terrain, analysis, rules=None, edge_distance=None,
-                 foot_distance=None, scarp_height=None, apron_m=None, scarp_risk=None):
-    """Classify analysis; distances/heights are metres and scarp_risk bounds unresolved risk."""
+                 foot_distance=None, scarp_height=None, apron_m=None, scarp_risk=None, rockfall_buffer=None):
+    """Classify analysis; distances/heights are metres and scarp_risk bounds unresolved risk.
+
+    rockfall_buffer: optional per-cell grid (metres) replacing the single max(apron, height x factor)
+    buffer, for scarps whose height and apron vary along the foot; it must already apply the rule.
+    """
     rules = rules or load_rules()
     slope = analysis["slope"]
     masks = {
@@ -67,7 +71,16 @@ def hazard_masks(terrain, analysis, rules=None, edge_distance=None,
               unresolved_cells=int(scarp_risk.sum()), status="inspection_required", evidence=terrain.evidence)
     if edge_distance is not None:
         masks["edge"] = edge_distance <= threshold(rules, "cliff_setback_m")
-    if foot_distance is not None and scarp_height is not None and apron_m is not None:
+    if rockfall_buffer is not None:
+        if foot_distance is None:
+            raise ValueError("A rockfall buffer needs the foot distance grid")
+        rockfall_buffer = np.broadcast_to(np.asarray(rockfall_buffer, dtype=float), slope.shape)
+        if not np.all(np.isfinite(rockfall_buffer)) or np.any(rockfall_buffer < 0):
+            raise ValueError("Rockfall buffer must be finite and nonnegative")
+        masks["rockfall"] = foot_distance <= rockfall_buffer
+        event("rockfall_buffer_applied", buffer_m=[float(rockfall_buffer.min()), float(rockfall_buffer.max())],
+              varies_along_foot=True, classification="scenario_assumption", source=terrain.source)
+    elif foot_distance is not None and scarp_height is not None and apron_m is not None:
         buffer = max(apron_m, scarp_height * threshold(rules, "rockfall_height_factor"))
         masks["rockfall"] = foot_distance <= buffer
         event("rockfall_buffer_applied", buffer_m=buffer, classification="scenario_assumption", source=terrain.source)

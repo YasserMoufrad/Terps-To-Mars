@@ -193,11 +193,11 @@ def _validate_staged(staging, classes, bounds):
         raise ValueError("Staged slope.bounds.json differs from the grid bounds")
 
 
-def _activate(staging, data_dir):
-    """Move staged files into data_dir in LIVE_FILES order; on failure restore the previous set."""
+def _activate(staging, data_dir, names=LIVE_FILES):
+    """Move staged files into data_dir in `names` order (default LIVE_FILES); on failure restore the previous set."""
     backups = []
     try:
-        for name in LIVE_FILES:
+        for name in names:
             live = data_dir / name
             if live.exists():
                 backup = data_dir / f".{name}.previous"
